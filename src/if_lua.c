@@ -35,15 +35,15 @@ typedef struct {
 } luaV_Funcref;
 typedef void (*msgfunc_T)(char_u *);
 
-static const char LUAVIM_DICT[] = "dict";
-static const char LUAVIM_LIST[] = "list";
-static const char LUAVIM_BLOB[] = "blob";
-static const char LUAVIM_FUNCREF[] = "funcref";
-static const char LUAVIM_BUFFER[] = "buffer";
-static const char LUAVIM_WINDOW[] = "window";
-static const char LUAVIM_FREE[] = "luaV_free";
-static const char LUAVIM_LUAEVAL[] = "luaV_luaeval";
-static const char LUAVIM_SETREF[] = "luaV_setref";
+static __thread const char LUAVIM_DICT[] = "dict";
+static __thread const char LUAVIM_LIST[] = "list";
+static __thread const char LUAVIM_BLOB[] = "blob";
+static __thread const char LUAVIM_FUNCREF[] = "funcref";
+static __thread const char LUAVIM_BUFFER[] = "buffer";
+static __thread const char LUAVIM_WINDOW[] = "window";
+static __thread const char LUAVIM_FREE[] = "luaV_free";
+static __thread const char LUAVIM_LUAEVAL[] = "luaV_luaeval";
+static __thread const char LUAVIM_SETREF[] = "luaV_setref";
 
 /* most functions are closures with a cache table as first upvalue;
  * get/setudata manage references to vim userdata in cache table through
@@ -299,7 +299,7 @@ typedef struct {
     luaV_function func;
 } luaV_Reg;
 
-static const luaV_Reg luaV_dll[] = {
+static __thread const luaV_Reg luaV_dll[] = {
     /* lauxlib */
 #if LUA_VERSION_NUM <= 501
     {"luaL_register", (luaV_function) &dll_luaL_register},
@@ -396,7 +396,7 @@ static const luaV_Reg luaV_dll[] = {
     {NULL, NULL}
 };
 
-static HANDLE hinstLua = NULL;
+static __thread HANDLE hinstLua = NULL;
 
     static void
 end_dynamic_lua(void)
@@ -892,7 +892,7 @@ luaV_list_insert(lua_State *L)
     return 1;
 }
 
-static const luaL_Reg luaV_List_mt[] = {
+static __thread const luaL_Reg luaV_List_mt[] = {
     {"__tostring", luaV_list_tostring},
     {"__len", luaV_list_len},
     {"__call", luaV_list_call},
@@ -1035,7 +1035,7 @@ luaV_dict_newindex(lua_State *L)
     return 0;
 }
 
-static const luaL_Reg luaV_Dict_mt[] = {
+static __thread const luaL_Reg luaV_Dict_mt[] = {
     {"__tostring", luaV_dict_tostring},
     {"__len", luaV_dict_len},
     {"__call", luaV_dict_call},
@@ -1152,7 +1152,7 @@ luaV_blob_add(lua_State *L)
     return 1;
 }
 
-static const luaL_Reg luaV_Blob_mt[] = {
+static __thread const luaL_Reg luaV_Blob_mt[] = {
     {"__tostring", luaV_blob_tostring},
     {"__gc", luaV_blob_gc},
     {"__len", luaV_blob_len},
@@ -1245,7 +1245,7 @@ luaV_funcref_call(lua_State *L)
     return 1;
 }
 
-static const luaL_Reg luaV_Funcref_mt[] = {
+static __thread const luaL_Reg luaV_Funcref_mt[] = {
     {"__tostring", luaV_funcref_tostring},
     {"__gc", luaV_funcref_gc},
     {"__len", luaV_funcref_len},
@@ -1442,7 +1442,7 @@ luaV_buffer_isvalid(lua_State *L)
     return 1;
 }
 
-static const luaL_Reg luaV_Buffer_mt[] = {
+static __thread const luaL_Reg luaV_Buffer_mt[] = {
     {"__tostring", luaV_buffer_tostring},
     {"__len", luaV_buffer_len},
     {"__call", luaV_buffer_call},
@@ -1576,7 +1576,7 @@ luaV_window_isvalid(lua_State *L)
     return 1;
 }
 
-static const luaL_Reg luaV_Window_mt[] = {
+static __thread const luaL_Reg luaV_Window_mt[] = {
     {"__tostring", luaV_window_tostring},
     {"__call", luaV_window_call},
     {"__index", luaV_window_index},
@@ -1909,7 +1909,7 @@ luaV_type(lua_State *L)
     return 1;
 }
 
-static const luaL_Reg luaV_module[] = {
+static __thread const luaL_Reg luaV_module[] = {
     {"command", luaV_command},
     {"eval", luaV_eval},
     {"beep", luaV_beep},
@@ -2083,7 +2083,7 @@ luaV_setrange(lua_State *L, int line1, int line2)
 
 /* =======   Interface   ======= */
 
-static lua_State *L = NULL;
+static __thread lua_State *L = NULL;
 
     static int
 lua_isopen(void)

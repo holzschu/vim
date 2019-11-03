@@ -843,11 +843,21 @@ get_number_indent(linenr_T lnum)
  * parameters into account. Window must be specified, since it is not
  * necessarily always the current one.
  */
+#if TARGET_OS_IPHONE
+static __thread int	    prev_indent = 0;  // cached indent value
+static __thread long	    prev_ts     = 0L; // cached tabstop value
+static __thread char_u   *prev_line = NULL; // cached pointer to line
+static __thread varnumber_T prev_tick = 0;   // changedtick of cached value
+# ifdef FEAT_VARTABS
+static __thread int      *prev_vts = NULL;    // cached vartabs values
+# endif
+#endif
     int
 get_breakindent_win(
     win_T	*wp,
     char_u	*line) // start of the line
 {
+#if !TARGET_OS_IPHONE
     static int	    prev_indent = 0;  // cached indent value
     static long	    prev_ts     = 0L; // cached tabstop value
     static char_u   *prev_line = NULL; // cached pointer to line
@@ -855,6 +865,7 @@ get_breakindent_win(
 # ifdef FEAT_VARTABS
     static int      *prev_vts = NULL;    // cached vartabs values
 # endif
+#endif
     int		    bri = 0;
     // window width minus window margin space, i.e. what rests for text
     const int	    eff_wwidth = wp->w_width

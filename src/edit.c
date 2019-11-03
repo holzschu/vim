@@ -20,8 +20,7 @@
 
 /* Set when doing something for completion that may call edit() recursively,
  * which is not allowed. */
-static int	compl_busy = FALSE;
-
+static __thread int	compl_busy = FALSE;
 
 static void ins_ctrl_v(void);
 #ifdef FEAT_JOB_CHANNEL
@@ -79,34 +78,34 @@ static int  ins_ctrl_ey(int tc);
 static char_u *do_insert_char_pre(int c);
 #endif
 
-static colnr_T	Insstart_textlen;	/* length of line when insert started */
-static colnr_T	Insstart_blank_vcol;	/* vcol for first inserted blank */
-static int	update_Insstart_orig = TRUE; /* set Insstart_orig to Insstart */
+static __thread colnr_T	Insstart_textlen;	/* length of line when insert started */
+static __thread colnr_T	Insstart_blank_vcol;	/* vcol for first inserted blank */
+static __thread int	update_Insstart_orig = TRUE; /* set Insstart_orig to Insstart */
 
-static char_u	*last_insert = NULL;	/* the text of the previous insert,
+static __thread char_u	*last_insert = NULL;	/* the text of the previous insert,
 					   K_SPECIAL and CSI are escaped */
-static int	last_insert_skip; /* nr of chars in front of previous insert */
-static int	new_insert_skip;  /* nr of chars in front of current insert */
-static int	did_restart_edit;	/* "restart_edit" when calling edit() */
+static __thread int	last_insert_skip; /* nr of chars in front of previous insert */
+static __thread int	new_insert_skip;  /* nr of chars in front of current insert */
+static __thread int	did_restart_edit;	/* "restart_edit" when calling edit() */
 
 #ifdef FEAT_CINDENT
-static int	can_cindent;		/* may do cindenting on this line */
+static __thread int	can_cindent;		/* may do cindenting on this line */
 #endif
 
 #ifdef FEAT_RIGHTLEFT
-static int	revins_on;		/* reverse insert mode on */
-static int	revins_chars;		/* how much to skip after edit */
-static int	revins_legal;		/* was the last char 'legal'? */
-static int	revins_scol;		/* start column of revins session */
+static __thread int	revins_on;		/* reverse insert mode on */
+static __thread int	revins_chars;		/* how much to skip after edit */
+static __thread int	revins_legal;		/* was the last char 'legal'? */
+static __thread int	revins_scol;		/* start column of revins session */
 #endif
 
-static int	ins_need_undo;		/* call u_save() before inserting a
+static __thread int	ins_need_undo;		/* call u_save() before inserting a
 					   char.  Set when edit() is called.
 					   after that arrow_used is used. */
 
-static int	did_add_space = FALSE;	// auto_format() added an extra space
+static __thread int	did_add_space = FALSE;	// auto_format() added an extra space
 					// under the cursor
-static int	dont_sync_undo = FALSE;	// CTRL-G U prevents syncing undo for
+static __thread int	dont_sync_undo = FALSE;	// CTRL-G U prevents syncing undo for
 					// the next left/right cursor key
 
 /*
@@ -128,6 +127,9 @@ static int	dont_sync_undo = FALSE;	// CTRL-G U prevents syncing undo for
  *
  * Return TRUE if a CTRL-O command caused the return (insert mode pending).
  */
+#if TARGET_OS_IPHONE
+static __thread linenr_T o_lnum = 0;
+#endif
     int
 edit(
     int		cmdchar,
@@ -138,7 +140,9 @@ edit(
     char_u	*ptr;
     int		lastc = 0;
     int		mincol;
+#if !TARGET_OS_IPHONE
     static linenr_T o_lnum = 0;
+#endif
     int		i;
     int		did_backspace = TRUE;	    /* previous char was backspace */
 #ifdef FEAT_CINDENT
@@ -1559,15 +1563,15 @@ ins_ctrl_v(void)
  * Put a character directly onto the screen.  It's not stored in a buffer.
  * Used while handling CTRL-K, CTRL-V, etc. in Insert mode.
  */
-static int  pc_status;
+static __thread int  pc_status;
 #define PC_STATUS_UNSET	0	/* pc_bytes was not set */
 #define PC_STATUS_RIGHT	1	/* right halve of double-wide char */
 #define PC_STATUS_LEFT	2	/* left halve of double-wide char */
 #define PC_STATUS_SET	3	/* pc_bytes was filled */
-static char_u pc_bytes[MB_MAXBYTES + 1]; /* saved bytes */
-static int  pc_attr;
-static int  pc_row;
-static int  pc_col;
+static __thread char_u pc_bytes[MB_MAXBYTES + 1]; /* saved bytes */
+static __thread int  pc_attr;
+static __thread int  pc_row;
+static __thread int  pc_col;
 
     void
 edit_putchar(int c, int highlight)
@@ -3516,9 +3520,9 @@ echeck_abbr(int c)
  * characters will be left on the stack above the newly inserted character.
  */
 
-static char_u	*replace_stack = NULL;
-static long	replace_stack_nr = 0;	    /* next entry in replace stack */
-static long	replace_stack_len = 0;	    /* max. number of entries */
+static __thread char_u	*replace_stack = NULL;
+static __thread long	replace_stack_nr = 0;	    /* next entry in replace stack */
+static __thread long	replace_stack_len = 0;	    /* max. number of entries */
 
     void
 replace_push(
@@ -4100,6 +4104,9 @@ ins_ctrl_hat(void)
  * Returns TRUE when leaving insert mode, FALSE when going to repeat the
  * insert.
  */
+#if TARGET_OS_IPHONE
+static __thread int disabled_redraw = FALSE;
+#endif
     static int
 ins_esc(
     long	*count,
@@ -4107,7 +4114,9 @@ ins_esc(
     int		nomove)	    /* don't move cursor */
 {
     int		temp;
+#if !TARGET_OS_IPHONE
     static int	disabled_redraw = FALSE;
+#endif
 
 #ifdef FEAT_SPELL
     check_spell_redraw();

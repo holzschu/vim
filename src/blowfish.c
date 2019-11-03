@@ -57,7 +57,7 @@ typedef struct {
 
 
 /* Blowfish code */
-static UINT32_T pax_init[18] = {
+static __thread UINT32_T pax_init[18] = {
     0x243f6a88u, 0x85a308d3u, 0x13198a2eu,
     0x03707344u, 0xa4093822u, 0x299f31d0u,
     0x082efa98u, 0xec4e6c89u, 0x452821e6u,
@@ -66,7 +66,7 @@ static UINT32_T pax_init[18] = {
     0xb5470917u, 0x9216d5d9u, 0x8979fb1bu
 };
 
-static UINT32_T sbx_init[4][256] = {
+static __thread UINT32_T sbx_init[4][256] = {
    {0xd1310ba6u, 0x98dfb5acu, 0x2ffd72dbu, 0xd01adfb7u,
     0xb8e1afedu, 0x6a267e96u, 0xba7c9045u, 0xf12c7f99u,
     0x24a19947u, 0xb3916cf7u, 0x0801f2e2u, 0x858efc16u,
@@ -492,7 +492,7 @@ typedef struct {
  * Assert bf(password, plaintxt) is cryptxt.
  * Assert csum(pax sbx(password)) is keysum.
  */
-static struct_bf_test_data bf_test_data[] = {
+static __thread struct_bf_test_data bf_test_data[] = {
   {
       "password",
       "salt",

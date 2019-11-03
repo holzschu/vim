@@ -75,12 +75,17 @@ static void redraw_custom_statusline(win_T *wp);
  * of stuff from Filemem to ScreenLines[], and update curwin->w_botline.
  * Return OK when the screen was updated, FAIL if it was not done.
  */
+#if TARGET_OS_IPHONE
+static __thread int	did_intro = FALSE;
+#endif
     int
 update_screen(int type_arg)
 {
     int		type = type_arg;
     win_T	*wp;
+#if !TARGET_OS_IPHONE
     static int	did_intro = FALSE;
+#endif
 #if defined(FEAT_SEARCH_EXTRA) || defined(FEAT_CLIPBOARD)
     int		did_one;
 #endif
@@ -391,6 +396,9 @@ update_screen(int type_arg)
  * If "ignore_pum" is TRUE, also redraw statusline when the popup menu is
  * displayed.
  */
+#if TARGET_OS_IPHONE
+static __thread int  busy = FALSE;
+#endif
     void
 win_redr_status(win_T *wp, int ignore_pum UNUSED)
 {
@@ -400,7 +408,9 @@ win_redr_status(win_T *wp, int ignore_pum UNUSED)
     int		fillchar;
     int		attr;
     int		this_ru_col;
+#if !TARGET_OS_IPHONE
     static int  busy = FALSE;
+#endif
 
     // It's possible to get here recursively when 'statusline' (indirectly)
     // invokes ":redrawstatus".  Simply ignore the call then.
@@ -542,10 +552,15 @@ win_redr_status(win_T *wp, int ignore_pum UNUSED)
  * Redraw the status line according to 'statusline' and take care of any
  * errors encountered.
  */
+#if TARGET_OS_IPHONE
+static __thread int entered = FALSE;
+#endif
     static void
 redraw_custom_statusline(win_T *wp)
 {
+#if !TARGET_OS_IPHONE
     static int	    entered = FALSE;
+#endif
     int		    saved_did_emsg = did_emsg;
 
     // When called recursively return.  This can happen when the statusline
@@ -1369,6 +1384,9 @@ fold_line(
  * mid: from mid_start to mid_end (update inversion or changed text)
  * bot: from bot_start to last row (when scrolled up)
  */
+#if TARGET_OS_IPHONE
+static __thread int recursive = FALSE;	// being called recursively
+#endif
     static void
 win_update(win_T *wp)
 {
@@ -1397,7 +1415,9 @@ win_update(win_T *wp)
     int		didline = FALSE; // if TRUE, we finished the last line
     int		i;
     long	j;
+#if !TARGET_OS_IPHONE
     static int	recursive = FALSE;	// being called recursively
+#endif
     int		old_botline = wp->w_botline;
 #ifdef FEAT_FOLDING
     long	fold_count;

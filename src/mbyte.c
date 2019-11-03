@@ -152,7 +152,7 @@ static int dbcs_head_off(char_u *base, char_u *p);
  * Bytes which are illegal when used as the first byte have a 1.
  * The NUL byte has length 1.
  */
-static char utf8len_tab[256] =
+static __thread char utf8len_tab[256] =
 {
     1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
@@ -167,7 +167,7 @@ static char utf8len_tab[256] =
 /*
  * Like utf8len_tab above, but using a zero for illegal lead bytes.
  */
-static char utf8len_tab_zero[256] =
+static __thread char utf8len_tab_zero[256] =
 {
     1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
@@ -185,11 +185,16 @@ static char utf8len_tab_zero[256] =
  */
 /* #define XIM_DEBUG */
 #ifdef XIM_DEBUG
+#if TARGET_OS_IPHONE
+static __thread FILE *fd = NULL;
+#endif
     static void
 xim_log(char *s, ...)
 {
     va_list arglist;
+#if !TARGET_OS_IPHONE
     static FILE *fd = NULL;
+#endif
 
     if (fd == (FILE *)-1)
 	return;
@@ -215,7 +220,7 @@ xim_log(char *s, ...)
  * Canonical encoding names and their properties.
  * "iso-8859-n" is handled by enc_canonize() directly.
  */
-static struct
+static __thread struct
 {   char *name;		int prop;		int codepage;}
 enc_canon_table[] =
 {
@@ -353,7 +358,7 @@ enc_canon_table[] =
 /*
  * Aliases for encoding names.
  */
-static struct
+static __thread struct
 {   char *name;		int canon;}
 enc_alias_table[] =
 {
@@ -1204,7 +1209,7 @@ intable(struct interval *table, size_t size, int c)
 
 /* Sorted list of non-overlapping intervals of East Asian Ambiguous
  * characters, generated with ../runtime/tools/unicode.vim. */
-static struct interval ambiguous[] =
+static __thread struct interval ambiguous[] =
 {
     {0x00a1, 0x00a1},
     {0x00a4, 0x00a4},
@@ -2615,7 +2620,7 @@ utf_printable(int c)
 
 /* Sorted list of non-overlapping intervals of all Emoji characters,
  * based on http://unicode.org/emoji/charts/emoji-list.html */
-static struct interval emoji_all[] =
+static __thread struct interval emoji_all[] =
 {
     {0x203c, 0x203c},
     {0x2049, 0x2049},
@@ -2920,7 +2925,7 @@ typedef struct
     int offset;
 } convertStruct;
 
-static convertStruct foldCase[] =
+static __thread convertStruct foldCase[] =
 {
 	{0x41,0x5a,1,32},
 	{0xb5,0xb5,-1,775},
@@ -3163,7 +3168,7 @@ utf_fold(int a)
     return utf_convert(a, foldCase, (int)sizeof(foldCase));
 }
 
-static convertStruct toLower[] =
+static __thread convertStruct toLower[] =
 {
 	{0x41,0x5a,1,32},
 	{0xc0,0xd6,1,32},
@@ -3339,7 +3344,7 @@ static convertStruct toLower[] =
 	{0x1e900,0x1e921,1,34}
 };
 
-static convertStruct toUpper[] =
+static __thread convertStruct toUpper[] =
 {
 	{0x61,0x7a,1,-32},
 	{0xb5,0xb5,-1,743},
@@ -4188,10 +4193,15 @@ mb_charlen_len(char_u *str, int len)
  * "pp" to just after the bytes that formed it.
  * Return NULL if no multi-byte char was found.
  */
+#if TARGET_OS_IPHONE
+static __thread char_u	buf[6];
+#endif
     char_u *
 mb_unescape(char_u **pp)
 {
+#if !TARGET_OS_IPHONE
     static char_u	buf[6];
+#endif
     int			n;
     int			m = 0;
     char_u		*str = *pp;
@@ -4529,6 +4539,9 @@ encname2codepage(char_u *name)
  * Returns (void *)-1 if failed.
  * (should return iconv_t, but that causes problems with prototypes).
  */
+#if TARGET_OS_IPHONE
+static __thread int	iconv_ok = -1;
+#endif
     void *
 my_iconv_open(char_u *to, char_u *from)
 {
@@ -4537,7 +4550,9 @@ my_iconv_open(char_u *to, char_u *from)
     char_u	tobuf[ICONV_TESTLEN];
     char	*p;
     size_t	tolen;
+#if !TARGET_OS_IPHONE
     static int	iconv_ok = -1;
+#endif
 
     if (iconv_ok == FALSE)
 	return (void *)-1;	/* detected a broken iconv() previously */
@@ -4687,8 +4702,8 @@ iconv_string(
 #   ifndef DYNAMIC_ICONV	    /* must be generating prototypes */
 #    define HINSTANCE int
 #   endif
-static HINSTANCE hIconvDLL = 0;
-static HINSTANCE hMsvcrtDLL = 0;
+static __thread HINSTANCE hIconvDLL = 0;
+static __thread HINSTANCE hMsvcrtDLL = 0;
 
 #   ifndef DYNAMIC_ICONV_DLL
 #    define DYNAMIC_ICONV_DLL "iconv.dll"
@@ -4825,7 +4840,7 @@ call_imstatusfunc(void)
 #if defined(FEAT_XIM) || defined(PROTO)
 
 # if defined(FEAT_GUI_GTK) || defined(PROTO)
-static int xim_has_preediting INIT(= FALSE);  /* IM current status */
+static __thread int xim_has_preediting INIT(= FALSE);  /* IM current status */
 
 /*
  * Set preedit_start_col to the current cursor position.
@@ -4841,19 +4856,19 @@ init_preedit_start_col(void)
     xim_changed_while_preediting = curbuf->b_changed;
 }
 
-static int im_is_active	       = FALSE;	/* IM is enabled for current mode    */
-static int preedit_is_active   = FALSE;
-static int im_preedit_cursor   = 0;	/* cursor offset in characters       */
-static int im_preedit_trailing = 0;	/* number of characters after cursor */
+static __thread int im_is_active	       = FALSE;	/* IM is enabled for current mode    */
+static __thread int preedit_is_active   = FALSE;
+static __thread int im_preedit_cursor   = 0;	/* cursor offset in characters       */
+static __thread int im_preedit_trailing = 0;	/* number of characters after cursor */
 
-static unsigned long im_commit_handler_id  = 0;
-static unsigned int  im_activatekey_keyval = GDK_VoidSymbol;
-static unsigned int  im_activatekey_state  = 0;
+static __thread unsigned long im_commit_handler_id  = 0;
+static __thread unsigned int  im_activatekey_keyval = GDK_VoidSymbol;
+static __thread unsigned int  im_activatekey_state  = 0;
 
-static GtkWidget *preedit_window = NULL;
-static GtkWidget *preedit_label = NULL;
+static __thread GtkWidget *preedit_window = NULL;
+static __thread GtkWidget *preedit_label = NULL;
 
-static void im_preedit_window_set_position(void);
+static __thread void im_preedit_window_set_position(void);
 
     void
 im_set_active(int active)
@@ -5133,8 +5148,8 @@ im_correct_cursor(int num_move_back)
 	add_to_input_buf(backkey, (int)sizeof(backkey));
 }
 
-static int xim_expected_char = NUL;
-static int xim_ignored_char = FALSE;
+static __thread int xim_expected_char = NUL;
+static __thread int xim_ignored_char = FALSE;
 
 /*
  * Update the mode and cursor while in an IM callback.
@@ -5881,12 +5896,12 @@ im_is_preediting(void)
 
 # else /* !FEAT_GUI_GTK */
 
-static int	xim_is_active = FALSE;  /* XIM should be active in the current
+static __thread int	xim_is_active = FALSE;  /* XIM should be active in the current
 					   mode */
-static int	xim_has_focus = FALSE;	/* XIM is really being used for Vim */
+static __thread int	xim_has_focus = FALSE;	/* XIM is really being used for Vim */
 #  ifdef FEAT_GUI_X11
-static XIMStyle	input_style;
-static int	status_area_enabled = TRUE;
+static __thread XIMStyle	input_style;
+static __thread int	status_area_enabled = TRUE;
 #  endif
 
 /*
@@ -6023,7 +6038,7 @@ xim_set_preedit(void)
 }
 
 #  if defined(FEAT_GUI_X11)
-static char e_xim[] = N_("E285: Failed to create input context");
+static __thread char e_xim[] = N_("E285: Failed to create input context");
 #  endif
 
 #  if defined(FEAT_GUI_X11) || defined(PROTO)
@@ -6031,7 +6046,7 @@ static char e_xim[] = N_("E285: Failed to create input context");
 #    define USE_X11R6_XIM
 #   endif
 
-static int xim_real_init(Window x11_window, Display *x11_display);
+static __thread int xim_real_init(Window x11_window, Display *x11_display);
 
 
 #  ifdef USE_X11R6_XIM
@@ -6464,7 +6479,7 @@ xim_get_status_area_height(void)
 #else /* !defined(FEAT_XIM) */
 
 # ifdef IME_WITHOUT_XIM
-static int im_was_set_active = FALSE;
+static __thread int im_was_set_active = FALSE;
 
     int
 im_get_status(void)

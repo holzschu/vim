@@ -40,19 +40,19 @@
 
 #define MINIMAL_SIZE 20			/* minimal size for b_str */
 
-static buffheader_T redobuff = {{NULL, {NUL}}, NULL, 0, 0};
-static buffheader_T old_redobuff = {{NULL, {NUL}}, NULL, 0, 0};
-static buffheader_T recordbuff = {{NULL, {NUL}}, NULL, 0, 0};
+static __thread buffheader_T redobuff = {{NULL, {NUL}}, NULL, 0, 0};
+static __thread buffheader_T old_redobuff = {{NULL, {NUL}}, NULL, 0, 0};
+static __thread buffheader_T recordbuff = {{NULL, {NUL}}, NULL, 0, 0};
 
-static int typeahead_char = 0;		/* typeahead char that's not flushed */
+static __thread int typeahead_char = 0;		/* typeahead char that's not flushed */
 
 /*
  * when block_redo is TRUE redo buffer will not be changed
  * used by edit() to repeat insertions and 'V' command for redoing
  */
-static int	block_redo = FALSE;
+static __thread int	block_redo = FALSE;
 
-static int	KeyNoremap = 0;	    // remapping flags
+static __thread int	KeyNoremap = 0;	    // remapping flags
 
 /*
  * Variables used by vgetorpeek() and flush_buffers().
@@ -83,10 +83,10 @@ static int	KeyNoremap = 0;	    // remapping flags
  * MAXMAPLEN) for the Amiga).
  */
 #define TYPELEN_INIT	(5 * (MAXMAPLEN + 3))
-static char_u	typebuf_init[TYPELEN_INIT];	/* initial typebuf.tb_buf */
-static char_u	noremapbuf_init[TYPELEN_INIT];	/* initial typebuf.tb_noremap */
+static __thread char_u	typebuf_init[TYPELEN_INIT];	/* initial typebuf.tb_buf */
+static __thread char_u	noremapbuf_init[TYPELEN_INIT];	/* initial typebuf.tb_noremap */
 
-static int	last_recorded_len = 0;	/* number of last recorded chars */
+static __thread int	last_recorded_len = 0;	/* number of last recorded chars */
 
 static int	read_readbuf(buffheader_T *buf, int advance);
 static void	init_typebuf(void);
@@ -308,10 +308,10 @@ add_char_buff(buffheader_T *buf, int c)
 }
 
 /* First read ahead buffer. Used for translated commands. */
-static buffheader_T readbuf1 = {{NULL, {NUL}}, NULL, 0, 0};
+static __thread buffheader_T readbuf1 = {{NULL, {NUL}}, NULL, 0, 0};
 
 /* Second read ahead buffer. Used for redo. */
-static buffheader_T readbuf2 = {{NULL, {NUL}}, NULL, 0, 0};
+static __thread buffheader_T readbuf2 = {{NULL, {NUL}}, NULL, 0, 0};
 
 /*
  * Get one byte from the read buffers.  Use readbuf1 one first, use readbuf2
@@ -689,11 +689,17 @@ stuffnumReadbuff(long n)
  * otherwise.
  * If old is TRUE, use old_redobuff instead of redobuff.
  */
+#if TARGET_OS_IPHONE
+static __thread buffblock_T	*bp;
+static __thread char_u	*p;
+#endif
     static int
 read_redo(int init, int old_redo)
 {
+#if !TARGET_OS_IPHONE
     static buffblock_T	*bp;
     static char_u	*p;
+#endif
     int			c;
     int			n;
     char_u		buf[MB_MAXBYTES + 1];
@@ -1193,13 +1199,19 @@ del_typebuf(int len, int offset)
  * Write typed characters to script file.
  * If recording is on put the character in the recordbuffer.
  */
+#if TARGET_OS_IPHONE
+static __thread char_u	buf[4];
+static __thread int	buflen = 0;
+#endif
     static void
 gotchars(char_u *chars, int len)
 {
     char_u		*s = chars;
     int			i;
+#if !TARGET_OS_IPHONE
     static char_u	buf[4];
     static int		buflen = 0;
+#endif
     int			todo = len;
 
     while (todo--)
@@ -1307,7 +1319,7 @@ free_typebuf(void)
  * When doing ":so! file", the current typeahead needs to be saved, and
  * restored when "file" has been read completely.
  */
-static typebuf_T saved_typebuf[NSCRIPT];
+static __thread typebuf_T saved_typebuf[NSCRIPT];
 
     int
 save_typebuf(void)
@@ -1323,10 +1335,10 @@ save_typebuf(void)
     return OK;
 }
 
-static int old_char = -1;	/* character put back by vungetc() */
-static int old_mod_mask;	/* mod_mask for ungotten character */
-static int old_mouse_row;	/* mouse_row related to old_char */
-static int old_mouse_col;	/* mouse_col related to old_char */
+static __thread int old_char = -1;	/* character put back by vungetc() */
+static __thread int old_mod_mask;	/* mod_mask for ungotten character */
+static __thread int old_mouse_row;	/* mouse_row related to old_char */
+static __thread int old_mouse_col;	/* mouse_col related to old_char */
 
 /*
  * Save all three kinds of typeahead, so that the user must type at a prompt.
@@ -1510,10 +1522,15 @@ before_blocking(void)
  * All the changed memfiles are synced if c == 0 or when the number of typed
  * characters reaches 'updatecount' and 'updatecount' is non-zero.
  */
+#if TARGET_OS_IPHONE
+static __thread int count = 0;
+#endif
     static void
 updatescript(int c)
 {
+#if !TARGET_OS_IPHONE
     static int	    count = 0;
+#endif
 
     if (c && scriptout)
 	putc(c, scriptout);
@@ -2056,6 +2073,9 @@ f_getcharmod(typval_T *argvars UNUSED, typval_T *rettv)
  * These functions can call arbitrary vimscript and should only be called when
  * it is safe to do so.
  */
+#if TARGET_OS_IPHONE
+static __thread int entered = 0;
+#endif
     void
 parse_queued_messages(void)
 {
@@ -2063,7 +2083,9 @@ parse_queued_messages(void)
     int	    old_curbuf_fnum;
     int	    i;
     int	    save_may_garbage_collect = may_garbage_collect;
+#if !TARGET_OS_IPHONE
     static int entered = 0;
+#endif
     int	    was_safe = get_was_safe_state();
 
     // Do not handle messages while redrawing, because it may cause buffers to
@@ -2684,6 +2706,12 @@ vungetc(int c)
  * Only returns one byte (of a multi-byte character).
  * K_SPECIAL and CSI may be escaped, need to get two more bytes then.
  */
+#ifdef FEAT_CMDWIN
+#if TARGET_OS_IPHONE
+static __thread int tc = 0;
+#endif
+#endif
+
     static int
 vgetorpeek(int advance)
 {
@@ -2983,7 +3011,9 @@ vgetorpeek(int advance)
 		if (ex_normal_busy > 0)
 		{
 #ifdef FEAT_CMDWIN
+#if !TARGET_OS_IPHONE
 		    static int tc = 0;
+#endif
 #endif
 
 		    /* No typeahead left and inside ":normal".  Must return

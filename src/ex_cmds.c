@@ -276,17 +276,17 @@ linelen(int *has_tab)
 
 /* Buffer for two lines used during sorting.  They are allocated to
  * contain the longest line being sorted. */
-static char_u	*sortbuf1;
-static char_u	*sortbuf2;
+static __thread char_u	*sortbuf1;
+static __thread char_u	*sortbuf2;
 
-static int	sort_ic;	/* ignore case */
-static int	sort_nr;	/* sort on number */
-static int	sort_rx;	/* sort on regex instead of skipping it */
+static __thread int	sort_ic;	/* ignore case */
+static __thread int	sort_nr;	/* sort on number */
+static __thread int	sort_rx;	/* sort on regex instead of skipping it */
 #ifdef FEAT_FLOAT
-static int	sort_flt;	/* sort on floating number */
+static __thread int	sort_flt;	/* sort on floating number */
 #endif
 
-static int	sort_abort;	/* flag to indicate if sorting has been interrupted */
+static __thread int	sort_abort;	/* flag to indicate if sorting has been interrupted */
 
 /* Struct to store info to be sorted. */
 typedef struct
@@ -858,7 +858,7 @@ ex_copy(linenr_T line1, linenr_T line2, linenr_T n)
     msgmore((long)count);
 }
 
-static char_u	*prevcmd = NULL;	/* the previous command */
+static __thread char_u	*prevcmd = NULL;	/* the previous command */
 
 #if defined(EXITFREE) || defined(PROTO)
     void
@@ -3145,7 +3145,7 @@ delbuf_msg(char_u *name)
     au_new_curbuf.br_buf_free_count = 0;
 }
 
-static int append_indent = 0;	    /* autoindent for first line */
+static __thread int append_indent = 0;	    /* autoindent for first line */
 
 /*
  * ":insert" and ":append", also used by ":change"
@@ -3501,8 +3501,8 @@ check_secure(void)
     return FALSE;
 }
 
-static char_u	*old_sub = NULL;	/* previous substitute pattern */
-static int	global_need_beginline;	/* call beginline() after ":g" */
+static __thread char_u	*old_sub = NULL;	/* previous substitute pattern */
+static __thread int	global_need_beginline;	/* call beginline() after ":g" */
 
 /*
  * Flags that are kept between calls to :substitute.
@@ -3527,14 +3527,20 @@ typedef struct {
  *
  * The usual escapes are supported as described in the regexp docs.
  */
+#if TARGET_OS_IPHONE
+static __thread subflags_T subflags = {FALSE, FALSE, FALSE, TRUE, FALSE,
+							      FALSE, FALSE, 0};
+#endif
     void
 do_sub(exarg_T *eap)
 {
     linenr_T	lnum;
     long	i = 0;
     regmmatch_T regmatch;
+#if !TARGET_OS_IPHONE
     static subflags_T subflags = {FALSE, FALSE, FALSE, TRUE, FALSE,
 							      FALSE, FALSE, 0};
+#endif
 #ifdef FEAT_EVAL
     subflags_T	subflags_save;
 #endif
@@ -5315,6 +5321,32 @@ help_compare(const void *s1, const void *s2)
  * The matches will be sorted with a "best" match algorithm.
  * When "keep_lang" is TRUE try keeping the language of the current buffer.
  */
+#if TARGET_OS_IPHONE
+static __thread char *(mtable[]) = {"*", "g*", "[*", "]*", ":*",
+    "/*", "/\\*", "\"*", "**",
+    "cpo-*", "/\\(\\)", "/\\%(\\)",
+    "?", ":?", "?<CR>", "g?", "g?g?", "g??",
+    "-?", "q?", "v_g?",
+    "/\\?", "/\\z(\\)", "\\=", ":s\\=",
+    "[count]", "[quotex]",
+    "[range]", ":[range]",
+    "[pattern]", "\\|", "\\%$",
+    "s/\\~", "s/\\U", "s/\\L",
+    "s/\\1", "s/\\2", "s/\\3", "s/\\9"};
+static __thread char *(rtable[]) = {"star", "gstar", "[star", "]star", ":star",
+    "/star", "/\\\\star", "quotestar", "starstar",
+    "cpo-star", "/\\\\(\\\\)", "/\\\\%(\\\\)",
+    "?", ":?", "?<CR>", "g?", "g?g?", "g??",
+    "-?", "q?", "v_g?",
+    "/\\\\?", "/\\\\z(\\\\)", "\\\\=", ":s\\\\=",
+    "\\[count]", "\\[quotex]",
+    "\\[range]", ":\\[range]",
+    "\\[pattern]", "\\\\bar", "/\\\\%\\$",
+    "s/\\\\\\~", "s/\\\\U", "s/\\\\L",
+    "s/\\\\1", "s/\\\\2", "s/\\\\3", "s/\\\\9"};
+static __thread char *(expr_table[]) = {"!=?", "!~?", "<=?", "<?", "==?", "=~?",
+    ">=?", ">?", "is?", "isnot?"};
+#endif
     int
 find_help_tags(
     char_u	*arg,
@@ -5324,6 +5356,7 @@ find_help_tags(
 {
     char_u	*s, *d;
     int		i;
+#if !TARGET_OS_IPHONE
     static char *(mtable[]) = {"*", "g*", "[*", "]*", ":*",
 			       "/*", "/\\*", "\"*", "**",
 			       "cpo-*", "/\\(\\)", "/\\%(\\)",
@@ -5348,6 +5381,7 @@ find_help_tags(
 			       "s/\\\\1", "s/\\\\2", "s/\\\\3", "s/\\\\9"};
     static char *(expr_table[]) = {"!=?", "!~?", "<=?", "<?", "==?", "=~?",
 				">=?", ">?", "is?", "isnot?"};
+#endif
     int flags;
 
     d = IObuff;		    /* assume IObuff is long enough! */
@@ -6278,13 +6312,21 @@ ex_helptags(exarg_T *eap)
 /*
  * Make the user happy.
  */
+#if TARGET_OS_IPHONE
+static __thread char *code[] = {
+	"\34 \4o\14$\4ox\30 \2o\30$\1ox\25 \2o\36$\1o\11 \1o\1$\3 \2$\1 \1o\1$x\5 \1o\1 \1$\1 \2o\10 \1o\44$\1o\7 \2$\1 \2$\1 \2$\1o\1$x\2 \2o\1 \1$\1 \1$\1 \1\"\1$\6 \1o\11$\4 \15$\4 \11$\1o\7 \3$\1o\2$\1o\1$x\2 \1\"\6$\1o\1$\5 \1o\11$\6 \13$\6 \12$\1o\4 \10$x\4 \7$\4 \13$\6 \13$\6 \27$x\4 \27$\4 \15$\4 \16$\2 \3\"\3$x\5 \1\"\3$\4\"\61$\5 \1\"\3$x\6 \3$\3 \1o\62$\5 \1\"\3$\1ox\5 \1o\2$\1\"\3 \63$\7 \3$\1ox\5 \3$\4 \55$\1\"\1 \1\"\6$",
+	"\5o\4$\1ox\4 \1o\3$\4o\5$\2 \45$\3 \1o\21$x\4 \10$\1\"\4$\3 \42$\5 \4$\10\"x\3 \4\"\7 \4$\4 \1\"\34$\1\"\6 \1o\3$x\16 \1\"\3$\1o\5 \3\"\22$\1\"\2$\1\"\11 \3$x\20 \3$\1o\12 \1\"\2$\2\"\6$\4\"\13 \1o\3$x\21 \4$\1o\40 \1o\3$\1\"x\22 \1\"\4$\1o\6 \1o\6$\1o\1\"\4$\1o\10 \1o\4$x\24 \1\"\5$\2o\5 \2\"\4$\1o\5$\1o\3 \1o\4$\2\"x\27 \2\"\5$\4o\2 \1\"\3$\1o\11$\3\"x\32 \2\"\7$\2o\1 \12$x\42 \4\"\13$x\46 \14$x\47 \12$\1\"x\50 \1\"\3$\4\"x"
+    };
+#endif
     void
 ex_smile(exarg_T *eap UNUSED)
 {
+#if !TARGET_OS_IPHONE
     static char *code[] = {
 	"\34 \4o\14$\4ox\30 \2o\30$\1ox\25 \2o\36$\1o\11 \1o\1$\3 \2$\1 \1o\1$x\5 \1o\1 \1$\1 \2o\10 \1o\44$\1o\7 \2$\1 \2$\1 \2$\1o\1$x\2 \2o\1 \1$\1 \1$\1 \1\"\1$\6 \1o\11$\4 \15$\4 \11$\1o\7 \3$\1o\2$\1o\1$x\2 \1\"\6$\1o\1$\5 \1o\11$\6 \13$\6 \12$\1o\4 \10$x\4 \7$\4 \13$\6 \13$\6 \27$x\4 \27$\4 \15$\4 \16$\2 \3\"\3$x\5 \1\"\3$\4\"\61$\5 \1\"\3$x\6 \3$\3 \1o\62$\5 \1\"\3$\1ox\5 \1o\2$\1\"\3 \63$\7 \3$\1ox\5 \3$\4 \55$\1\"\1 \1\"\6$",
 	"\5o\4$\1ox\4 \1o\3$\4o\5$\2 \45$\3 \1o\21$x\4 \10$\1\"\4$\3 \42$\5 \4$\10\"x\3 \4\"\7 \4$\4 \1\"\34$\1\"\6 \1o\3$x\16 \1\"\3$\1o\5 \3\"\22$\1\"\2$\1\"\11 \3$x\20 \3$\1o\12 \1\"\2$\2\"\6$\4\"\13 \1o\3$x\21 \4$\1o\40 \1o\3$\1\"x\22 \1\"\4$\1o\6 \1o\6$\1o\1\"\4$\1o\10 \1o\4$x\24 \1\"\5$\2o\5 \2\"\4$\1o\5$\1o\3 \1o\4$\2\"x\27 \2\"\5$\4o\2 \1\"\3$\1o\11$\3\"x\32 \2\"\7$\2o\1 \12$x\42 \4\"\13$x\46 \14$x\47 \12$\1\"x\50 \1\"\3$\4\"x"
     };
+#endif
     char *p;
     int n;
     int i;

@@ -62,13 +62,13 @@ static ch_part_T channel_part_read(channel_T *channel);
 static void free_job_options(jobopt_T *opt);
 
 /* Whether a redraw is needed for appending a line to a buffer. */
-static int channel_need_redraw = FALSE;
+static __thread int channel_need_redraw = FALSE;
 
 /* Whether we are inside channel_parse_messages() or another situation where it
  * is safe to invoke callbacks. */
-static int safe_to_invoke_callback = 0;
+static __thread int safe_to_invoke_callback = 0;
 
-static char *part_names[] = {"sock", "out", "err", "in"};
+static __thread char *part_names[] = {"sock", "out", "err", "in"};
 
 #ifdef MSWIN
     static int
@@ -130,9 +130,9 @@ fd_close(sock_T fd)
 #endif
 
 /* Log file opened with ch_logfile(). */
-static FILE *log_fd = NULL;
+static __thread FILE *log_fd = NULL;
 #ifdef FEAT_RELTIME
-static proftime_T log_start;
+static __thread proftime_T log_start;
 #endif
 
     void
@@ -291,8 +291,8 @@ strerror_win32(int eno)
 /*
  * The list of all allocated channels.
  */
-static channel_T *first_channel = NULL;
-static int next_ch_id = 0;
+static __thread channel_T *first_channel = NULL;
+static __thread int next_ch_id = 0;
 
 /*
  * Allocate a new channel.  The refcount is set to 1.
@@ -701,7 +701,7 @@ channel_gui_unregister(channel_T *channel)
 
 #endif  // FEAT_GUI
 
-static char *e_cannot_connect = N_("E902: Cannot connect to port");
+static __thread char *e_cannot_connect = N_("E902: Cannot connect to port");
 
 /*
  * Open a socket channel to "hostname":"port".
@@ -3179,6 +3179,10 @@ channel_free_all(void)
     ch_log(NULL, "channel_free_all()");
     for (channel = first_channel; channel != NULL; channel = channel->ch_next)
 	channel_clear(channel);
+#if TARGET_OS_IPHONE
+    first_channel = NULL;
+    next_ch_id = 0;
+#endif    
 }
 #endif
 
@@ -3574,7 +3578,7 @@ channel_read_block(
     return msg;
 }
 
-static int channel_blocking_wait = 0;
+static __thread int channel_blocking_wait = 0;
 
 /*
  * Return TRUE if in a blocking wait that might trigger callbacks.
@@ -5273,7 +5277,7 @@ get_job_options(typval_T *tv, jobopt_T *opt, int supported, int supported2)
     return OK;
 }
 
-static job_T *first_job = NULL;
+static __thread job_T *first_job = NULL;
 
     static void
 job_free_contents(job_T *job)
@@ -5342,7 +5346,7 @@ job_free(job_T *job)
     }
 }
 
-static job_T *jobs_to_free = NULL;
+static __thread job_T *jobs_to_free = NULL;
 
 /*
  * Put "job" in a list to be freed later, when it's no longer referenced.
@@ -5380,6 +5384,11 @@ job_free_all(void)
 # ifdef FEAT_TERMINAL
     free_unused_terminals();
 # endif
+#if TARGET_OS_IPHONE
+    // probably not required
+    jobs_to_free = NULL; 
+    first_job = NULL;
+#endif
 }
 #endif
 

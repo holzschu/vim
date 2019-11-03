@@ -26,7 +26,7 @@
 static char *(hl_name_table[]) =
     {"bold", "standout", "underline", "undercurl",
       "italic", "reverse", "inverse", "nocombine", "strikethrough", "NONE"};
-static int hl_attr_table[] =
+static __thread int hl_attr_table[] =
     {HL_BOLD, HL_STANDOUT, HL_UNDERLINE, HL_UNDERCURL, HL_ITALIC, HL_INVERSE, HL_INVERSE, HL_NOCOMBINE, HL_STRIKETHROUGH, 0};
 #define ATTR_COMBINE(attr_a, attr_b) ((((attr_b) & HL_NOCOMBINE) ? attr_b : (attr_a)) | (attr_b))
 
@@ -80,7 +80,7 @@ typedef struct
 } hl_group_T;
 
 // highlight groups for 'highlight' option
-static garray_T highlight_ga;
+static __thread garray_T highlight_ga;
 #define HL_TABLE()	((hl_group_T *)((highlight_ga.ga_data)))
 
 /*
@@ -116,7 +116,7 @@ static void hl_do_font(int idx, char_u *arg, int do_normal, int do_menu, int do_
 #else
 # define CENT(a, b) a
 #endif
-static char *(highlight_init_both[]) = {
+static __thread char *(highlight_init_both[]) = {
     CENT("ErrorMsg term=standout ctermbg=DarkRed ctermfg=White",
 	 "ErrorMsg term=standout ctermbg=DarkRed ctermfg=White guibg=Red guifg=White"),
     CENT("IncSearch term=reverse cterm=reverse",
@@ -156,7 +156,7 @@ static char *(highlight_init_both[]) = {
 };
 
 // Default colors only used with a light background.
-static char *(highlight_init_light[]) = {
+static __thread char *(highlight_init_light[]) = {
     CENT("Directory term=bold ctermfg=DarkBlue",
 	 "Directory term=bold ctermfg=DarkBlue guifg=Blue"),
     CENT("LineNr term=underline ctermfg=Brown",
@@ -247,7 +247,7 @@ static char *(highlight_init_light[]) = {
 };
 
 // Default colors only used with a dark background.
-static char *(highlight_init_dark[]) = {
+static __thread char *(highlight_init_dark[]) = {
     CENT("Directory term=bold ctermfg=LightCyan",
 	 "Directory term=bold ctermfg=LightCyan guifg=Cyan"),
     CENT("LineNr term=underline ctermfg=Yellow",
@@ -364,6 +364,10 @@ highlight_link_id(int id)
     return HL_TABLE()[id].sg_link;
 }
 
+#if TARGET_OS_IPHONE
+static __thread int had_both = FALSE;
+static __thread int recursive = 0;
+#endif
     void
 init_highlight(
     int		both,	    // include groups where 'bg' doesn't matter
@@ -371,7 +375,9 @@ init_highlight(
 {
     int		i;
     char	**pp;
+#if !TARGET_OS_IPHONE
     static int	had_both = FALSE;
+#endif
 #ifdef FEAT_EVAL
     char_u	*p;
 
@@ -444,7 +450,9 @@ init_highlight(
      */
     if (get_var_value((char_u *)"g:syntax_on") != NULL)
     {
+#if !TARGET_OS_IPHONE
 	static int	recursive = 0;
+#endif
 
 	if (recursive >= 5)
 	    emsg(_("E679: recursive loop loading syncolor.vim"));
@@ -462,12 +470,18 @@ init_highlight(
  * Load color file "name".
  * Return OK for success, FAIL for failure.
  */
+#if TARGET_OS_IPHONE
+#define recursive recursive_load_colors
+static __thread int recursive = FALSE;
+#endif
     int
 load_colors(char_u *name)
 {
     char_u	*buf;
     int		retval = FAIL;
+#if !TARGET_OS_IPHONE
     static int	recursive = FALSE;
+#endif
 
     // When being called recursively, this is probably because setting
     // 'background' caused the highlighting to be reloaded.  This means it is
@@ -490,8 +504,11 @@ load_colors(char_u *name)
 
     return retval;
 }
+#if TARGET_OS_IPHONE
+#undef recursive
+#endif
 
-static char *(color_names[28]) = {
+static __thread char *(color_names[28]) = {
 	    "Black", "DarkBlue", "DarkGreen", "DarkCyan",
 	    "DarkRed", "DarkMagenta", "Brown", "DarkYellow",
 	    "Gray", "Grey", "LightGray", "LightGrey",
@@ -507,7 +524,7 @@ static char *(color_names[28]) = {
 	    // 14, 15, 16, 17,
 	    // 18, 19, 20, 21, 22,
 	    // 23, 24, 25, 26, 27
-static int color_numbers_16[28] = {0, 1, 2, 3,
+static __thread int color_numbers_16[28] = {0, 1, 2, 3,
 				 4, 5, 6, 6,
 				 7, 7, 7, 7,
 				 8, 8,
@@ -515,7 +532,7 @@ static int color_numbers_16[28] = {0, 1, 2, 3,
 				 11, 11, 12, 12, 13,
 				 13, 14, 14, 15, -1};
 // for xterm with 88 colors...
-static int color_numbers_88[28] = {0, 4, 2, 6,
+static __thread int color_numbers_88[28] = {0, 4, 2, 6,
 				 1, 5, 32, 72,
 				 84, 84, 7, 7,
 				 82, 82,
@@ -523,7 +540,7 @@ static int color_numbers_88[28] = {0, 4, 2, 6,
 				 14, 63, 9, 74, 13,
 				 75, 11, 78, 15, -1};
 // for xterm with 256 colors...
-static int color_numbers_256[28] = {0, 4, 2, 6,
+static __thread int color_numbers_256[28] = {0, 4, 2, 6,
 				 1, 5, 130, 130,
 				 248, 248, 7, 7,
 				 242, 242,
@@ -531,7 +548,7 @@ static int color_numbers_256[28] = {0, 4, 2, 6,
 				 14, 159, 9, 224, 13,
 				 225, 11, 229, 15, -1};
 // for terminals with less than 16 colors...
-static int color_numbers_8[28] = {0, 4, 2, 6,
+static __thread int color_numbers_8[28] = {0, 4, 2, 6,
 				 1, 5, 3, 3,
 				 7, 7, 7, 7,
 				 0+8, 0+8,
@@ -1137,6 +1154,7 @@ do_highlight(
 		int bold = MAYBE;
 
 #if defined(__QNXNTO__)
+		// Not defined for iOS
 		static int *color_numbers_8_qansi = color_numbers_8;
 		// On qnx, the 8 & 16 color arrays are the same
 		if (STRNCMP(T_NAME, "qansi", 5) == 0)
@@ -1557,8 +1575,13 @@ free_highlight(void)
     for (i = 0; i < highlight_ga.ga_len; ++i)
     {
 	highlight_clear(i);
+#if TARGET_OS_IPHONE
+	VIM_CLEAR(HL_TABLE()[i].sg_name);
+	VIM_CLEAR(HL_TABLE()[i].sg_name_u);
+#else
 	vim_free(HL_TABLE()[i].sg_name);
 	vim_free(HL_TABLE()[i].sg_name_u);
+#endif
     }
     ga_clear(&highlight_ga);
 }
@@ -2030,16 +2053,16 @@ color_name2handle(char_u *name)
  * Note that this table is used by ALL buffers.  This is required because the
  * GUI can redraw at any time for any buffer.
  */
-static garray_T	term_attr_table = {0, 0, 0, 0, NULL};
+static __thread garray_T	term_attr_table = {0, 0, 0, 0, NULL};
 
 #define TERM_ATTR_ENTRY(idx) ((attrentry_T *)term_attr_table.ga_data)[idx]
 
-static garray_T	cterm_attr_table = {0, 0, 0, 0, NULL};
+static __thread garray_T	cterm_attr_table = {0, 0, 0, 0, NULL};
 
 #define CTERM_ATTR_ENTRY(idx) ((attrentry_T *)cterm_attr_table.ga_data)[idx]
 
 #ifdef FEAT_GUI
-static garray_T	gui_attr_table = {0, 0, 0, 0, NULL};
+static __thread garray_T	gui_attr_table = {0, 0, 0, 0, NULL};
 
 #define GUI_ATTR_ENTRY(idx) ((attrentry_T *)gui_attr_table.ga_data)[idx]
 #endif
@@ -2050,12 +2073,18 @@ static garray_T	gui_attr_table = {0, 0, 0, 0, NULL};
  * if the combination is new.
  * Return 0 for error (no more room).
  */
+#if TARGET_OS_IPHONE
+#define recursive recursive_get_attr_entry
+static __thread int recursive = FALSE;
+#endif
     static int
 get_attr_entry(garray_T *table, attrentry_T *aep)
 {
     int		i;
     attrentry_T	*taep;
+#if !TARGET_OS_IPHONE
     static int	recursive = FALSE;
+#endif
 
     /*
      * Init the table, in case it wasn't done yet.
@@ -2180,6 +2209,9 @@ get_attr_entry(garray_T *table, attrentry_T *aep)
     ++table->ga_len;
     return (table->ga_len - 1 + ATTR_OFF);
 }
+#if TARGET_OS_IPHONE
+#undef recursive 
+#endif
 
 #if defined(FEAT_TERMINAL) || defined(PROTO)
 /*
@@ -2622,13 +2654,19 @@ highlight_has_attr(
 /*
  * Return color name of highlight group "id".
  */
+#if TARGET_OS_IPHONE
+static __thread char_u	name[20];
+static __thread char_u	buf[10];
+#endif
     char_u *
 highlight_color(
     int		id,
     char_u	*what,	// "font", "fg", "bg", "sp", "fg#", "bg#" or "sp#"
     int		modec)	// 'g' for GUI, 'c' for cterm, 't' for term
 {
+#if !TARGET_OS_IPHONE
     static char_u	name[20];
+#endif
     int			n;
     int			fg = FALSE;
     int			sp = FALSE;
@@ -2660,7 +2698,9 @@ highlight_color(
 	{
 	    guicolor_T		color;
 	    long_u		rgb;
+#if !TARGET_OS_IPHONE
 	    static char_u	buf[10];
+#endif
 
 	    if (fg)
 		color = HL_TABLE()[id - 1].sg_gui_fg;
@@ -3320,6 +3360,9 @@ combine_stl_hlt(
  * screen redraw after any :highlight command.
  * Return FAIL when an invalid flag is found in 'highlight'.  OK otherwise.
  */
+#if TARGET_OS_IPHONE
+static __thread int hl_flags[HLF_COUNT] = HL_FLAGS;
+#endif
     int
 highlight_changed(void)
 {
@@ -3341,7 +3384,9 @@ highlight_changed(void)
     int		hlcnt;
 # endif
 #endif
+#if !TARGET_OS_IPHONE
     static int	hl_flags[HLF_COUNT] = HL_FLAGS;
+#endif
 
     need_highlight_changed = FALSE;
 

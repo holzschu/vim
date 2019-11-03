@@ -76,7 +76,7 @@ typedef struct AutoPat
     char	    last;		// last pattern for apply_autocmds()
 } AutoPat;
 
-static struct event_name
+static __thread struct event_name
 {
     char	*name;	// event name
     event_T	event;	// event number
@@ -191,7 +191,7 @@ static struct event_name
     {NULL,		(event_T)0}
 };
 
-static AutoPat *first_autopat[NUM_EVENTS] =
+static __thread AutoPat *first_autopat[NUM_EVENTS] =
 {
     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -201,7 +201,7 @@ static AutoPat *first_autopat[NUM_EVENTS] =
     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
-static AutoPat *last_autopat[NUM_EVENTS] =
+static __thread AutoPat *last_autopat[NUM_EVENTS] =
 {
     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -232,22 +232,32 @@ typedef struct AutoPatCmd
     struct AutoPatCmd   *next;	// chain of active apc-s for auto-invalidation
 } AutoPatCmd;
 
-static AutoPatCmd *active_apc_list = NULL; /* stack of active autocommands */
+static __thread AutoPatCmd *active_apc_list = NULL; /* stack of active autocommands */
 
 /*
  * augroups stores a list of autocmd group names.
  */
-static garray_T augroups = {0, 0, sizeof(char_u *), 10, NULL};
+static __thread garray_T augroups = {0, 0, sizeof(char_u *), 10, NULL};
 #define AUGROUP_NAME(i) (((char_u **)augroups.ga_data)[i])
 /* use get_deleted_augroup() to get this */
-static char_u *deleted_augroup = NULL;
+static __thread char_u *deleted_augroup = NULL;
+
+/*
+ * Set by the apply_autocmds_group function if the given event is equal to
+ * EVENT_FILETYPE. Used by the readfile function in order to determine if
+ * EVENT_BUFREADPOST triggered the EVENT_FILETYPE.
+ *
+ * Relying on this value requires one to reset it prior calling
+ * apply_autocmds_group.
+ */
+extern __thread int au_did_filetype INIT(= FALSE);
 
 /*
  * The ID of the current group.  Group 0 is the default one.
  */
-static int current_augroup = AUGROUP_DEFAULT;
+static __thread int current_augroup = AUGROUP_DEFAULT;
 
-static int au_need_clean = FALSE;   /* need to delete marked patterns */
+static __thread int au_need_clean = FALSE;   /* need to delete marked patterns */
 
 static char_u *event_nr2name(event_T event);
 static int au_get_grouparg(char_u **argp);
@@ -256,9 +266,9 @@ static int apply_autocmds_group(event_T event, char_u *fname, char_u *fname_io, 
 static void auto_next_pat(AutoPatCmd *apc, int stop_at_last);
 static int au_find_group(char_u *name);
 
-static event_T	last_event;
-static int	last_group;
-static int	autocmd_blocked = 0;	/* block all autocmds */
+static __thread event_T	last_event;
+static __thread int	last_group;
+static __thread int	autocmd_blocked = 0;	/* block all autocmds */
 
     static char_u *
 get_deleted_augroup(void)
@@ -617,6 +627,25 @@ free_all_autocmds(void)
 	    vim_free(s);
     }
     ga_clear(&augroups);
+
+
+#if TARGET_OS_IPHONE
+    // reset everything 
+    for (i = 0; i < NUM_EVENTS; i++) {
+    	first_autopat[i] = NULL; 
+    	last_autopat[i] = NULL; 
+    }
+    // also reset static variables 
+    augroups = (garray_T) {0, 0, sizeof(char_u *), 10, NULL};
+    active_apc_list = NULL;
+    deleted_augroup = NULL;
+    au_did_filetype = FALSE;
+    current_augroup = AUGROUP_DEFAULT;
+    au_need_clean = FALSE;   /* need to delete marked patterns */
+    last_event = 0;
+    last_group = 0;
+    autocmd_blocked = 0;	/* block all autocmds */
+#endif
 }
 #endif
 
@@ -1591,7 +1620,7 @@ win_found:
     }
 }
 
-static int	autocmd_nested = FALSE;
+static __thread int	autocmd_nested = FALSE;
 
 /*
  * Execute autocommands for "event" and file name "fname".
@@ -2204,7 +2233,7 @@ BYPASS_AU:
 }
 
 # ifdef FEAT_EVAL
-static char_u	*old_termresponse = NULL;
+static __thread char_u	*old_termresponse = NULL;
 # endif
 
 /*
@@ -2435,7 +2464,7 @@ get_augroup_name(expand_T *xp UNUSED, int idx)
     return AUGROUP_NAME(idx);		// return a name
 }
 
-static int include_groups = FALSE;
+static __thread int include_groups = FALSE;
 
     char_u  *
 set_context_in_autocmd(

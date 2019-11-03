@@ -24,7 +24,13 @@
 #define NO_X11_INCLUDES
 
 #include "vim.h"
+// iOS: switch to UIKit for iOS, keep AppKit for OSX
+#if !TARGET_OS_IPHONE
 #import <AppKit/AppKit.h>
+#else 
+#include <UIKit/UIKit.h>
+#define NSPasteboard UIPasteboard
+#endif
 
 
 /*
@@ -63,6 +69,11 @@ clip_mch_request_selection(Clipboard_T *cbd)
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     NSPasteboard *pb = [NSPasteboard generalPasteboard];
+    // iOS: move variable declaration here because of #ifdef
+    int motion_type = MAUTO;
+    NSString *string = nil;
+
+#if !TARGET_OS_IPHONE
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= 1060
     NSArray *supportedTypes = [NSArray arrayWithObjects:VimPboardType,
 	    NSPasteboardTypeString, nil];
@@ -73,9 +84,6 @@ clip_mch_request_selection(Clipboard_T *cbd)
     NSString *bestType = [pb availableTypeFromArray:supportedTypes];
     if (!bestType) goto releasepool;
 
-    int motion_type = MAUTO;
-    NSString *string = nil;
-
     if ([bestType isEqual:VimPboardType])
     {
 	/* This type should consist of an array with two objects:
@@ -84,6 +92,13 @@ clip_mch_request_selection(Clipboard_T *cbd)
 	 * If this is not the case we fall back on using NSPasteboardTypeString.
 	 */
 	id plist = [pb propertyListForType:VimPboardType];
+#else 
+	// iOS version. Simpler.
+    NSArray *supportedTypes = [NSArray arrayWithObjects:VimPboardType, nil];
+
+    if([pb containsPasteboardTypes:[NSArray arrayWithObject:VimPboardType]]) {
+        id plist = [pb valueForPasteboardType:VimPboardType];
+#endif // TARGET_OS_IPHONE
 	if ([plist isKindOfClass:[NSArray class]] && [plist count] == 2)
 	{
 	    id obj = [plist objectAtIndex:1];
@@ -97,6 +112,14 @@ clip_mch_request_selection(Clipboard_T *cbd)
 
     if (!string)
     {
+#if TARGET_OS_IPHONE
+        NSString * s = [pb string];
+        if(!s) { return; }
+        NSMutableString * mstr = [NSMutableString stringWithString:s];
+        NSRange range = {0, [mstr length]};
+        [mstr replaceOccurrencesOfString:@"\r" withString:@"\n" options:0 range:range];
+        string = mstr;
+#else 
 	/* Use NSPasteboardTypeString.  The motion type is detected automatically.
 	 */
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= 1060
@@ -120,6 +143,7 @@ clip_mch_request_selection(Clipboard_T *cbd)
 	}
 
 	string = mstring;
+#endif // TARGET_OS_IPHONE
     }
 
     /* Default to MAUTO, uses MCHAR or MLINE depending on trailing NL. */
@@ -182,6 +206,7 @@ clip_mch_set_selection(Clipboard_T *cbd)
 
 	/* See clip_mch_request_selection() for info on pasteboard types. */
 	NSPasteboard *pb = [NSPasteboard generalPasteboard];
+#if !TARGET_OS_IPHONE
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= 1060
 	NSArray *supportedTypes = [NSArray arrayWithObjects:VimPboardType,
 		NSPasteboardTypeString, nil];
@@ -190,15 +215,24 @@ clip_mch_set_selection(Clipboard_T *cbd)
 		NSStringPboardType, nil];
 #endif
 	[pb declareTypes:supportedTypes owner:nil];
+#endif
 
 	NSNumber *motion = [NSNumber numberWithInt:motion_type];
 	NSArray *plist = [NSArray arrayWithObjects:motion, string, nil];
+#if !TARGET_OS_IPHONE
 	[pb setPropertyList:plist forType:VimPboardType];
+#else
+        [pb setValue:plist forPasteboardType:VimPboardType];
+#endif
 
+#if !TARGET_OS_IPHONE
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= 1060
 	[pb setString:string forType:NSPasteboardTypeString];
 #else
 	[pb setString:string forType:NSStringPboardType];
+#endif
+#else // !TARGET_OS_IPHONE
+        [pb setString:string];
 #endif
 
 	[string release];

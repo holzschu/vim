@@ -1162,7 +1162,7 @@ is_mouse_key(int c)
 	|| c == K_X2RELEASE;
 }
 
-static struct mousetable
+static __thread struct mousetable
 {
     int	    pseudo_code;	// Code for pseudo mouse event
     int	    button;		// Which mouse button is it?
@@ -1265,7 +1265,7 @@ get_pseudo_mouse_code(
 # define HMT_GPM	64
 # define HMT_SGR	128
 # define HMT_SGR_REL	256
-static int has_mouse_termcode = 0;
+static __thread int has_mouse_termcode = 0;
 
     void
 set_mouse_termcode(

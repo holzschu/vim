@@ -13,78 +13,78 @@
 
 #include "vim.h"
 
-static char *(p_ambw_values[]) = {"single", "double", NULL};
-static char *(p_bg_values[]) = {"light", "dark", NULL};
-static char *(p_bkc_values[]) = {"yes", "auto", "no", "breaksymlink", "breakhardlink", NULL};
-static char *(p_bo_values[]) = {"all", "backspace", "cursor", "complete",
+static __thread char *(p_ambw_values[]) = {"single", "double", NULL};
+static __thread char *(p_bg_values[]) = {"light", "dark", NULL};
+static __thread char *(p_bkc_values[]) = {"yes", "auto", "no", "breaksymlink", "breakhardlink", NULL};
+static __thread char *(p_bo_values[]) = {"all", "backspace", "cursor", "complete",
 				 "copy", "ctrlg", "error", "esc", "ex",
 				 "hangul", "insertmode", "lang", "mess",
 				 "showmatch", "operator", "register", "shell",
 				 "spell", "wildmode", NULL};
-static char *(p_nf_values[]) = {"bin", "octal", "hex", "alpha", NULL};
-static char *(p_ff_values[]) = {FF_UNIX, FF_DOS, FF_MAC, NULL};
+static __thread char *(p_nf_values[]) = {"bin", "octal", "hex", "alpha", NULL};
+static __thread char *(p_ff_values[]) = {FF_UNIX, FF_DOS, FF_MAC, NULL};
 #ifdef FEAT_CRYPT
-static char *(p_cm_values[]) = {"zip", "blowfish", "blowfish2", NULL};
+static __thread char *(p_cm_values[]) = {"zip", "blowfish", "blowfish2", NULL};
 #endif
-static char *(p_cmp_values[]) = {"internal", "keepascii", NULL};
-static char *(p_dy_values[]) = {"lastline", "truncate", "uhex", NULL};
+static __thread char *(p_cmp_values[]) = {"internal", "keepascii", NULL};
+static __thread char *(p_dy_values[]) = {"lastline", "truncate", "uhex", NULL};
 #ifdef FEAT_FOLDING
-static char *(p_fdo_values[]) = {"all", "block", "hor", "mark", "percent",
+static __thread char *(p_fdo_values[]) = {"all", "block", "hor", "mark", "percent",
 				 "quickfix", "search", "tag", "insert",
 				 "undo", "jump", NULL};
 #endif
 #ifdef FEAT_SESSION
 // Also used for 'viewoptions'!
-static char *(p_ssop_values[]) = {"buffers", "winpos", "resize", "winsize",
+static __thread char *(p_ssop_values[]) = {"buffers", "winpos", "resize", "winsize",
     "localoptions", "options", "help", "blank", "globals", "slash", "unix",
     "sesdir", "curdir", "folds", "cursor", "tabpages", "terminal", NULL};
 #endif
-static char *(p_swb_values[]) = {"useopen", "usetab", "split", "newtab", "vsplit", NULL};
-static char *(p_tc_values[]) = {"followic", "ignore", "match", "followscs", "smart", NULL};
+static __thread char *(p_swb_values[]) = {"useopen", "usetab", "split", "newtab", "vsplit", NULL};
+static __thread char *(p_tc_values[]) = {"followic", "ignore", "match", "followscs", "smart", NULL};
 #if defined(FEAT_TOOLBAR) && !defined(FEAT_GUI_MSWIN)
-static char *(p_toolbar_values[]) = {"text", "icons", "tooltips", "horiz", NULL};
+static __thread char *(p_toolbar_values[]) = {"text", "icons", "tooltips", "horiz", NULL};
 #endif
 #if defined(FEAT_TOOLBAR) && defined(FEAT_GUI_GTK)
-static char *(p_tbis_values[]) = {"tiny", "small", "medium", "large", "huge", "giant", NULL};
+static __thread char *(p_tbis_values[]) = {"tiny", "small", "medium", "large", "huge", "giant", NULL};
 #endif
 #if defined(UNIX) || defined(VMS)
-static char *(p_ttym_values[]) = {"xterm", "xterm2", "dec", "netterm", "jsbterm", "pterm", "urxvt", "sgr", NULL};
+static __thread char *(p_ttym_values[]) = {"xterm", "xterm2", "dec", "netterm", "jsbterm", "pterm", "urxvt", "sgr", NULL};
 #endif
-static char *(p_ve_values[]) = {"block", "insert", "all", "onemore", NULL};
-static char *(p_wop_values[]) = {"tagfile", NULL};
+static __thread char *(p_ve_values[]) = {"block", "insert", "all", "onemore", NULL};
+static __thread char *(p_wop_values[]) = {"tagfile", NULL};
 #ifdef FEAT_WAK
-static char *(p_wak_values[]) = {"yes", "menu", "no", NULL};
+static __thread char *(p_wak_values[]) = {"yes", "menu", "no", NULL};
 #endif
-static char *(p_mousem_values[]) = {"extend", "popup", "popup_setpos", "mac", NULL};
-static char *(p_sel_values[]) = {"inclusive", "exclusive", "old", NULL};
-static char *(p_slm_values[]) = {"mouse", "key", "cmd", NULL};
-static char *(p_km_values[]) = {"startsel", "stopsel", NULL};
+static __thread char *(p_mousem_values[]) = {"extend", "popup", "popup_setpos", "mac", NULL};
+static __thread char *(p_sel_values[]) = {"inclusive", "exclusive", "old", NULL};
+static __thread char *(p_slm_values[]) = {"mouse", "key", "cmd", NULL};
+static __thread char *(p_km_values[]) = {"startsel", "stopsel", NULL};
 #ifdef FEAT_BROWSE
-static char *(p_bsdir_values[]) = {"current", "last", "buffer", NULL};
+static __thread char *(p_bsdir_values[]) = {"current", "last", "buffer", NULL};
 #endif
-static char *(p_scbopt_values[]) = {"ver", "hor", "jump", NULL};
-static char *(p_debug_values[]) = {"msg", "throw", "beep", NULL};
-static char *(p_ead_values[]) = {"both", "ver", "hor", NULL};
-static char *(p_buftype_values[]) = {"nofile", "nowrite", "quickfix", "help", "terminal", "acwrite", "prompt", "popup", NULL};
-static char *(p_bufhidden_values[]) = {"hide", "unload", "delete", "wipe", NULL};
-static char *(p_bs_values[]) = {"indent", "eol", "start", NULL};
+static __thread char *(p_scbopt_values[]) = {"ver", "hor", "jump", NULL};
+static __thread char *(p_debug_values[]) = {"msg", "throw", "beep", NULL};
+static __thread char *(p_ead_values[]) = {"both", "ver", "hor", NULL};
+static __thread char *(p_buftype_values[]) = {"nofile", "nowrite", "quickfix", "help", "terminal", "acwrite", "prompt", "popup", NULL};
+static __thread char *(p_bufhidden_values[]) = {"hide", "unload", "delete", "wipe", NULL};
+static __thread char *(p_bs_values[]) = {"indent", "eol", "start", NULL};
 #ifdef FEAT_FOLDING
-static char *(p_fdm_values[]) = {"manual", "expr", "marker", "indent", "syntax",
+static __thread char *(p_fdm_values[]) = {"manual", "expr", "marker", "indent", "syntax",
 # ifdef FEAT_DIFF
 				"diff",
 # endif
 				NULL};
-static char *(p_fcl_values[]) = {"all", NULL};
+static __thread char *(p_fcl_values[]) = {"all", NULL};
 #endif
-static char *(p_cot_values[]) = {"menu", "menuone", "longest", "preview", "popup", "popuphidden", "noinsert", "noselect", NULL};
+static __thread char *(p_cot_values[]) = {"menu", "menuone", "longest", "preview", "popup", "popuphidden", "noinsert", "noselect", NULL};
 #ifdef BACKSLASH_IN_FILENAME
-static char *(p_csl_values[]) = {"slash", "backslash", NULL};
+static __thread char *(p_csl_values[]) = {"slash", "backslash", NULL};
 #endif
 #ifdef FEAT_SIGNS
-static char *(p_scl_values[]) = {"yes", "no", "auto", "number", NULL};
+static __thread char *(p_scl_values[]) = {"yes", "no", "auto", "number", NULL};
 #endif
 #if defined(MSWIN) && defined(FEAT_TERMINAL)
-static char *(p_twt_values[]) = {"winpty", "conpty", "", NULL};
+static __thread char *(p_twt_values[]) = {"winpty", "conpty", "", NULL};
 #endif
 
 static int check_opt_strings(char_u *val, char **values, int list);
@@ -571,7 +571,7 @@ check_stl_option(char_u *s)
 {
     int		itemcnt = 0;
     int		groupdepth = 0;
-    static char errbuf[80];
+    static __thread char errbuf[80];
 
     while (*s && itemcnt < STL_MAX_ITEM)
     {

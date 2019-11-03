@@ -206,9 +206,9 @@ static ff_stack_T *ff_create_stack_element(char_u *, int, int);
 static int ff_path_in_stoplist(char_u *, int, char_u **);
 #endif
 
-static char_u e_pathtoolong[] = N_("E854: path too long for completion");
+static __thread char_u e_pathtoolong[] = N_("E854: path too long for completion");
 
-static char_u	*ff_expand_buffer = NULL; // used for expanding filenames
+static __thread char_u	*ff_expand_buffer = NULL; // used for expanding filenames
 
 #if 0
 /*
@@ -1667,8 +1667,8 @@ find_file_in_path(
 	    FINDFILE_BOTH, rel_fname, curbuf->b_p_sua);
 }
 
-static char_u	*ff_file_to_find = NULL;
-static void	*fdip_search_ctx = NULL;
+static __thread char_u	*ff_file_to_find = NULL;
+static __thread void	*fdip_search_ctx = NULL;
 
 # if defined(EXITFREE) || defined(PROTO)
     void

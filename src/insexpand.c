@@ -41,7 +41,7 @@
 # define CTRL_X_MSG(i) ctrl_x_msgs[(i) & ~CTRL_X_WANT_IDENT]
 
 // Message for CTRL-X mode, index is ctrl_x_mode.
-static char *ctrl_x_msgs[] =
+static __thread char *ctrl_x_msgs[] =
 {
     N_(" Keyword completion (^N^P)"), // CTRL_X_NORMAL, ^P/^N compl.
     N_(" ^X mode (^]^D^E^F^I^K^L^N^O^Ps^U^V^Y)"),
@@ -63,7 +63,7 @@ static char *ctrl_x_msgs[] =
 };
 
 #if defined(FEAT_COMPL_FUNC) || defined(FEAT_EVAL)
-static char *ctrl_x_mode_names[] = {
+static __thread char *ctrl_x_mode_names[] = {
 	"keyword",
 	"ctrl_x",
 	"unknown",	    // CTRL_X_SCROLL
@@ -117,10 +117,10 @@ struct compl_S
 # define CP_EQUAL	    8	// ins_compl_equal() always returns TRUE
 # define CP_ICASE	    16	// ins_compl_equal() ignores case
 
-static char e_hitend[] = N_("Hit end of paragraph");
+static __thread char e_hitend[] = N_("Hit end of paragraph");
 # ifdef FEAT_COMPL_FUNC
-static char e_complwin[] = N_("E839: Completion function changed window");
-static char e_compldel[] = N_("E840: Completion function deleted text");
+static __thread char e_complwin[] = N_("E839: Completion function changed window");
+static __thread char e_compldel[] = N_("E840: Completion function deleted text");
 # endif
 
 /*
@@ -130,62 +130,62 @@ static char e_compldel[] = N_("E840: Completion function deleted text");
  * "compl_shown_match" is different from compl_curr_match during
  * ins_compl_get_exp().
  */
-static compl_T    *compl_first_match = NULL;
-static compl_T    *compl_curr_match = NULL;
-static compl_T    *compl_shown_match = NULL;
-static compl_T    *compl_old_match = NULL;
+static __thread compl_T    *compl_first_match = NULL;
+static __thread compl_T    *compl_curr_match = NULL;
+static __thread compl_T    *compl_shown_match = NULL;
+static __thread compl_T    *compl_old_match = NULL;
 
 // After using a cursor key <Enter> selects a match in the popup menu,
 // otherwise it inserts a line break.
-static int	  compl_enter_selects = FALSE;
+static __thread int	  compl_enter_selects = FALSE;
 
 // When "compl_leader" is not NULL only matches that start with this string
 // are used.
-static char_u	  *compl_leader = NULL;
+static __thread char_u	  *compl_leader = NULL;
 
-static int	  compl_get_longest = FALSE;	// put longest common string
+static __thread int	  compl_get_longest = FALSE;	// put longest common string
 						// in compl_leader
 
-static int	  compl_no_insert = FALSE;	// FALSE: select & insert
+static __thread int	  compl_no_insert = FALSE;	// FALSE: select & insert
 						// TRUE: noinsert
-static int	  compl_no_select = FALSE;	// FALSE: select & insert
+static __thread int	  compl_no_select = FALSE;	// FALSE: select & insert
 						// TRUE: noselect
 
 // Selected one of the matches.  When FALSE the match was edited or using the
 // longest common string.
-static int	  compl_used_match;
+static __thread int	  compl_used_match;
 
 // didn't finish finding completions.
-static int	  compl_was_interrupted = FALSE;
+static __thread int	  compl_was_interrupted = FALSE;
 
 // Set when character typed while looking for matches and it means we should
 // stop looking for matches.
-static int	  compl_interrupted = FALSE;
+static __thread int	  compl_interrupted = FALSE;
 
-static int	  compl_restarting = FALSE;	// don't insert match
+static __thread int	  compl_restarting = FALSE;	// don't insert match
 
 // When the first completion is done "compl_started" is set.  When it's
 // FALSE the word to be completed must be located.
-static int	  compl_started = FALSE;
+static __thread int	  compl_started = FALSE;
 
 // Which Ctrl-X mode are we in?
-static int	  ctrl_x_mode = CTRL_X_NORMAL;
+static __thread int	  ctrl_x_mode = CTRL_X_NORMAL;
 
-static int	  compl_matches = 0;
-static char_u	  *compl_pattern = NULL;
-static int	  compl_direction = FORWARD;
-static int	  compl_shows_dir = FORWARD;
-static int	  compl_pending = 0;	    // > 1 for postponed CTRL-N
-static pos_T	  compl_startpos;
-static colnr_T	  compl_col = 0;	    // column where the text starts
+static __thread int	  compl_matches = 0;
+static __thread char_u	  *compl_pattern = NULL;
+static __thread int	  compl_direction = FORWARD;
+static __thread int	  compl_shows_dir = FORWARD;
+static __thread int	  compl_pending = 0;	    // > 1 for postponed CTRL-N
+static __thread pos_T	  compl_startpos;
+static __thread colnr_T	  compl_col = 0;	    // column where the text starts
 					    // that is being completed
-static char_u	  *compl_orig_text = NULL;  // text as it was before
+static __thread char_u	  *compl_orig_text = NULL;  // text as it was before
 					    // completion started
-static int	  compl_cont_mode = 0;
-static expand_T	  compl_xp;
+static __thread int	  compl_cont_mode = 0;
+static __thread expand_T	  compl_xp;
 
-static int	  compl_opt_refresh_always = FALSE;
-static int	  compl_opt_suppress_empty = FALSE;
+static __thread int	  compl_opt_refresh_always = FALSE;
+static __thread int	  compl_opt_suppress_empty = FALSE;
 
 static int ins_compl_add(char_u *str, int len, char_u *fname, char_u **cptext, int cdir, int flags, int adup);
 static void ins_compl_longest_match(compl_T *match);
@@ -211,7 +211,7 @@ static unsigned  quote_meta(char_u *dest, char_u *str, int len);
 
 #ifdef FEAT_SPELL
 static void spell_back_to_badword(void);
-static int  spell_bad_len = 0;	// length of located bad word
+static __thread int  spell_bad_len = 0;	// length of located bad word
 #endif
 
 /*
@@ -854,8 +854,8 @@ completeopt_was_set(void)
 
 // "compl_match_array" points the currently displayed list of entries in the
 // popup menu.  It is NULL when there is no popup menu.
-static pumitem_T *compl_match_array = NULL;
-static int compl_match_arraysize;
+static __thread pumitem_T *compl_match_array = NULL;
+static __thread int compl_match_arraysize;
 
 /*
  * Update the screen and when there is any scrolling remove the popup menu.
@@ -957,12 +957,17 @@ ins_compl_dict_alloc(compl_T *match)
     return dict;
 }
 
+#if TARGET_OS_IPHONE
+static __thread int recursive = FALSE;
+#endif
     static void
 trigger_complete_changed_event(int cur)
 {
     dict_T	    *v_event;
     dict_T	    *item;
+#if !TARGET_OS_IPHONE
     static int	    recursive = FALSE;
+#endif
 
     if (recursive)
 	return;
@@ -2135,10 +2140,15 @@ ins_compl_fixRedoBufForLeader(char_u *ptr_arg)
  *
  * Returns the buffer to scan, if any, otherwise returns curbuf -- Acevedo
  */
+#if TARGET_OS_IPHONE
+static __thread win_T *wp = NULL;
+#endif
     static buf_T *
 ins_compl_next_buf(buf_T *buf, int flag)
 {
+#if !TARGET_OS_IPHONE
     static win_T *wp = NULL;
+#endif
 
     if (flag == 'w')		// just windows
     {
@@ -2591,15 +2601,25 @@ f_complete_info(typval_T *argvars, typval_T *rettv)
  * This may return before finding all the matches.
  * Return the total number of matches or -1 if still unknown -- Acevedo
  */
+#if TARGET_OS_IPHONE
+static __thread pos_T	first_match_pos;
+static __thread pos_T	last_match_pos;
+static __thread char_u	*e_cpt = (char_u *)"";	// curr. entry in 'complete'
+static __thread int		found_all = FALSE;	// Found all matches of a
+                 				// certain type.
+static __thread buf_T	*ins_buf = NULL;	// buffer being scanned
+#endif
     static int
 ins_compl_get_exp(pos_T *ini)
 {
+#if !TARGET_OS_IPHONE
     static pos_T	first_match_pos;
     static pos_T	last_match_pos;
     static char_u	*e_cpt = (char_u *)"";	// curr. entry in 'complete'
     static int		found_all = FALSE;	// Found all matches of a
 						// certain type.
     static buf_T	*ins_buf = NULL;	// buffer being scanned
+#endif
 
     pos_T	*pos;
     char_u	**matches;
@@ -3355,10 +3375,15 @@ ins_compl_next(
  * "in_compl_func" is TRUE when called from complete_check(), don't set
  * compl_curr_match.
  */
+#if TARGET_OS_IPHONE
+static __thread int count = 0;
+#endif
     void
 ins_compl_check_keys(int frequency, int in_compl_func)
 {
+#if !TARGET_OS_IPHONE
     static int	count = 0;
+#endif
     int		c;
 
     // Don't check when reading keys from a script, :normal or feedkeys().
@@ -3480,6 +3505,9 @@ ins_compl_use_match(int c)
  * Called when character "c" was typed, which has a meaning for completion.
  * Returns OK if completion was done, FAIL if something failed (out of mem).
  */
+#if TARGET_OS_IPHONE
+static __thread char_u match_ref[81];
+#endif
     int
 ins_complete(int c, int enable_pum)
 {
@@ -4035,7 +4063,9 @@ ins_complete(int c, int enable_pum)
 	    {
 		// Space for 10 text chars. + 2x10-digit no.s = 31.
 		// Translations may need more than twice that.
+#if !TARGET_OS_IPHONE
 		static char_u match_ref[81];
+#endif
 
 		if (compl_matches > 0)
 		    vim_snprintf((char *)match_ref, sizeof(match_ref),

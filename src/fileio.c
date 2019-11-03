@@ -3823,7 +3823,7 @@ vim_rename(char_u *from, char_u *to)
     return 0;
 }
 
-static int already_warned = FALSE;
+static __thread int already_warned = FALSE;
 
 /*
  * Check if any not hidden buffer has been changed.
@@ -3947,6 +3947,9 @@ move_lines(buf_T *frombuf, buf_T *tobuf)
  * return 2 if a message has been displayed.
  * return 0 otherwise.
  */
+#if TARGET_OS_IPHONE
+static __thread int	busy = FALSE;
+#endif
     int
 buf_check_timestamp(
     buf_T	*buf,
@@ -3970,7 +3973,9 @@ buf_check_timestamp(
 #ifdef FEAT_GUI
     int		save_mouse_correct = need_mouse_correct;
 #endif
+#if !TARGET_OS_IPHONE
     static int	busy = FALSE;
+#endif
     int		n;
 #ifdef FEAT_EVAL
     char_u	*s;
@@ -4609,7 +4614,7 @@ delete_recursive(char_u *name)
 #endif
 
 #if defined(TEMPDIRNAMES) || defined(PROTO)
-static long	temp_count = 0;		/* Temp filename counter. */
+static __thread long	temp_count = 0;		/* Temp filename counter. */
 
 /*
  * Delete the temp directory and all files it contains.
@@ -4624,6 +4629,9 @@ vim_deltempdir(void)
 	delete_recursive(vim_tempdir);
 	VIM_CLEAR(vim_tempdir);
     }
+#if TARGET_OS_IPHONE
+     temp_count = 0;
+#endif
 }
 
 /*
@@ -4671,6 +4679,7 @@ vim_tempname(
 #endif
 
 #ifdef TEMPDIRNAMES
+    // iOS: this specific variable can be shared between multiple vim threads
     static char	*(tempdirs[]) = {TEMPDIRNAMES};
     int		i;
 # ifndef EEXIST

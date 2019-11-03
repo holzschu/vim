@@ -78,6 +78,10 @@ set_init_1(int clean_arg)
     int		opt_idx;
     long_u	n;
 
+#if TARGET_OS_IPHONE
+    // re-initialize all options (needed because thread_local variables are not initialized)
+    #include "options_init.h"
+#endif
 #ifdef FEAT_LANGMAP
     langmap_init();
 #endif
@@ -2376,6 +2380,8 @@ didset_options2(void)
     (void)check_clipboard_option();
 #endif
 #ifdef FEAT_VARTABS
+    // iOS: These are the options that were not reset. WHY?
+    // it breaks in tabstop_set
     vim_free(curbuf->b_p_vsts_array);
     tabstop_set(curbuf->b_p_vsts, &curbuf->b_p_vsts_array);
     vim_free(curbuf->b_p_vts_array);

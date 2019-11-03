@@ -32,7 +32,7 @@
 
 #ifdef HAVE_SELINUX
 # include <selinux/selinux.h>
-static int selinux_enabled = -1;
+static __thread int selinux_enabled = -1;
 #endif
 
 #ifdef HAVE_SMACK
@@ -41,6 +41,15 @@ static int selinux_enabled = -1;
 # ifndef SMACK_LABEL_LEN
 #  define SMACK_LABEL_LEN 1024
 # endif
+#endif
+
+#if TARGET_OS_SIMULATOR || TARGET_OS_IPHONE
+#include <dlfcn.h>  // for dlopen()/dlsym()/dlclose()
+#include "ios_error.h"
+#define S_ISXXX(m) ((m) & (S_IXUSR | S_IXGRP | S_IXOTH)) // access() always returns -1 on iOS.
+// TODO: remove these 2 lines
+#undef mch_getenv
+#define mch_getenv(x) (char_u *)ios_getenv((char *)(x))
 #endif
 
 #ifdef __BEOS__
@@ -89,7 +98,7 @@ static int mch_gpm_process(void);
 
 static int sysmouse_open(void);
 static void sysmouse_close(void);
-static RETSIGTYPE sig_sysmouse SIGPROTOARG;
+static __thread RETSIGTYPE sig_sysmouse SIGPROTOARG;
 #endif
 
 /*
@@ -119,7 +128,7 @@ static RETSIGTYPE sig_sysmouse SIGPROTOARG;
 #  include <X11/Intrinsic.h>
 #  include <X11/Shell.h>
 #  include <X11/StringDefs.h>
-static Widget	xterm_Shell = (Widget)0;
+static __thread Widget	xterm_Shell = (Widget)0;
 static void clip_update(void);
 static void xterm_update(void);
 # endif
@@ -133,11 +142,11 @@ Display	    *x11_display = NULL;
 #ifdef FEAT_TITLE
 static int get_x11_title(int);
 
-static char_u	*oldtitle = NULL;
-static volatile sig_atomic_t oldtitle_outdated = FALSE;
-static int	unix_did_set_title = FALSE;
-static char_u	*oldicon = NULL;
-static int	did_set_icon = FALSE;
+static __thread char_u	*oldtitle = NULL;
+static __thread volatile sig_atomic_t oldtitle_outdated = FALSE;
+static __thread int	unix_did_set_title = FALSE;
+static __thread char_u	*oldicon = NULL;
+static __thread int	did_set_icon = FALSE;
 #endif
 
 static void may_core_dump(void);
@@ -176,7 +185,7 @@ static RETSIGTYPE catch_sigpwr SIGPROTOARG;
 # define SET_SIG_ALARM
 static RETSIGTYPE sig_alarm SIGPROTOARG;
 /* volatile because it is used in signal handler sig_alarm(). */
-static volatile sig_atomic_t sig_alarm_called;
+static __thread volatile sig_atomic_t sig_alarm_called;
 #endif
 static RETSIGTYPE deathtrap SIGPROTOARG;
 
@@ -202,19 +211,19 @@ static int save_patterns(int num_pat, char_u **pat, int *num_file, char_u ***fil
 #endif
 
 /* volatile because it is used in signal handler sig_winch(). */
-static volatile sig_atomic_t do_resize = FALSE;
-static char_u	*extra_shell_arg = NULL;
-static int	show_shell_mess = TRUE;
+static __thread volatile sig_atomic_t do_resize = FALSE;
+static __thread char_u	*extra_shell_arg = NULL;
+static __thread int	show_shell_mess = TRUE;
 /* volatile because it is used in signal handler deathtrap(). */
-static volatile sig_atomic_t deadly_signal = 0;	   /* The signal we caught */
+static __thread volatile sig_atomic_t deadly_signal = 0;	   /* The signal we caught */
 /* volatile because it is used in signal handler deathtrap(). */
-static volatile sig_atomic_t in_mch_delay = FALSE; /* sleeping in mch_delay() */
+static __thread volatile sig_atomic_t in_mch_delay = FALSE; /* sleeping in mch_delay() */
 
 #if defined(FEAT_JOB_CHANNEL) && !defined(USE_SYSTEM)
-static int dont_check_job_ended = 0;
+static __thread int dont_check_job_ended = 0;
 #endif
 
-static int curr_tmode = TMODE_COOK;	/* contains current terminal mode */
+static __thread int curr_tmode = TMODE_COOK;	/* contains current terminal mode */
 
 #ifdef USE_XSMP
 typedef struct
@@ -226,7 +235,7 @@ typedef struct
     Bool shutdown;	    /* If we're in shutdown mode */
 } xsmp_config_T;
 
-static xsmp_config_T xsmp;
+static __thread xsmp_config_T xsmp;
 #endif
 
 #ifdef SYS_SIGLIST_DECLARED
@@ -241,7 +250,7 @@ static xsmp_config_T xsmp;
  */
 #endif
 
-static struct signalinfo
+static __thread struct signalinfo
 {
     int	    sig;	/* Signal number, eg. SIGSEGV etc */
     char    *name;	/* Signal name (not char_u!). */
@@ -667,7 +676,7 @@ mch_delay(long msec, int ignoreinput)
  * Return a pointer to an item on the stack.  Used to find out if the stack
  * grows up or down.
  */
-static int stack_grows_downwards;
+static __thread int stack_grows_downwards;
 
 /*
  * Find out if the stack grows upwards or downwards.
@@ -683,7 +692,7 @@ check_stack_growth(char *p)
 #endif
 
 #if defined(HAVE_STACK_LIMIT) || defined(PROTO)
-static char *stack_limit = NULL;
+static __thread char *stack_limit = NULL;
 
 #if defined(_THREAD_SAFE) && defined(HAVE_PTHREAD_NP_H)
 # include <pthread.h>
@@ -779,12 +788,12 @@ mch_stackcheck(char *p)
 #endif
 
 # ifdef HAVE_SIGALTSTACK
-static stack_t sigstk;			/* for sigaltstack() */
+static __thread stack_t sigstk;			/* for sigaltstack() */
 # else
-static struct sigstack sigstk;		/* for sigstack() */
+static __thread struct sigstack sigstk;		/* for sigstack() */
 # endif
 
-static char *signal_stack;
+static __thread char *signal_stack;
 
     static void
 init_signal_stack(void)
@@ -874,17 +883,17 @@ sig_alarm SIGDEFARG(sigarg)
 # define USING_SETJMP 1
 
 // argument to SETJMP()
-static JMP_BUF lc_jump_env;
+static __thread JMP_BUF lc_jump_env;
 
 # ifdef SIGHASARG
 // Caught signal number, 0 when no was signal caught; used for mch_libcall().
 // Volatile because it is used in signal handlers.
-static volatile sig_atomic_t lc_signal;
+static __thread volatile sig_atomic_t lc_signal;
 # endif
 
 // TRUE when lc_jump_env is valid.
 // Volatile because it is used in signal handler deathtrap().
-static volatile sig_atomic_t lc_active INIT(= FALSE);
+static __thread volatile sig_atomic_t lc_active INIT(= FALSE);
 
 /*
  * A simplistic version of setjmp() that only allows one level of using.
@@ -1124,7 +1133,7 @@ after_sigcont(void)
 
 #if defined(SIGCONT)
 static RETSIGTYPE sigcont_handler SIGPROTOARG;
-static volatile sig_atomic_t in_mch_suspend = FALSE;
+static __thread volatile sig_atomic_t in_mch_suspend = FALSE;
 
 /*
  * With multi-threading, suspending might not work immediately.  Catch the
@@ -1137,7 +1146,7 @@ static volatile sig_atomic_t in_mch_suspend = FALSE;
  *
  * volatile because it is used in signal handler sigcont_handler().
  */
-static volatile sig_atomic_t sigcont_received;
+static __thread volatile sig_atomic_t sigcont_received;
 static RETSIGTYPE sigcont_handler SIGPROTOARG;
 
 /*
@@ -1168,8 +1177,8 @@ sigcont_handler SIGDEFARG(sigarg)
 
 #if defined(FEAT_CLIPBOARD) && defined(FEAT_X11)
 # ifdef USE_SYSTEM
-static void *clip_star_save = NULL;
-static void *clip_plus_save = NULL;
+static __thread void *clip_star_save = NULL;
+static __thread void *clip_plus_save = NULL;
 # endif
 
 /*
@@ -1460,11 +1469,17 @@ unblock_signals(sigset_t *set)
  *			     signal
  * Returns TRUE when Vim should exit.
  */
+#if TARGET_OS_IPHONE
+    static __thread int got_signal = 0;
+    static __thread int blocked = TRUE;
+#endif
     int
 vim_handle_signal(int sig)
 {
+#if !TARGET_OS_IPHONE
     static int got_signal = 0;
     static int blocked = TRUE;
+#endif
 
     switch (sig)
     {
@@ -1534,7 +1549,7 @@ xopen_message(long elapsed_msec)
  * A few functions shared by X11 title and clipboard code.
  */
 
-static int	got_x_error = FALSE;
+static __thread int	got_x_error = FALSE;
 
 /*
  * X Error handler, otherwise X just exits!  (very rude) -- webb
@@ -1614,7 +1629,7 @@ x_IOerror_check(Display *dpy UNUSED)
 /*
  * An X IO Error handler, used to catch terminal errors.
  */
-static int xterm_dpy_retry_count = 0;
+static __thread int xterm_dpy_retry_count = 0;
 
     static int
 x_IOerror_handler(Display *dpy UNUSED)
@@ -1711,7 +1726,7 @@ test_x11_window(Display *dpy)
 
 #ifdef FEAT_X11
 
-static int get_x11_thing(int get_title, int test_only);
+static __thread int get_x11_thing(int get_title, int test_only);
 
 /*
  * try to get x11 window and display
@@ -3083,7 +3098,12 @@ executable_file(char_u *name)
     }
     return vms_executable;
 #else
+#if TARGET_OS_IPHONE
+    // access always returns -1 on iOS. 
+    return S_ISREG(st.st_mode) && S_ISXXX(st.st_mode); 
+#else
     return S_ISREG(st.st_mode) && mch_access((char *)name, X_OK) == 0;
+#endif
 #endif
 }
 
@@ -3162,6 +3182,13 @@ mch_can_exe(char_u *name, char_u **path, int use_path)
     }
 
     vim_free(buf);
+    // iOS: we've walked through the entire path, did not find an executable with that name
+    // is that one of the "internal commands" from ios_system?
+    if (!retval) {
+        retval = ios_executable(name); 
+        if (retval && (path != NULL)) *path = vim_strsave(name);
+    }
+    
     return retval;
 }
 
@@ -3253,6 +3280,10 @@ mch_free_mem(void)
     vim_free(oldtitle);
     vim_free(oldicon);
 # endif
+#if TARGET_OS_IPHONE
+    got_signal = 0;
+    blocked = TRUE;
+#endif
 }
 #endif
 
@@ -3600,7 +3631,7 @@ get_tty_info(int fd, ttyinfo_T *info)
 
 #endif /* VMS  */
 
-static int	mouse_ison = FALSE;
+static __thread int	mouse_ison = FALSE;
 
 /*
  * Set mouse clicks on or off.
@@ -4015,12 +4046,14 @@ mch_get_shellsize(void)
 	    columns = atoi((char *)p);
     }
 
-#ifdef HAVE_TGETENT
+#ifdef HAVE_TGETENT 
+#if !TARGET_OS_IPHONE
     /*
      * 3. try reading "co" and "li" entries from termcap
      */
     if (columns == 0 || rows == 0)
 	getlinecol(&columns, &rows);
+#endif
 #endif
 
     /*
@@ -4233,6 +4266,109 @@ set_default_child_environment(int is_terminal)
 {
     set_child_environment(Rows, Columns, "dumb", is_terminal);
 }
+
+#if TARGET_OS_IPHONE
+static __thread char* stored_TERM;
+static __thread char* stored_Rows;
+static __thread char* stored_Lines;
+static __thread char* stored_Columns;
+static __thread char* stored_Colors;
+#ifdef FEAT_TERMINAL
+static __thread char* stored_VIM_TERMINAL;
+#endif
+#ifdef FEAT_CLIENTSERVER
+static __thread char* stored_VIM_SERVERNAME;
+#endif
+    static void
+store_environment()
+{
+    char* buffer;
+    buffer = getenv("TERM");
+    if (buffer) 
+    	stored_TERM = strdup(buffer); 
+    else stored_TERM = NULL;
+    buffer = getenv("ROWS");
+    if (buffer) 
+    	stored_Rows = strdup(buffer); 
+    else stored_Rows = NULL;
+    buffer = getenv("LINES");
+    if (buffer) 
+    	stored_Lines = strdup(buffer); 
+    else stored_Lines = NULL; 
+    buffer = getenv("COLUMNS");
+    if (buffer) 
+	stored_Columns = strdup(buffer); 
+    else stored_Columns = NULL; 
+    buffer = getenv("COLORS");
+    if (buffer) 
+    	stored_Colors = strdup(buffer);
+    else stored_Colors = NULL; 
+#  ifdef FEAT_TERMINAL
+    buffer = getenv("VIM_TERMINAL"); 
+    if (buffer) 
+	stored_VIM_TERMINAL = strdup(buffer); 
+    else stored_VIM_TERMINAL = NULL; 
+#  endif
+#  ifdef FEAT_CLIENTSERVER
+    buffer = getenv("VIM_SERVERNAME"); 
+    if (buffer) 
+	stored_VIM_SERVERNAME = strdup(buffer); 
+    else stored_VIM_SERVERNAME = NULL; 
+#  endif
+}
+
+    static void
+restore_environment()
+{
+    if (stored_TERM) {
+	setenv("TERM", stored_TERM, 1); 
+	free(stored_TERM); 
+	stored_TERM = NULL; 
+    } else 
+    	unsetenv("TERM"); 
+    if (stored_Rows) {
+	setenv("ROWS", stored_Rows, 1); 
+	free(stored_Rows); 
+	stored_Rows = NULL; 
+    } else 
+    	unsetenv("ROWS"); 
+    if (stored_Lines) {
+	setenv("LINES", stored_Lines, 1); 
+	free(stored_Lines); 
+	stored_Lines = NULL; 
+    } else
+	unsetenv("LINES"); 
+    if (stored_Columns) {
+	setenv("COLUMNS", stored_Columns, 1); 
+	free(stored_Columns); 
+	stored_Columns = NULL; 
+    } else 
+	unsetenv("COLUMNS"); 
+    if (stored_Colors) {
+	setenv("COLORS", stored_Colors, 1); 
+	free(stored_Colors); 
+	stored_Colors = NULL; 
+    } else 
+	unsetenv("COLORS"); 
+#  ifdef FEAT_TERMINAL
+    if (stored_VIM_TERMINAL) {
+	setenv("VIM_TERMINAL", stored_VIM_TERMINAL, 1); 
+	free(stored_VIM_TERMINAL); 
+	stored_VIM_TERMINAL = NULL; 
+    } else 
+    unsetenv("VIM_TERMINAL"); 
+#  endif
+#  ifdef FEAT_CLIENTSERVER
+    if (stored_VIM_SERVERNAME) {
+	setenv("VIM_SERVERNAME", stored_VIM_SERVERNAME, 1); 
+	free(stored_VIM_SERVERNAME); 
+	stored_VIM_SERVERNAME = NULL; 
+    } else 
+    unsetenv("VIM_SERVERNAME"); 
+#  endif
+}
+#endif
+
 #endif
 
 #if defined(FEAT_GUI) || defined(FEAT_JOB_CHANNEL)
@@ -4629,10 +4765,17 @@ mch_call_shell_fork(
 		}
 	    }
 	}
+#if !TARGET_OS_IPHONE
+	// with iOS, we go through both branches
 	else if (pid == 0)	/* child */
+#endif
 	{
 	    reset_signals();		/* handle signals normally */
 	    UNBLOCK_SIGNALS(&curset);
+#if TARGET_OS_IPHONE
+	    signal(SIGWINCH, (RETSIGTYPE (*)())sig_winch);
+#endif
+	    
 
 # ifdef FEAT_JOB_CHANNEL
 	    if (ch_log_active())
@@ -4642,6 +4785,8 @@ mch_call_shell_fork(
 
 	    if (!show_shell_mess || (options & SHELL_EXPAND))
 	    {
+#if !TARGET_OS_IPHONE
+		// on iOS, we can't close stdin/stdout/stderr. 
 		int fd;
 
 		/*
@@ -4675,6 +4820,7 @@ mch_call_shell_fork(
 		    /* Don't need this now that we've duplicated it */
 		    close(fd);
 		}
+#endif
 	    }
 	    else if ((options & (SHELL_READ|SHELL_WRITE))
 # ifdef FEAT_GUI
@@ -4741,24 +4887,35 @@ mch_call_shell_fork(
 		else
 # endif
 		{
+# if !TARGET_OS_IPHONE
 		    /* set up stdin for the child */
 		    close(fd_toshell[1]);
 		    close(0);
 		    vim_ignored = dup(fd_toshell[0]);
 		    close(fd_toshell[0]);
-
+# else          
+		    // iOS:
+		    ios_dup2(fd_toshell[0], 0);
+# endif
+# if !TARGET_OS_IPHONE
 		    /* set up stdout for the child */
 		    close(fd_fromshell[0]);
 		    close(1);
 		    vim_ignored = dup(fd_fromshell[1]);
 		    close(fd_fromshell[1]);
-
+# else
+		    ios_dup2(fd_fromshell[1], 1);
+# endif
 # ifdef FEAT_GUI
 		    if (gui.in_use)
 		    {
+#  if !TARGET_OS_IPHONE
 			/* set up stderr for the child */
 			close(2);
 			vim_ignored = dup(1);
+#  else
+			ios_dup2(fd_fromshell[1], 2);
+#  endif
 		    }
 # endif
 		}
@@ -4771,10 +4928,17 @@ mch_call_shell_fork(
 	     * Call _exit() instead of exit() to avoid closing the connection
 	     * to the X server (esp. with GTK, which uses atexit()).
 	     */
-	    execvp(argv[0], argv);
+#if TARGET_OS_IPHONE
+        ios_system(cmd); // We do not need argv and sh, but we still built them to minimize code changes.
+#else
+        execvp(argv[0], argv);
 	    _exit(EXEC_FAILED);	    /* exec failed, return failure code */
+#endif
 	}
+#if !TARGET_OS_IPHONE
+	// with iOS, we go through both branches
 	else			/* parent */
+#endif
 	{
 	    /*
 	     * While child is running, ignore terminating signals.
@@ -4783,6 +4947,9 @@ mch_call_shell_fork(
 	    catch_signals(SIG_IGN, SIG_ERR);
 	    catch_int_signal();
 	    UNBLOCK_SIGNALS(&curset);
+#if TARGET_OS_IPHONE
+	    signal(SIGWINCH, (RETSIGTYPE (*)())sig_winch);
+#endif
 # ifdef FEAT_JOB_CHANNEL
 	    ++dont_check_job_ended;
 # endif
@@ -4823,8 +4990,10 @@ mch_call_shell_fork(
 		else
 # endif
 		{
+# ifndef TARGET_OS_IPHONE
 		    close(fd_toshell[0]);
 		    close(fd_fromshell[1]);
+# endif
 		    toshell_fd = fd_toshell[1];
 		    fromshell_fd = fd_fromshell[0];
 		}
@@ -5194,7 +5363,11 @@ mch_call_shell_fork(
 # else
 		    wait_pid = waitpid(pid, &status, WNOHANG);
 # endif
-		    if ((wait_pid == (pid_t)-1 && errno == ECHILD)
+		    if ((wait_pid == (pid_t)-1
+# ifdef ECHILD
+                 && errno == ECHILD
+# endif
+                 )
 			    || (wait_pid == pid && WIFEXITED(status)))
 		    {
 			/* Don't break the loop yet, try reading more
@@ -5263,7 +5436,11 @@ finished:
 # else
 		    wait_pid = waitpid(pid, &status, WNOHANG);
 # endif
-		    if ((wait_pid == (pid_t)-1 && errno == ECHILD)
+		    if ((wait_pid == (pid_t)-1
+# ifdef ECHILD
+                 && errno == ECHILD
+# endif
+                 )
 			    || (wait_pid == pid && WIFEXITED(status)))
 		    {
 			wait_pid = pid;
@@ -5300,6 +5477,8 @@ finished:
 		close(pty_slave_fd);
 # endif
 
+#ifndef TARGET_OS_IPHONE
+	    // iOS: is this still required?
 	    /* Make sure the child that writes to the external program is
 	     * dead. */
 	    if (wpid > 0)
@@ -5307,6 +5486,7 @@ finished:
 		kill(wpid, SIGKILL);
 		wait4pid(wpid, NULL);
 	    }
+#endif
 
 # ifdef FEAT_JOB_CHANNEL
 	    --dont_check_job_ended;
@@ -5485,7 +5665,11 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 	UNBLOCK_SIGNALS(&curset);
 	goto failed;
     }
+
+#if !TARGET_OS_IPHONE
+	// with iOS, we go through both branches
     if (pid == 0)
+#endif
     {
 	int	null_fd = -1;
 	int	stderr_works = TRUE;
@@ -5493,6 +5677,9 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 	/* child */
 	reset_signals();		/* handle signals normally */
 	UNBLOCK_SIGNALS(&curset);
+#if TARGET_OS_IPHONE
+	    signal(SIGWINCH, (RETSIGTYPE (*)())sig_winch);
+#endif
 
 # ifdef FEAT_JOB_CHANNEL
 	if (ch_log_active())
@@ -5507,6 +5694,9 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 	(void)setsid();
 # endif
 
+#if TARGET_OS_IPHONE
+	store_environment(); 
+#endif
 # ifdef FEAT_TERMINAL
 	if (options->jo_term_rows > 0)
 	{
@@ -5568,6 +5758,7 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 #  endif
 	}
 
+#if !TARGET_OS_IPHONE
 	/* set up stdin for the child */
 	close(0);
 	if (use_null_for_in && null_fd >= 0)
@@ -5599,7 +5790,8 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 	    vim_ignored = dup(pty_slave_fd);
 	else
 	    vim_ignored = dup(fd_out[1]);
-
+#endif
+#if !TARGET_OS_IPHONE
 	if (fd_in[0] >= 0)
 	    close(fd_in[0]);
 	if (fd_in[1] >= 0)
@@ -5620,13 +5812,25 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 
 	if (null_fd >= 0)
 	    close(null_fd);
-
+#else // TARGET_OS_IPHONE
+	ios_dup2(fd_in[0], 0);
+	ios_dup2(fd_out[1], 1);
+	if (use_null_for_err && null_fd >= 0)
+	{
+	    ios_dup2(null_fd, 2);
+	}
+	else if (use_out_for_err)
+	    ios_dup2(fd_out[1], 2);
+	else 
+	    ios_dup2(fd_err[1], 2);
+#endif // TARGET_OS_IPHONE
 	if (options->jo_cwd != NULL && mch_chdir((char *)options->jo_cwd) != 0)
 	    _exit(EXEC_FAILED);
 
 	/* See above for type of argv. */
 	execvp(argv[0], argv);
 
+#if !TARGET_OS_IPHONE
 	if (stderr_works)
 	    perror("executing job failed");
 # ifdef EXITFREE
@@ -5634,24 +5838,32 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 	 * reporting possibly leaked memory. */
 # endif
 	_exit(EXEC_FAILED);	    /* exec failed, return failure code */
+#endif
     }
 
     /* parent */
+#if TARGET_OS_IPHONE
+    restore_environment(); 
+#endif
     UNBLOCK_SIGNALS(&curset);
 
     job->jv_pid = pid;
     job->jv_status = JOB_STARTED;
     job->jv_channel = channel;  /* ch_refcount was set above */
 
+#if !TARGET_OS_IPHONE
     if (pty_master_fd >= 0)
 	close(pty_slave_fd); /* not used in the parent */
+#endif
     /* close child stdin, stdout and stderr */
+#if !TARGET_OS_IPHONE
     if (fd_in[0] >= 0)
 	close(fd_in[0]);
     if (fd_out[1] >= 0)
 	close(fd_out[1]);
     if (fd_err[1] >= 0)
 	close(fd_err[1]);
+#endif
     if (channel != NULL)
     {
 	int in_fd = INVALID_FD;
@@ -5677,6 +5889,7 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 	channel_set_pipes(channel, in_fd, out_fd, err_fd);
 	channel_set_job(channel, job, options);
     }
+#if !TARGET_OS_IPHONE
     else
     {
 	if (fd_in[1] >= 0)
@@ -5688,12 +5901,14 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 	if (pty_master_fd >= 0)
 	    close(pty_master_fd);
     }
-
+#endif
+    
     /* success! */
     return;
 
 failed:
     channel_unref(channel);
+    // Should I close streams here? 
     if (fd_in[0] >= 0)
 	close(fd_in[0]);
     if (fd_in[1] >= 0)
@@ -5798,6 +6013,32 @@ mch_detect_ended_job(job_T *job_list)
 	return NULL;
 # endif
 
+#if TARGET_OS_IPHONE
+    // No access to entire list of process on iOS. Just scan the list of jobs:
+    for (job = job_list; job != NULL; job = job->jv_next)
+    {
+        wait_pid = waitpid(job->jv_pid, &status, WNOHANG);
+        if (wait_pid == -1) {
+            // This job terminated
+            if (WIFEXITED(status))
+            /* LINTED avoid "bitwise operation on signed value" */
+                job->jv_exitval = WEXITSTATUS(status);
+            else if (WIFSIGNALED(status))
+            {
+                job->jv_exitval = -1;
+                job->jv_termsig = get_signal_name(WTERMSIG(status));
+            }
+            if (job->jv_status < JOB_ENDED)
+            {
+                ch_log(job->jv_channel, "Job ended");
+                job->jv_status = JOB_ENDED;
+            }
+            return job;
+        }
+    }
+     return NULL;
+#endif
+    
 # ifdef __NeXT__
     wait_pid = wait4(-1, &status, WNOHANG, (struct rusage *)0);
 # else
@@ -7475,8 +7716,8 @@ mch_libcall(
 #endif
 
 #if (defined(FEAT_X11) && defined(FEAT_XCLIPBOARD)) || defined(PROTO)
-static int	xterm_trace = -1;	/* default: disabled */
-static int	xterm_button;
+static __thread int	xterm_trace = -1;	/* default: disabled */
+static __thread int	xterm_button;
 
 /*
  * Setup a dummy window for X selections in a terminal.
@@ -7974,7 +8215,7 @@ xsmp_handle_requests(void)
 	return OK;
 }
 
-static int dummy;
+static __thread int dummy;
 
 /* Set up X Session Management Protocol */
     void

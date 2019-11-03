@@ -4652,12 +4652,45 @@ screen_screenrow(void)
  * Handle setting 'listchars' or 'fillchars'.
  * Returns error message, NULL if it's OK.
  */
+#if TARGET_OS_IPHONE
+// structure is non-static member of function
+struct charstab
+{
+    int	*cp;
+    char	*name;
+};
+static __thread struct charstab filltab[] =
+{
+    {NULL,	"stl"},
+    {NULL,	"stlnc"},
+    {NULL,	"vert"},
+    {NULL,	"fold"},
+    {NULL,	"diff"},
+};
+static __thread struct charstab lcstab[] =
+{
+    {NULL,	"eol"},
+    {NULL,	"extends"},
+    {NULL,	"nbsp"},
+    {NULL,	"precedes"},
+    {NULL,	"space"},
+    {NULL,	"tab"},
+    {NULL,	"trail"},
+#ifdef FEAT_CONCEAL
+    {NULL,	"conceal"},
+#else
+    {NULL,		"conceal"},
+#endif
+};
+#endif
+
     char *
 set_chars_option(char_u **varp)
 {
     int		round, i, len, entries;
     char_u	*p, *s;
     int		c1 = 0, c2 = 0, c3 = 0;
+#if !TARGET_OS_IPHONE
     struct charstab
     {
 	int	*cp;
@@ -4686,6 +4719,31 @@ set_chars_option(char_u **varp)
 	{NULL,		"conceal"},
 #endif
     };
+#else 
+struct charstab filltab[] = 
+{
+    {&fill_stl,	"stl"},
+    {&fill_stlnc,	"stlnc"},
+    {&fill_vert,	"vert"},
+    {&fill_fold,	"fold"},
+    {&fill_diff,	"diff"},
+};
+struct charstab lcstab[] =
+{
+    {&lcs_eol,	"eol"},
+    {&lcs_ext,	"extends"},
+    {&lcs_nbsp,	"nbsp"},
+    {&lcs_prec,	"precedes"},
+    {&lcs_space,	"space"},
+    {&lcs_tab2,	"tab"},
+    {&lcs_trail,	"trail"},
+#ifdef FEAT_CONCEAL
+    {&lcs_conceal,	"conceal"},
+#else
+    {NULL,		"conceal"},
+#endif
+};
+#endif
     struct charstab *tab;
 
     if (varp == &p_lcs)

@@ -73,7 +73,7 @@ typedef struct PendingCommand
 			 * NULL means end of list. */
 } PendingCommand;
 
-static PendingCommand *pendingCommands = NULL;
+static __thread PendingCommand *pendingCommands = NULL;
 				/* List of all commands currently
 				 * being waited for. */
 
@@ -164,7 +164,7 @@ struct ServerReply
     Window  id;
     garray_T strings;
 };
-static garray_T serverReply = { 0, 0, 0, 0, 0 };
+static __thread garray_T serverReply = { 0, 0, 0, 0, 0 };
 enum ServerReplyOp { SROP_Find, SROP_Add, SROP_Delete };
 
 typedef int (*EndCond)(void *);
@@ -180,7 +180,7 @@ struct x_cmdqueue
 typedef struct x_cmdqueue x_queue_T;
 
 /* dummy node, header for circular queue */
-static x_queue_T head = {NULL, 0, NULL, NULL};
+static __thread x_queue_T head = {NULL, 0, NULL, NULL};
 
 /*
  * Forward declarations for procedures defined later in this file:
@@ -201,11 +201,11 @@ static void	save_in_queue(char_u *buf, long_u len);
 static void	server_parse_message(Display *dpy, char_u *propInfo, long_u numItems);
 
 /* Private variables for the "server" functionality */
-static Atom	registryProperty = None;
-static Atom	vimProperty = None;
-static int	got_x_error = FALSE;
+static __thread Atom	registryProperty = None;
+static __thread Atom	vimProperty = None;
+static __thread int	got_x_error = FALSE;
 
-static char_u	*empty_prop = (char_u *)"";	/* empty GetRegProp() result */
+static __thread char_u	*empty_prop = (char_u *)"";	/* empty GetRegProp() result */
 
 /*
  * Associate an ASCII name with Vim.  Try real hard to get a unique one.
@@ -363,6 +363,11 @@ serverChangeRegisteredWindow(
  * Send to an instance of Vim via the X display.
  * Returns 0 for OK, negative for an error.
  */
+#if TARGET_OS_IPHONE
+static __thread int serial = 0;	/* Running count of sent commands.
+				 * Used to give each command a
+				 * different serial number. */
+#endif
     int
 serverSendToVim(
     Display	*dpy,			/* Where to send. */
@@ -379,9 +384,11 @@ serverSendToVim(
     char_u	    *property;
     int		    length;
     int		    res;
+#if !TARGET_OS_IPHONE
     static int	    serial = 0;	/* Running count of sent commands.
 				 * Used to give each command a
 				 * different serial number. */
+#endif
     PendingCommand  pending;
     char_u	    *loosename = NULL;
 

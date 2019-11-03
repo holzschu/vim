@@ -98,7 +98,7 @@
 #define a_s_LAM_ALEF			0xfefb
 #define a_f_LAM_ALEF			0xfefc
 
-static struct achar {
+static __thread struct achar {
     unsigned c;
     unsigned isolated;
     unsigned initial;

@@ -15,17 +15,17 @@
 
 #if defined(FEAT_EVAL) || defined(PROTO)
 
-static char *e_letunexp	= N_("E18: Unexpected characters in :let");
+static __thread char *e_letunexp	= N_("E18: Unexpected characters in :let");
 
-static dictitem_T	globvars_var;		// variable used for g:
-static dict_T		globvardict;		// Dictionary with g: variables
+static __thread dictitem_T	globvars_var;		// variable used for g:
+static __thread dict_T		globvardict;		// Dictionary with g: variables
 #define globvarht globvardict.dv_hashtab
 
 /*
  * Old Vim variables such as "v:version" are also available without the "v:".
  * Also in functions.  We need a special hashtable for them.
  */
-static hashtab_T	compat_hashtab;
+static __thread hashtab_T	compat_hashtab;
 
 /*
  * Array to hold the value of v: variables.
@@ -41,7 +41,7 @@ static hashtab_T	compat_hashtab;
 
 #define VV_NAME(s, t)	s, {{t, 0, {0}}, 0, {0}}
 
-static struct vimvar
+static __thread struct vimvar
 {
     char	*vv_name;	// name of variable, without v:
     dictitem16_T vv_di;		// value and name for key (max 16 chars!)
@@ -156,8 +156,8 @@ static struct vimvar
 #define vv_blob		vv_di.di_tv.vval.v_blob
 #define vv_tv		vv_di.di_tv
 
-static dictitem_T	vimvars_var;		// variable used for v:
-static dict_T		vimvardict;		// Dictionary with v: variables
+static __thread dictitem_T	vimvars_var;		// variable used for v:
+static __thread dict_T		vimvardict;		// Dictionary with v: variables
 #define vimvarht  vimvardict.dv_hashtab
 
 // for VIM_VERSION_ defines
@@ -173,7 +173,7 @@ typedef struct
     dict_T	sv_dict;
 } scriptvar_T;
 
-static garray_T	    ga_scripts = {0, 0, sizeof(scriptvar_T *), 4, NULL};
+static __thread garray_T	    ga_scripts = {0, 0, sizeof(scriptvar_T *), 4, NULL};
 #define SCRIPT_SV(id) (((scriptvar_T **)ga_scripts.ga_data)[(id) - 1])
 #define SCRIPT_VARS(id) (SCRIPT_SV(id)->sv_dict.dv_hashtab)
 
@@ -262,6 +262,17 @@ evalvars_init(void)
 }
 
 #if defined(EXITFREE) || defined(PROTO)
+
+#if TARGET_OS_IPHONE
+/*
+ * Reset Dictionary v: variable to NULL (dictionary has been released already)
+ */
+    void
+clear_vim_var_dict(int idx) {
+    vimvars[idx].vv_di.di_tv.vval.v_dict = NULL;
+}
+#endif
+
 /*
  * Free all vim variables information on exit
  */
@@ -297,6 +308,13 @@ evalvars_clear(void)
     for (i = 1; i <= ga_scripts.ga_len; ++i)
 	vim_free(SCRIPT_SV(i));
     ga_clear(&ga_scripts);
+
+#if TARGET_OS_IPHONE
+    // iOS: reset pointers to dictionaries (only required for dictionaries, and these two are the only 2 dictionaries):
+    // (the dictionaries have been released, we just need to set the pointer to NULL)
+    clear_vim_var_dict(VV_COMPLETED_ITEM);
+    clear_vim_var_dict(VV_EVENT);
+#endif
 }
 #endif
 
@@ -1641,10 +1659,15 @@ do_lock_var(
 /*
  * Lock or unlock an item.  "deep" is nr of levels to go.
  */
+#if TARGET_OS_IPHONE
+static __thread int recurse = 0;
+#endif
     static void
 item_lock(typval_T *tv, int deep, int lock)
 {
+#if !TARGET_OS_IPHONE
     static int	recurse = 0;
+#endif
     list_T	*l;
     listitem_T	*li;
     dict_T	*d;
@@ -1758,8 +1781,8 @@ del_menutrans_vars(void)
  * get_user_var_name().
  */
 
-static char_u	*varnamebuf = NULL;
-static int	varnamebuflen = 0;
+static __thread char_u	*varnamebuf = NULL;
+static __thread int	varnamebuflen = 0;
 
 /*
  * Function to concatenate a prefix and a variable name.
@@ -1792,15 +1815,26 @@ cat_prefix_varname(int prefix, char_u *name)
  * Function given to ExpandGeneric() to obtain the list of user defined
  * (global/buffer/window/built-in) variable names.
  */
+#if TARGET_OS_IPHONE
+static __thread long_u	gdone;
+static __thread long_u	bdone;
+static __thread long_u	wdone;
+static __thread long_u	tdone;
+static __thread int		vidx;
+static __thread hashitem_T	*hi;
+#endif
+
     char_u *
 get_user_var_name(expand_T *xp, int idx)
 {
+#if !TARGET_OS_IPHONE
     static long_u	gdone;
     static long_u	bdone;
     static long_u	wdone;
     static long_u	tdone;
     static int		vidx;
     static hashitem_T	*hi;
+#endif
     hashtab_T		*ht;
 
     if (idx == 0)
@@ -2555,7 +2589,12 @@ vars_clear_ext(hashtab_T *ht, int free_val)
 	    if (free_val)
 		clear_tv(&v->di_tv);
 	    if (v->di_flags & DI_FLAGS_ALLOC)
+#if !TARGET_OS_IPHONE
 		vim_free(v);
+#else
+    // We need to set the variable to NULL. It should work with other architectures too.
+	        VIM_CLEAR(v);
+#endif
 	}
     }
     hash_clear(ht);
@@ -3098,11 +3137,11 @@ var_exists(char_u *var)
     return n;
 }
 
-static lval_T	*redir_lval = NULL;
+static __thread lval_T	*redir_lval = NULL;
 #define EVALCMD_BUSY (redir_lval == (lval_T *)&redir_lval)
-static garray_T redir_ga;	// only valid when redir_lval is not NULL
-static char_u	*redir_endp = NULL;
-static char_u	*redir_varname = NULL;
+static __thread garray_T redir_ga;	// only valid when redir_lval is not NULL
+static __thread char_u	*redir_endp = NULL;
+static __thread char_u	*redir_varname = NULL;
 
 /*
  * Start recording command output to a variable

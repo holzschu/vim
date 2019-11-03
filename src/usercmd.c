@@ -28,7 +28,7 @@ typedef struct ucmd
 } ucmd_T;
 
 // List of all user commands.
-static garray_T ucmds = {0, 0, sizeof(ucmd_T), 4, NULL};
+static __thread garray_T ucmds = {0, 0, sizeof(ucmd_T), 4, NULL};
 
 #define USER_CMD(i) (&((ucmd_T *)(ucmds.ga_data))[i])
 #define USER_CMD_GA(gap, i) (&((ucmd_T *)((gap)->ga_data))[i])
@@ -37,7 +37,7 @@ static garray_T ucmds = {0, 0, sizeof(ucmd_T), 4, NULL};
  * List of names for completion for ":command" with the EXPAND_ flag.
  * Must be alphabetical for completion.
  */
-static struct
+static __thread struct
 {
     int	    expand;
     char    *name;
@@ -95,7 +95,7 @@ static struct
 /*
  * List of names of address types.  Must be alphabetical for completion.
  */
-static struct
+static __thread struct
 {
     cmd_addr_T	expand;
     char	*name;
@@ -1212,6 +1212,30 @@ uc_split_args(char_u *arg, size_t *lenp)
     return buf;
 }
 
+#if TARGET_OS_IPHONE
+typedef struct {
+    int *varp;
+    char *name;
+} mod_entry_T;
+static __thread mod_entry_T mod_entries[] = {
+#ifdef FEAT_BROWSE_CMD
+    {NULL, "browse"},
+#endif
+#if defined(FEAT_GUI_DIALOG) || defined(FEAT_CON_DIALOG)
+    {NULL, "confirm"},
+#endif
+    {NULL, "hide"},
+    {NULL, "keepalt"},
+    {NULL, "keepjumps"},
+    {NULL, "keepmarks"},
+    {NULL, "keeppatterns"},
+    {NULL, "lockmarks"},
+    {NULL, "noswapfile"},
+    {NULL, NULL}
+};
+#endif
+
+
     static size_t
 add_cmd_modifier(char_u *buf, char *mod_str, int *multi_mods)
 {
@@ -1420,6 +1444,7 @@ uc_check_code(
     case ct_MODS:
     {
 	int multi_mods = 0;
+#if !TARGET_OS_IPHONE
 	typedef struct {
 	    int *varp;
 	    char *name;
@@ -1440,6 +1465,24 @@ uc_check_code(
 	    {&cmdmod.noswapfile, "noswapfile"},
 	    {NULL, NULL}
 	};
+#else // TARGET_OS_IPHONE
+	mod_entry_T mod_entries[] = {
+#ifdef FEAT_BROWSE_CMD
+	    {&cmdmod.browse, "browse"},
+#endif
+#if defined(FEAT_GUI_DIALOG) || defined(FEAT_CON_DIALOG)
+	    {&cmdmod.confirm, "confirm"},
+#endif
+	    {&cmdmod.hide, "hide"},
+	    {&cmdmod.keepalt, "keepalt"},
+	    {&cmdmod.keepjumps, "keepjumps"},
+	    {&cmdmod.keepmarks, "keepmarks"},
+	    {&cmdmod.keeppatterns, "keeppatterns"},
+	    {&cmdmod.lockmarks, "lockmarks"},
+	    {&cmdmod.noswapfile, "noswapfile"},
+	    {NULL, NULL}
+	};
+#endif // TARGET_OS_IPHONE
 	int i;
 
 	result = quote ? 2 : 0;

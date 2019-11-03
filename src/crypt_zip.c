@@ -32,16 +32,21 @@ typedef struct {
 } zip_state_T;
 
 
-static u32_T crc_32_table[256];
+static __thread u32_T crc_32_table[256];
 
 /*
  * Fill the CRC table, if not done already.
  */
+#if TARGET_OS_IPHONE
+static __thread int	done = FALSE;
+#endif
     static void
 make_crc_tab(void)
 {
     u32_T	s, t, v;
+#if !TARGET_OS_IPHONE
     static int	done = FALSE;
+#endif
 
     if (done)
 	return;
@@ -95,6 +100,9 @@ crypt_zip_init(
 	return FAIL;
     state->method_state = zs;
 
+#if TARGET_OS_IPHONE
+    done = FALSE;
+#endif
     make_crc_tab();
     zs->keys[0] = 305419896L;
     zs->keys[1] = 591751049L;

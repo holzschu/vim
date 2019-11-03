@@ -27,13 +27,13 @@ typedef struct digraph
 static void printdigraph(digr_T *dp, result_T *previous);
 
 /* digraphs added by the user */
-static garray_T	user_digraphs = {0, 0, (int)sizeof(digr_T), 10, NULL};
+static __thread garray_T	user_digraphs = {0, 0, (int)sizeof(digr_T), 10, NULL};
 
 /*
  * Note: Characters marked with XX are not included literally, because some
  * compilers cannot handle them (Amiga SAS/C is the most picky one).
  */
-static digr_T digraphdefault[] =
+static __thread digr_T digraphdefault[] =
 
 #ifdef __MINT__
 	/*
@@ -1834,11 +1834,17 @@ static digr_T digraphdefault[] =
 /*
  * handle digraphs after typing a character
  */
+#if TARGET_OS_IPONE
+static __thread int	backspaced;	/* character before K_BS */
+static __thread int	lastchar;	/* last typed character */
+#endif
     int
 do_digraph(int c)
 {
+#if !TARGET_OS_IPONE
     static int	backspaced;	/* character before K_BS */
     static int	lastchar;	/* last typed character */
+#endif
 
     if (c == -1)		/* init values */
     {
@@ -1860,6 +1866,9 @@ do_digraph(int c)
  * Find a digraph for "val".  If found return the string to display it.
  * If not found return NULL.
  */
+#if TARGET_OS_IPHONE
+static      __thread char_u      r[3];
+#endif
     char_u *
 get_digraph_for_char(int val_arg)
 {
@@ -1867,7 +1876,9 @@ get_digraph_for_char(int val_arg)
     int		i;
     int		use_defaults;
     digr_T	*dp;
+#if !TARGET_OS_IPHONE
     static      char_u      r[3];
+#endif
 
 #if defined(USE_UNICODE_DIGRAPHS)
     if (!enc_utf8)
@@ -2180,7 +2191,7 @@ listdigraphs(int use_headers)
 			       wrong, in which case we messed up ScreenLines */
 }
 
-static struct dg_header_entry {
+static __thread struct dg_header_entry {
     int	    dg_start;
     char    *dg_header;
 } header_table[] = {

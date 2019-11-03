@@ -13,7 +13,7 @@
 
 #include "vim.h"
 
-static int	cmd_showtail;	// Only show path tail in lists ?
+static __thread int	cmd_showtail;	// Only show path tail in lists ?
 
 static void	set_expand_context(expand_T *xp);
 static int	ExpandFromContext(expand_T *xp, char_u *, int *, char_u ***, int);
@@ -273,6 +273,10 @@ nextwild(
  *
  * The variables xp->xp_context and xp->xp_backslash must have been set!
  */
+#if TARGET_OS_IPHONE
+static __thread int	findex;
+static __thread char_u *orig_save = NULL;	// kept value of orig
+#endif
     char_u *
 ExpandOne(
     expand_T	*xp,
@@ -282,8 +286,10 @@ ExpandOne(
     int		mode)
 {
     char_u	*ss = NULL;
+#if !TARGET_OS_IPHONE
     static int	findex;
     static char_u *orig_save = NULL;	// kept value of orig
+#endif
     int		orig_saved = FALSE;
     int		i;
     long_u	len;
@@ -1955,6 +1961,62 @@ get_mapclear_arg(expand_T *xp UNUSED, int idx)
 /*
  * Do the expansion based on xp->xp_context and "pat".
  */
+#if TARGET_OS_IPHONE
+static __thread struct expgen
+{
+    int		context;
+    char_u	*((*func)(expand_T *, int));
+    int		ic;
+    int		escaped;
+} tab[] =
+{
+    {EXPAND_COMMANDS, get_command_name, FALSE, TRUE},
+    {EXPAND_BEHAVE, get_behave_arg, TRUE, TRUE},
+    {EXPAND_MAPCLEAR, get_mapclear_arg, TRUE, TRUE},
+    {EXPAND_MESSAGES, get_messages_arg, TRUE, TRUE},
+    {EXPAND_HISTORY, get_history_arg, TRUE, TRUE},
+    {EXPAND_USER_COMMANDS, get_user_commands, FALSE, TRUE},
+    {EXPAND_USER_ADDR_TYPE, get_user_cmd_addr_type, FALSE, TRUE},
+    {EXPAND_USER_CMD_FLAGS, get_user_cmd_flags, FALSE, TRUE},
+    {EXPAND_USER_NARGS, get_user_cmd_nargs, FALSE, TRUE},
+    {EXPAND_USER_COMPLETE, get_user_cmd_complete, FALSE, TRUE},
+# ifdef FEAT_EVAL
+    {EXPAND_USER_VARS, get_user_var_name, FALSE, TRUE},
+    {EXPAND_FUNCTIONS, get_function_name, FALSE, TRUE},
+    {EXPAND_USER_FUNC, get_user_func_name, FALSE, TRUE},
+    {EXPAND_EXPRESSION, get_expr_name, FALSE, TRUE},
+# endif
+# ifdef FEAT_MENU
+    {EXPAND_MENUS, get_menu_name, FALSE, TRUE},
+    {EXPAND_MENUNAMES, get_menu_names, FALSE, TRUE},
+# endif
+# ifdef FEAT_SYN_HL
+    {EXPAND_SYNTAX, get_syntax_name, TRUE, TRUE},
+# endif
+# ifdef FEAT_PROFILE
+    {EXPAND_SYNTIME, get_syntime_arg, TRUE, TRUE},
+# endif
+    {EXPAND_HIGHLIGHT, get_highlight_name, TRUE, TRUE},
+    {EXPAND_EVENTS, get_event_name, TRUE, TRUE},
+    {EXPAND_AUGROUP, get_augroup_name, TRUE, TRUE},
+# ifdef FEAT_CSCOPE
+    {EXPAND_CSCOPE, get_cscope_name, TRUE, TRUE},
+# endif
+# ifdef FEAT_SIGNS
+    {EXPAND_SIGN, get_sign_name, TRUE, TRUE},
+# endif
+# ifdef FEAT_PROFILE
+    {EXPAND_PROFILE, get_profile_name, TRUE, TRUE},
+# endif
+# if defined(HAVE_LOCALE_H) || defined(X_LOCALE)
+    {EXPAND_LANGUAGE, get_lang_arg, TRUE, FALSE},
+    {EXPAND_LOCALES, get_locales, TRUE, FALSE},
+# endif
+    {EXPAND_ENV_VARS, get_env_name, TRUE, TRUE},
+    {EXPAND_USER, get_users, TRUE, FALSE},
+    {EXPAND_ARGLIST, get_arglist_name, TRUE, FALSE},
+};
+#endif
     static int
 ExpandFromContext(
     expand_T	*xp,
@@ -2117,6 +2179,7 @@ ExpandFromContext(
 # endif
     else
     {
+#if !TARGET_OS_IPHONE
 	static struct expgen
 	{
 	    int		context;
@@ -2171,6 +2234,7 @@ ExpandFromContext(
 	    {EXPAND_USER, get_users, TRUE, FALSE},
 	    {EXPAND_ARGLIST, get_arglist_name, TRUE, FALSE},
 	};
+#endif // TARGET_OS_IPHONE
 	int	i;
 
 	// Find a context in the table and call the ExpandGeneric() with the

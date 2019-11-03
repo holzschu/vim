@@ -65,14 +65,14 @@ static void foldDelMarker(linenr_T lnum, char_u *marker, int markerlen);
 static void foldUpdateIEMS(win_T *wp, linenr_T top, linenr_T bot);
 static void parseMarker(win_T *wp);
 
-static char *e_nofold = N_("E490: No fold found");
+static __thread char *e_nofold = N_("E490: No fold found");
 
 /*
  * While updating the folds lines between invalid_top and invalid_bot have an
  * undefined fold level.  Only used for the window currently being updated.
  */
-static linenr_T invalid_top = (linenr_T)0;
-static linenr_T invalid_bot = (linenr_T)0;
+static __thread linenr_T invalid_top = (linenr_T)0;
+static __thread linenr_T invalid_bot = (linenr_T)0;
 
 /*
  * When using 'foldexpr' we sometimes get the level of the next line, which
@@ -81,17 +81,17 @@ static linenr_T invalid_bot = (linenr_T)0;
  * previous line is stored here when available.  prev_lnum is zero when the
  * level is not available.
  */
-static linenr_T prev_lnum = 0;
-static int prev_lnum_lvl = -1;
+static __thread linenr_T prev_lnum = 0;
+static __thread int prev_lnum_lvl = -1;
 
 /* Flags used for "done" argument of setManualFold. */
 #define DONE_NOTHING	0
 #define DONE_ACTION	1	/* did close or open a fold */
 #define DONE_FOLD	2	/* did find a fold */
 
-static int foldstartmarkerlen;
-static char_u *foldendmarker;
-static int foldendmarkerlen;
+static __thread int foldstartmarkerlen;
+static __thread char_u *foldendmarker;
+static __thread int foldendmarkerlen;
 
 /* Exported folding functions. {{{1 */
 /* copyFoldingState() {{{2 */
@@ -1875,6 +1875,11 @@ foldDelMarker(linenr_T lnum, char_u *marker, int markerlen)
  * When 'foldtext' isn't set puts the result in "buf[FOLD_TEXT_LEN]".
  * Otherwise the result is in allocated memory.
  */
+#if TARGET_OS_IPHONE
+static __thread int	    got_fdt_error = FALSE;
+static __thread win_T    *last_wp = NULL;
+static __thread linenr_T last_lnum = 0;
+#endif
     char_u *
 get_foldtext(
     win_T	*wp,
@@ -1886,10 +1891,12 @@ get_foldtext(
     char_u	*text = NULL;
 #ifdef FEAT_EVAL
      /* an error occurred when evaluating 'fdt' setting */
-    static int	    got_fdt_error = FALSE;
     int		    save_did_emsg = did_emsg;
+#if !TARGET_OS_IPHONE
+    static int	    got_fdt_error = FALSE;
     static win_T    *last_wp = NULL;
     static linenr_T last_lnum = 0;
+#endif
 
     if (last_wp != wp || last_wp == NULL
 					|| last_lnum > lnum || last_lnum == 0)
@@ -2100,7 +2107,7 @@ typedef struct
 } fline_T;
 
 /* Flag is set when redrawing is needed. */
-static int fold_changed;
+static __thread int fold_changed;
 
 /* Function declarations. {{{2 */
 static linenr_T foldUpdateIEMSRecurse(garray_T *gap, int level, linenr_T startlnum, fline_T *flp, void (*getlevel)(fline_T *), linenr_T bot, int topflags);
@@ -3752,6 +3759,11 @@ f_foldtext(typval_T *argvars UNUSED, typval_T *rettv)
 /*
  * "foldtextresult(lnum)" function
  */
+# ifdef FEAT_FOLDING
+#if TARGET_OS_IPHONE
+static __thread int entered = FALSE;
+#endif
+#endif
     void
 f_foldtextresult(typval_T *argvars UNUSED, typval_T *rettv)
 {
@@ -3761,7 +3773,9 @@ f_foldtextresult(typval_T *argvars UNUSED, typval_T *rettv)
     char_u	buf[FOLD_TEXT_LEN];
     foldinfo_T  foldinfo;
     int		fold_count;
+#if !TARGET_OS_IPHONE
     static int	entered = FALSE;
+#endif
 # endif
 
     rettv->v_type = VAR_STRING;

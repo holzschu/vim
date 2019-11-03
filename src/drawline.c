@@ -33,15 +33,25 @@ advance_color_col(int vcol, int **color_cols)
  * Used when 'cursorlineopt' contains "screenline": compute the margins between
  * which the highlighting is used.
  */
+#if TARGET_OS_IPHONE
+    // cache previous calculations depending on w_virtcol
+static __thread int saved_w_virtcol;
+static __thread win_T *prev_wp;
+static __thread int prev_left_col;
+static __thread int prev_right_col;
+static __thread int prev_col_off;
+#endif
     static void
 margin_columns_win(win_T *wp, int *left_col, int *right_col)
 {
+#if !TARGET_OS_IPHONE
     // cache previous calculations depending on w_virtcol
     static int saved_w_virtcol;
     static win_T *prev_wp;
     static int prev_left_col;
     static int prev_right_col;
     static int prev_col_off;
+#endif
 
     int cur_col_off = win_col_off(wp);
     int	width1;
@@ -183,8 +193,8 @@ get_sign_display_info(
 #endif
 
 #ifdef FEAT_TEXT_PROP
-static textprop_T	*current_text_props = NULL;
-static buf_T		*current_buf = NULL;
+static __thread textprop_T	*current_text_props = NULL;
+static __thread buf_T		*current_buf = NULL;
 
     static int
 text_prop_compare(const void *s1, const void *s2)
@@ -218,6 +228,15 @@ text_prop_compare(const void *s1, const void *s2)
  *
  * Return the number of last row the line occupies.
  */
+#if TARGET_OS_IPHONE
+static __thread char_u *at_end_str = (char_u *)""; // used for p_extra when
+					   // displaying lcs_eol at end-of-line
+static __thread linenr_T  checked_lnum = 0;	// line number for "checked_col"
+static __thread int	checked_col = 0;	// column in "checked_lnum" up to which
+    				// there are no spell errors
+static __thread int	cap_col = -1;		// column to check for Cap word
+static __thread linenr_T capcol_lnum = 0;	// line number where "cap_col" used
+#endif 
     int
 win_line(
     win_T	*wp,
@@ -247,8 +266,10 @@ win_line(
     int		c_extra = NUL;		// extra chars, all the same
     int		c_final = NUL;		// final char, mandatory if set
     int		extra_attr = 0;		// attributes when n_extra != 0
+#if !TARGET_OS_IPHONE
     static char_u *at_end_str = (char_u *)""; // used for p_extra when
 					   // displaying lcs_eol at end-of-line
+#endif 
     int		lcs_eol_one = lcs_eol;	// lcs_eol until it's been used
     int		lcs_prec_todo = lcs_prec;   // lcs_prec until it's been used
 
@@ -317,11 +338,13 @@ win_line(
 					// starts
     int		spell_attr = 0;		// attributes desired by spelling
     int		word_end = 0;		// last byte with same spell_attr
+#if !TARGET_OS_IPHONE
     static linenr_T  checked_lnum = 0;	// line number for "checked_col"
     static int	checked_col = 0;	// column in "checked_lnum" up to which
 					// there are no spell errors
     static int	cap_col = -1;		// column to check for Cap word
     static linenr_T capcol_lnum = 0;	// line number where "cap_col" used
+#endif
     int		cur_checked_col = 0;	// checked column for current line
 #endif
     int		extra_check = 0;	// has extra highlighting

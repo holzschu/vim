@@ -121,35 +121,36 @@ typedef struct {
 #  define TERMREQUEST_INIT {STATUS_GET, -1}
 
 // Request Terminal Version status:
-static termrequest_T crv_status = TERMREQUEST_INIT;
+static __thread termrequest_T crv_status = TERMREQUEST_INIT;
 
 // Request Cursor position report:
-static termrequest_T u7_status = TERMREQUEST_INIT;
+static __thread termrequest_T u7_status = TERMREQUEST_INIT;
 
 #  ifdef FEAT_TERMINAL
 // Request foreground color report:
-static termrequest_T rfg_status = TERMREQUEST_INIT;
-static int fg_r = 0;
-static int fg_g = 0;
-static int fg_b = 0;
-static int bg_r = 255;
-static int bg_g = 255;
-static int bg_b = 255;
+static __thread termrequest_T rfg_status = TERMREQUEST_INIT;
+static __thread int fg_r = 0;
+static __thread int fg_g = 0;
+static __thread int fg_b = 0;
+static __thread int bg_r = 255;
+static __thread int bg_g = 255;
+static __thread int bg_b = 255;
 #  endif
 
 /* Request background color report: */
-static termrequest_T rbg_status = TERMREQUEST_INIT;
+static __thread termrequest_T rbg_status = TERMREQUEST_INIT;
 
 /* Request cursor blinking mode report: */
-static termrequest_T rbm_status = TERMREQUEST_INIT;
+static __thread termrequest_T rbm_status = TERMREQUEST_INIT;
 
 /* Request cursor style report: */
-static termrequest_T rcs_status = TERMREQUEST_INIT;
+static __thread termrequest_T rcs_status = TERMREQUEST_INIT;
 
 /* Request windos position report: */
-static termrequest_T winpos_status = TERMREQUEST_INIT;
+static __thread termrequest_T winpos_status = TERMREQUEST_INIT;
 
-static termrequest_T *all_termrequests[] = {
+#if !TARGET_OS_IPHONE
+static __thread termrequest_T *all_termrequests[] = {
     &crv_status,
     &u7_status,
 #  ifdef FEAT_TERMINAL
@@ -161,6 +162,20 @@ static termrequest_T *all_termrequests[] = {
     &winpos_status,
     NULL
 };
+#else
+static __thread termrequest_T *all_termrequests[] = {
+    NULL,
+    NULL,
+#  ifdef FEAT_TERMINAL
+    NULL,
+#  endif
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+#endif
 # endif
 
 /*
@@ -190,22 +205,22 @@ char *UP, *BC, PC;
 static char_u *vim_tgetstr(char *s, char_u **pp);
 #endif /* HAVE_TGETENT */
 
-static int  detected_8bit = FALSE;	/* detected 8-bit terminal */
+static __thread int  detected_8bit = FALSE;	/* detected 8-bit terminal */
 
 #ifdef FEAT_TERMRESPONSE
 /* When the cursor shape was detected these values are used:
  * 1: block, 2: underline, 3: vertical bar */
-static int initial_cursor_shape = 0;
+static __thread int initial_cursor_shape = 0;
 
 /* The blink flag from the style response may be inverted from the actual
  * blinking state, xterm XORs the flags. */
-static int initial_cursor_shape_blink = FALSE;
+static __thread int initial_cursor_shape_blink = FALSE;
 
 /* The blink flag from the blinking-cursor mode response */
-static int initial_cursor_blink = FALSE;
+static __thread int initial_cursor_blink = FALSE;
 #endif
 
-static struct builtin_term builtin_termcaps[] =
+static __thread struct builtin_term builtin_termcaps[] =
 {
 
 #if defined(FEAT_GUI)
@@ -851,8 +866,8 @@ static struct builtin_term builtin_termcaps[] =
 
 # if defined(UNIX) || defined(ALL_BUILTIN_TCAPS) || defined(SOME_BUILTIN_TCAPS)
     {(int)KS_NAME,	"xterm"},
-    {(int)KS_CE,	IF_EB("\033[K", ESC_STR "[K")},
-    {(int)KS_AL,	IF_EB("\033[L", ESC_STR "[L")},
+    {(int)KS_CE,	IF_EB("\033[K", ESC_STR "[K")}, // clear to end of line
+    {(int)KS_AL,	IF_EB("\033[L", ESC_STR "[L")}, // add new blank line
 #  ifdef TERMINFO
     {(int)KS_CAL,	IF_EB("\033[%p1%dL", ESC_STR "[%p1%dL")},
 #  else
@@ -872,15 +887,38 @@ static struct builtin_term builtin_termcaps[] =
 #  endif
     {(int)KS_CL,	IF_EB("\033[H\033[2J", ESC_STR "[H" ESC_STR_nc "[2J")},
     {(int)KS_CD,	IF_EB("\033[J", ESC_STR "[J")},
-    {(int)KS_ME,	IF_EB("\033[m", ESC_STR "[m")},
+#if !TARGET_OS_IPHONE
+    {(int)KS_ME,	IF_EB("\033[m", ESC_STR "[m")}, 
+#else
+    {(int)KS_ME,	IF_EB("\033[0m", ESC_STR "[0m")},	// normal
+    {(int)KS_OP,	IF_EB("\033[0m", ESC_STR "[0m")},	// reset
+    {(int)KS_CZH,	IF_EB("\033[3m", ESC_STR "[3m")}, 	/* italic mode on */
+    {(int)KS_CZR,	IF_EB("\033[23m", ESC_STR "[23m")},	/* italic mode off */    
+    {(int)KS_SO,        IF_EB("\033|91m", ESC_STR "[91m")},     // standout: bright red text
+    {(int)KS_SE,        IF_EB("\033|39m", ESC_STR "[39m")},     // standout end 
+    {(int)KS_BC,	"\x08"},		/* backspace */
+    {(int)K_BS,	        "\x7f"},		/* erase = ^? */
+//    // TODO: Needs debugging on colors bg/fg
+    {(int)KS_RFG,	IF_EB("\033]10;?\007", ESC_STR "]10;?\007")}, // Request foreground color
+    {(int)KS_RBG,	IF_EB("\033]11;?\007", ESC_STR "]11;?\007")}, // Request background color
+    {(int)KS_CAB,	"\033[4%dm"},	/* set background color (40 to 49) */
+    {(int)KS_CAF,	"\033[3%dm"},	/* set foreground color (30 to 39) */
+    /* These are printf strings, not terminal codes. */
+    {(int)KS_8F,	IF_EB("\033[38;2;%lu;%lu;%lum", ESC_STR "[38;2;%lu;%lu;%lum")},
+    {(int)KS_8B,	IF_EB("\033[48;2;%lu;%lu;%lum", ESC_STR "[48;2;%lu;%lu;%lum")},
+    {(int)KS_CCO, "256"},	    // colors
+    // These 2 don't change anything, one way or another
+    // {(int)KS_XN,	"y"},       /* newline glitch */
+    // {(int)KS_XS,	"y"},       /* standout not erased by overwriting */
+#endif
     {(int)KS_MR,	IF_EB("\033[7m", ESC_STR "[7m")},
     {(int)KS_MD,	IF_EB("\033[1m", ESC_STR "[1m")},
     {(int)KS_UE,	IF_EB("\033[m", ESC_STR "[m")},
     {(int)KS_US,	IF_EB("\033[4m", ESC_STR "[4m")},
     {(int)KS_STE,	IF_EB("\033[29m", ESC_STR "[29m")},
     {(int)KS_STS,	IF_EB("\033[9m", ESC_STR "[9m")},
-    {(int)KS_MS,	"y"},
-    {(int)KS_UT,	"y"},
+    {(int)KS_MS,	"y"},   /* save to move cur in reverse mode */
+    {(int)KS_UT,	"y"},   /* clearing uses background color */
     {(int)KS_LE,	"\b"},
     {(int)KS_VI,	IF_EB("\033[?25l", ESC_STR "[?25l")},
     {(int)KS_VE,	IF_EB("\033[?25h", ESC_STR "[?25h")},
@@ -947,6 +985,73 @@ static struct builtin_term builtin_termcaps[] =
     {(int)KS_SSI,	IF_EB("\033[22;1t", ESC_STR "[22;1t")},
     {(int)KS_SRI,	IF_EB("\033[23;1t", ESC_STR "[23;1t")},
 
+#if TARGET_OS_IPHONE
+    // iOS: up-down-left-right need a version without the * for hterm
+    // By extension, I remove the * in all keycaps. Needs testing (with extended kb)
+    {K_UP,		IF_EB("\033[A", ESC_STR "[A")},
+    {K_DOWN,		IF_EB("\033[B", ESC_STR "[B")},
+    {K_RIGHT,		IF_EB("\033[C", ESC_STR "[C")},
+    {K_LEFT,		IF_EB("\033[D", ESC_STR "[D")},
+    /* An extra set of cursor keys for vt100 mode */
+    {K_XUP,		IF_EB("\033[1;A", ESC_STR "[1;A")},
+    {K_XDOWN,		IF_EB("\033[1;B", ESC_STR "[1;B")},
+    {K_XRIGHT,		IF_EB("\033[1;C", ESC_STR "[1;C")},
+    {K_XLEFT,		IF_EB("\033[1;D", ESC_STR "[1;D")},
+    /* An extra set of function keys for vt100 mode */
+    {K_XF1,		IF_EB("\033OP", ESC_STR "OP")},
+    {K_XF2,		IF_EB("\033OQ", ESC_STR "OQ")},
+    {K_XF3,		IF_EB("\033OR", ESC_STR "OR")},
+    {K_XF4,		IF_EB("\033OS", ESC_STR "OS")},
+    {K_F1,		IF_EB("\033[11;~", ESC_STR "[11;~")},
+    {K_F2,		IF_EB("\033[12;~", ESC_STR "[12;~")},
+    {K_F3,		IF_EB("\033[13;~", ESC_STR "[13;~")},
+    {K_F4,		IF_EB("\033[14;~", ESC_STR "[14;~")},
+    {K_F5,		IF_EB("\033[15;~", ESC_STR "[15;~")},
+    {K_F6,		IF_EB("\033[17;~", ESC_STR "[17;~")},
+    {K_F7,		IF_EB("\033[18;~", ESC_STR "[18;~")},
+    {K_F8,		IF_EB("\033[19;~", ESC_STR "[19;~")},
+    {K_F9,		IF_EB("\033[20;~", ESC_STR "[20;~")},
+    {K_F10,		IF_EB("\033[21;~", ESC_STR "[21;~")},
+    {K_F11,		IF_EB("\033[23;~", ESC_STR "[23;~")},
+    {K_F12,		IF_EB("\033[24;~", ESC_STR "[24;~")},
+    {K_S_TAB,		IF_EB("\033[Z", ESC_STR "[Z")},
+    {K_HELP,		IF_EB("\033[28;~", ESC_STR "[28;~")},
+    {K_UNDO,		IF_EB("\033[26;~", ESC_STR "[26;~")},
+    {K_INS,		IF_EB("\033[2;~", ESC_STR "[2;~")},
+    {K_HOME,		IF_EB("\033[1;H", ESC_STR "[1;H")},
+    /* {K_S_HOME,		IF_EB("\033O2H", ESC_STR "O2H")}, */
+    /* {K_C_HOME,		IF_EB("\033O5H", ESC_STR "O5H")}, */
+    {K_KHOME,		IF_EB("\033[1;~", ESC_STR "[1;~")},
+    {K_XHOME,		IF_EB("\033OH", ESC_STR "OH")},	/* other Home */
+    {K_ZHOME,		IF_EB("\033[7;~", ESC_STR "[7;~")},	/* other Home */
+    {K_END,		IF_EB("\033[1;F", ESC_STR "[1;F")},
+    /* {K_S_END,		IF_EB("\033O2F", ESC_STR "O2F")}, */
+    /* {K_C_END,		IF_EB("\033O5F", ESC_STR "O5F")}, */
+    {K_KEND,		IF_EB("\033[4;~", ESC_STR "[4;~")},
+    {K_XEND,		IF_EB("\033OF", ESC_STR "OF")},	/* other End */
+    {K_ZEND,		IF_EB("\033[8;~", ESC_STR "[8;~")},
+    {K_PAGEUP,		IF_EB("\033[5;~", ESC_STR "[5;~")},
+    {K_PAGEDOWN,	IF_EB("\033[6;~", ESC_STR "[6;~")},
+    {K_KPLUS,		IF_EB("\033Ok", ESC_STR "Ok")},     /* keypad plus */
+    {K_KMINUS,		IF_EB("\033Om", ESC_STR "Om")},     /* keypad minus */
+    {K_KDIVIDE,		IF_EB("\033Oo", ESC_STR "Oo")},     /* keypad / */
+    {K_KMULTIPLY,	IF_EB("\033Oj", ESC_STR "Oj")},     /* keypad * */
+    {K_KENTER,		IF_EB("\033OM", ESC_STR "OM")},     /* keypad Enter */
+    {K_KPOINT,		IF_EB("\033On", ESC_STR "On")},     /* keypad . */
+    {K_K0,		IF_EB("\033Op", ESC_STR "Op")},     /* keypad 0 */
+    {K_K1,		IF_EB("\033Oq", ESC_STR "Oq")},     /* keypad 1 */
+    {K_K2,		IF_EB("\033Or", ESC_STR "Or")},     /* keypad 2 */
+    {K_K3,		IF_EB("\033Os", ESC_STR "Os")},     /* keypad 3 */
+    {K_K4,		IF_EB("\033Ot", ESC_STR "Ot")},     /* keypad 4 */
+    {K_K5,		IF_EB("\033Ou", ESC_STR "Ou")},     /* keypad 5 */
+    {K_K6,		IF_EB("\033Ov", ESC_STR "Ov")},     /* keypad 6 */
+    {K_K7,		IF_EB("\033Ow", ESC_STR "Ow")},     /* keypad 7 */
+    {K_K8,		IF_EB("\033Ox", ESC_STR "Ox")},     /* keypad 8 */
+    {K_K9,		IF_EB("\033Oy", ESC_STR "Oy")},     /* keypad 9 */
+    {K_KDEL,		IF_EB("\033[3;~", ESC_STR "[3;~")}, /* keypad Del */
+    {K_PS,		IF_EB("\033[200~", ESC_STR "[200~")}, /* paste start */
+    {K_PE,		IF_EB("\033[201~", ESC_STR "[201~")}, /* paste end */
+#else // TARGET_OS_IPHONE
     {K_UP,		IF_EB("\033O*A", ESC_STR "O*A")},
     {K_DOWN,		IF_EB("\033O*B", ESC_STR "O*B")},
     {K_RIGHT,		IF_EB("\033O*C", ESC_STR "O*C")},
@@ -1010,6 +1115,7 @@ static struct builtin_term builtin_termcaps[] =
     {K_KDEL,		IF_EB("\033[3;*~", ESC_STR "[3;*~")}, /* keypad Del */
     {K_PS,		IF_EB("\033[200~", ESC_STR "[200~")}, /* paste start */
     {K_PE,		IF_EB("\033[201~", ESC_STR "[201~")}, /* paste end */
+#endif // TARGET_OS_IPHONE
 
     {BT_EXTRA_KEYS,   ""},
     {TERMCAP2KEY('k', '0'), IF_EB("\033[10;*~", ESC_STR "[10;*~")}, /* F0 */
@@ -1429,13 +1535,31 @@ termgui_mch_get_rgb(guicolor_T color)
  * It is initialized with the default values by parse_builtin_tcap().
  * The values can be changed by setting the option with the same name.
  */
-char_u *(term_strings[(int)KS_LAST + 1]);
+__thread char_u *(term_strings[(int)KS_LAST + 1]);
 
-static int	need_gather = FALSE;	    /* need to fill termleader[] */
-static char_u	termleader[256 + 1];	    /* for check_termcode() */
+static __thread int	need_gather = FALSE;	    /* need to fill termleader[] */
+static __thread char_u	termleader[256 + 1];	    /* for check_termcode() */
 #ifdef FEAT_TERMRESPONSE
-static int	check_for_codes = FALSE;    /* check for key code response */
-static int	is_not_xterm = FALSE;	    /* recognized not-really-xterm */
+static __thread int	check_for_codes = FALSE;    /* check for key code response */
+static __thread int	is_not_xterm = FALSE;	    /* recognized not-really-xterm */
+#endif
+
+#if TARGET_OS_IPHONE
+/*
+ * reset all variables, including term_strings, to what they were at launch time
+ */
+    void 
+reset_termstrings() 
+{
+    int i;
+    for (i = 0; i < KS_LAST + 1; i++) 
+    	term_strings[i] = NULL; 
+    need_gather = FALSE;	    /* need to fill termleader[] */
+#ifdef FEAT_TERMRESPONSE
+    check_for_codes = FALSE;    /* check for key code response */
+    is_not_xterm = FALSE;	    /* recognized not-really-xterm */
+#endif
+}
 #endif
 
     static struct builtin_term *
@@ -1590,7 +1714,7 @@ may_adjust_color_count(int val)
 #endif
 
 #ifdef HAVE_TGETENT
-static char *(key_names[]) =
+static __thread char *(key_names[]) =
 {
 #ifdef FEAT_TERMRESPONSE
     /* Do this one first, it may cause a screen redraw. */
@@ -1657,7 +1781,9 @@ get_term_entries(int *height, int *width)
 	if (TERM_STR(string_names[i].dest) == NULL
 			     || TERM_STR(string_names[i].dest) == empty_option)
 	{
+#if !TARGET_OS_IPHONE // iOS: tgetstring is forbidden on the AppStore
 	    TERM_STR(string_names[i].dest) = TGETSTR(string_names[i].name, &tp);
+#endif
 #ifdef FEAT_EVAL
 	    set_term_option_sctx_idx(string_names[i].name, -1);
 #endif
@@ -1666,6 +1792,9 @@ get_term_entries(int *height, int *width)
 
     /* tgetflag() returns 1 if the flag is present, 0 if not and
      * possibly -1 if the flag doesn't exist. */
+
+#if !TARGET_OS_IPHONE // iOS: tgetflag is forbidden on the AppStore
+    // TODO: test if these should be set (_DB, _DA especially, related to scrolling).
     if ((T_MS == NULL || T_MS == empty_option) && tgetflag("ms") > 0)
 	T_MS = (char_u *)"y";
     if ((T_XS == NULL || T_XS == empty_option) && tgetflag("xs") > 0)
@@ -1682,7 +1811,8 @@ get_term_entries(int *height, int *width)
     /*
      * get key codes
      */
-    for (i = 0; key_names[i] != NULL; ++i)
+    // iOS: tgestr is forbidden on the AppStore
+    for (i = 0; key_names[i] != NULL; ++i) {
 	if (find_termcode((char_u *)key_names[i]) == NULL)
 	{
 	    p = TGETSTR(key_names[i], &tp);
@@ -1693,29 +1823,39 @@ get_term_entries(int *height, int *width)
 			|| key_names[i][1] != 'l'))
 		add_termcode((char_u *)key_names[i], p, FALSE);
 	}
-
+    }
+#endif
+#if !TARGET_OS_IPHONE // iOS: tgetnum is forbidden on the AppStore
     if (*height == 0)
 	*height = tgetnum("li");
     if (*width == 0)
 	*width = tgetnum("co");
-
+#endif
+    
     /*
      * Get number of colors (if not done already).
      */
     if (TERM_STR(KS_CCO) == NULL || TERM_STR(KS_CCO) == empty_option)
     {
+#if !TARGET_OS_IPHONE // iOS: tgetnum is forbidden on the AppStore
 	set_color_count(tgetnum("Co"));
+#endif
 #ifdef FEAT_EVAL
 	set_term_option_sctx_idx("Co", -1);
 #endif
     }
 
 # ifndef hpux
+#if !TARGET_OS_IPHONE // iOS: tgetstr is forbidden on the AppStore
     BC = (char *)TGETSTR("bc", &tp);
     UP = (char *)TGETSTR("up", &tp);
     p = TGETSTR("pc", &tp);
     if (p)
 	PC = *p;
+#else 
+    PC = NUL;
+    UP = "\x1b\x5b\x41";
+#endif // IPHONE
 # endif
 }
 #endif
@@ -2104,6 +2244,7 @@ set_termname(char_u *term)
     static char *
 tgetent_error(char_u *tbuf, char_u *term)
 {
+#if !TARGET_OS_IPHONE
     int	    i;
 
     i = TGETENT(tbuf, term);
@@ -2129,6 +2270,7 @@ tgetent_error(char_u *tbuf, char_u *term)
 	    return _("E559: Terminal entry not found in termcap");
 #endif
     }
+#endif
     return NULL;
 }
 
@@ -2136,6 +2278,7 @@ tgetent_error(char_u *tbuf, char_u *term)
  * Some versions of tgetstr() have been reported to return -1 instead of NULL.
  * Fix that here.
  */
+#if !TARGET_OS_IPHONE
     static char_u *
 vim_tgetstr(char *s, char_u **pp)
 {
@@ -2146,9 +2289,11 @@ vim_tgetstr(char *s, char_u **pp)
 	p = NULL;
     return (char_u *)p;
 }
+#endif
 #endif /* HAVE_TGETENT */
 
 #if defined(HAVE_TGETENT) && (defined(UNIX) || defined(VMS) || defined(MACOS_X))
+#if !TARGET_OS_IPHONE
 /*
  * Get Columns and Rows from the termcap. Used after a window signal if the
  * ioctl() fails. It doesn't make sense to call tgetent each time if the "co"
@@ -2170,6 +2315,7 @@ getlinecol(
 	    *rp = tgetnum("li");
     }
 }
+#endif
 #endif /* defined(HAVE_TGETENT) && defined(UNIX) */
 
 /*
@@ -2264,7 +2410,9 @@ add_termcap_entry(char_u *name, int force)
 	    error_msg = tgetent_error(tbuf, term);
 	    if (error_msg == NULL)
 	    {
+#if !TARGET_OS_IPHONE
 		string = TGETSTR((char *)name, &tp);
+#endif
 		if (string != NULL && *string != NUL)
 		{
 		    add_termcode(name, string, FALSE);
@@ -2333,7 +2481,7 @@ term_is_gui(char_u *name)
 }
 #endif
 
-#if !defined(HAVE_TGETENT) || defined(AMIGA) || defined(PROTO)
+#if !defined(HAVE_TGETENT) || defined(AMIGA) || defined(PROTO) || TARGET_OS_IPHONE
 
     char_u *
 tltoa(unsigned long i)
@@ -2354,8 +2502,12 @@ tltoa(unsigned long i)
 }
 #endif
 
-#ifndef HAVE_TGETENT
+#if !defined(HAVE_TGETENT) || TARGET_OS_IPHONE
 
+#if TARGET_OS_IPHONE
+// tgoto is forbidden on the AppStore
+#define tgoto ios_tgoto
+#endif
 /*
  * minimal tgoto() implementation.
  * no padding and we only parse for %i %d and %+char
@@ -2418,6 +2570,18 @@ termcapinit(char_u *name)
     if (name != NULL && *name == NUL)
 	name = NULL;	    /* empty name is equal to no name */
     term = name;
+#if TARGET_OS_IPHONE
+all_termrequests[0] =    &crv_status;
+all_termrequests[1] =    &u7_status;
+#  ifdef FEAT_TERMINAL
+all_termrequests[2] =    &rfg_status;
+#  endif
+all_termrequests[3] =    &rbg_status;
+all_termrequests[4] =    &rbm_status;
+all_termrequests[5] =    &rcs_status;
+all_termrequests[6] =    &winpos_status;
+all_termrequests[7] =    NULL;
+#endif
 
 #ifdef __BEOS__
     /*
@@ -2454,9 +2618,9 @@ termcapinit(char_u *name)
 #define OUT_SIZE	2047
 
 // add one to allow mch_write() in os_win32.c to append a NUL
-static char_u		out_buf[OUT_SIZE + 1];
+static __thread char_u		out_buf[OUT_SIZE + 1];
 
-static int		out_pos = 0;	// number of chars in out_buf
+static __thread int		out_pos = 0;	// number of chars in out_buf
 
 // Since the maximum number of SGR parameters shown as a normal value range is
 // 16, the escape sequence length can be 4 * 16 + lead + tail.
@@ -2605,7 +2769,7 @@ out_str_cf(char_u *s)
 #endif
 	if (out_pos > OUT_SIZE - MAX_ESC_SEQ_LEN)
 	    out_flush();
-#ifdef HAVE_TGETENT
+#if defined(HAVE_TGETENT) && !TARGET_OS_IPHONE
 	for (p = s; *s; ++s)
 	{
 	    /* flush just before delay command */
@@ -2632,18 +2796,18 @@ out_str_cf(char_u *s)
 		    ++p;
 		    do_sleep(duration);
 		}
-# else
+# else // ELAPSED_FUNC
 		/* Rely on the terminal library to sleep. */
 		p = s;
-# endif
+# endif // ELAPSED_FUNC
 		break;
 	    }
 	}
 	tputs((char *)p, 1, TPUTSFUNCAST out_char_nf);
-#else
+#else // HAVE_TGETENT && !TARGET_OS_IPHONE
 	while (*s)
 	    out_char_nf(*s++);
-#endif
+#endif // HAVE_TGETENT && !TARGET_OS_IPHONE
 
 	/* For testing we write one string at a time. */
 	if (p_wd)
@@ -2673,7 +2837,7 @@ out_str(char_u *s)
 	/* avoid terminal strings being split up */
 	if (out_pos > OUT_SIZE - MAX_ESC_SEQ_LEN)
 	    out_flush();
-#ifdef HAVE_TGETENT
+#if defined(HAVE_TGETENT) && !TARGET_OS_IPHONE
 	tputs((char *)s, 1, TPUTSFUNCAST out_char_nf);
 #else
 	while (*s)
@@ -2775,9 +2939,9 @@ termrequest_any_pending()
     return FALSE;
 }
 
-static int winpos_x = -1;
-static int winpos_y = -1;
-static int did_request_winpos = 0;
+static __thread int winpos_x = -1;
+static __thread int winpos_y = -1;
+static __thread int did_request_winpos = 0;
 
 # if defined(FEAT_EVAL) || defined(FEAT_TERMINAL) || defined(PROTO)
 /*
@@ -3206,11 +3370,17 @@ limit_screen_size(void)
 /*
  * Invoked just before the screen structures are going to be (re)allocated.
  */
+#if TARGET_OS_IPHONE
+static __thread int	old_Rows = 0;
+static __thread int	old_Columns = 0;
+#endif
     void
 win_new_shellsize(void)
 {
+#if !TARGET_OS_IPHONE
     static int	old_Rows = 0;
     static int	old_Columns = 0;
+#endif
 
     if (old_Rows != Rows || old_Columns != Columns)
 	ui_new_shellsize();
@@ -3271,10 +3441,16 @@ shell_resized_check(void)
  * If 'mustset' is FALSE, we may try to get the real window size and if
  * it fails use 'width' and 'height'.
  */
+#if TARGET_OS_IPHONE
+// Function-static variables won't work with iOS
+static __thread int busy = FALSE;
+#endif
     void
 set_shellsize(int width, int height, int mustset)
 {
+#if !TARGET_OS_IPHONE
     static int		busy = FALSE;
+#endif
 
     /*
      * Avoid recursiveness, can happen when setting the window size causes
@@ -3301,6 +3477,10 @@ set_shellsize(int width, int height, int mustset)
      * buffer has already been closed and removing a scrollbar causes a resize
      * event. Don't resize then, it will happen after entering another buffer.
      */
+#if TARGET_OS_IPHONE
+    if (curwin == NULL) 
+    	return;
+#endif
     if (curwin->w_buffer == NULL)
 	return;
 
@@ -3686,7 +3866,7 @@ scroll_start(void)
     }
 }
 
-static int cursor_is_off = FALSE;
+static __thread int cursor_is_off = FALSE;
 
 /*
  * Enable the cursor without checking if it's already enabled.
@@ -3725,10 +3905,15 @@ cursor_off(void)
 /*
  * Set cursor shape to match Insert or Replace mode.
  */
+#if TARGET_OS_IPHONE
+static __thread int showing_mode = -1;
+#endif
     void
 term_cursor_mode(int forced)
 {
+#if !TARGET_OS_IPHONE
     static int showing_mode = -1;
+#endif
     char_u *p;
 
     /* Only do something when redrawing the screen and we can restore the
@@ -3868,7 +4053,7 @@ scroll_region_reset(void)
  * List of terminal codes that are currently recognized.
  */
 
-static struct termcode
+static __thread struct termcode
 {
     char_u  name[2];	    /* termcap name of entry */
     char_u  *code;	    /* terminal code (in allocated memory) */
@@ -3876,8 +4061,8 @@ static struct termcode
     int	    modlen;	    /* length of part before ";*~". */
 } *termcodes = NULL;
 
-static int  tc_max_len = 0; /* number of entries that termcodes[] can hold */
-static int  tc_len = 0;	    /* current number of entries in termcodes[] */
+static __thread int  tc_max_len = 0; /* number of entries that termcodes[] can hold */
+static __thread int  tc_len = 0;	    /* current number of entries in termcodes[] */
 
 static int termcode_star(char_u *code, int len);
 
@@ -4148,9 +4333,9 @@ switch_to_8bit(void)
 #endif
 
 #ifdef CHECK_DOUBLE_CLICK
-static linenr_T orig_topline = 0;
+static __thread linenr_T orig_topline = 0;
 # ifdef FEAT_DIFF
-static int orig_topfill = 0;
+static __thread int orig_topfill = 0;
 # endif
 #endif
 #if defined(CHECK_DOUBLE_CLICK) || defined(PROTO)
@@ -4663,7 +4848,9 @@ not_enough:
 			if (arg[0] == 77)
 			    is_mintty = TRUE;
 
-			// if xterm version >= 141 try to get termcap codes
+			/* if xterm version >= 141 try to get termcap codes */
+#if !TARGET_OS_IPHONE
+			// iOS: hterm sends version = 256, but does not respond well to XT codes
 			if (version >= 141)
 			{
 			    LOG_TR(("Enable checking for XT codes"));
@@ -4671,6 +4858,7 @@ not_enough:
 			    need_gather = TRUE;
 			    req_codes_from_term();
 			}
+#endif
 
 			// libvterm sends 0;100;0
 			if (version == 100 && arg[0] == 0 && arg[2] == 0)
@@ -5759,8 +5947,8 @@ show_one_termcode(char_u *name, char_u *code, int printit)
  * termcap codes from the terminal itself.
  * We get them one by one to avoid a very long response string.
  */
-static int xt_index_in = 0;
-static int xt_index_out = 0;
+static __thread int xt_index_in = 0;
+static __thread int xt_index_out = 0;
 
     static void
 req_codes_from_term(void)
@@ -5979,9 +6167,9 @@ translate_mapping(char_u *str)
 }
 
 #if (defined(MSWIN) && (!defined(FEAT_GUI) || defined(VIMDLL))) || defined(PROTO)
-static char ksme_str[20];
-static char ksmr_str[20];
-static char ksmd_str[20];
+static __thread char ksme_str[20];
+static __thread char ksmr_str[20];
+static __thread char ksmd_str[20];
 
 /*
  * For Win32 console: update termcap codes for existing console attributes.
@@ -6023,7 +6211,7 @@ struct ks_tbl_s
     char arr[KSSIZE];   // real buffer
 };
 
-static struct ks_tbl_s ks_tbl[] =
+static __thread struct ks_tbl_s ks_tbl[] =
 {
     {(int)KS_ME,  "\033|0m",  "\033|0m"},   // normal
     {(int)KS_MR,  "\033|7m",  "\033|7m"},   // reverse
@@ -6356,11 +6544,11 @@ gui_get_rgb_color_cmn(int r, int g, int b)
 
 #if (defined(MSWIN) && (!defined(FEAT_GUI_MSWIN) || defined(VIMDLL))) || defined(FEAT_TERMINAL) \
 	|| defined(PROTO)
-static int cube_value[] = {
+static __thread int cube_value[] = {
     0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF
 };
 
-static int grey_ramp[] = {
+static __thread int grey_ramp[] = {
     0x08, 0x12, 0x1C, 0x26, 0x30, 0x3A, 0x44, 0x4E, 0x58, 0x62, 0x6C, 0x76,
     0x80, 0x8A, 0x94, 0x9E, 0xA8, 0xB2, 0xBC, 0xC6, 0xD0, 0xDA, 0xE4, 0xEE
 };
@@ -6371,7 +6559,7 @@ static int grey_ramp[] = {
 #  define VTERM_ANSI_INDEX_NONE 0
 # endif
 
-static char_u ansi_table[16][4] = {
+static __thread char_u ansi_table[16][4] = {
 //   R    G    B   idx
   {  0,   0,   0,  1}, // black
   {224,   0,   0,  2}, // dark red

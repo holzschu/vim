@@ -20,18 +20,18 @@
 // The current cmdline_info.  It is initialized in getcmdline() and after that
 // used by other functions.  When invoking getcmdline() recursively it needs
 // to be saved with save_cmdline() and restored with restore_cmdline().
-static cmdline_info_T ccline;
+static __thread cmdline_info_T ccline;
 
 #ifdef FEAT_EVAL
-static int	new_cmdpos;	/* position set by set_cmdline_pos() */
+static __thread int	new_cmdpos;	/* position set by set_cmdline_pos() */
 #endif
 
-static int	extra_char = NUL;  /* extra character to display when redrawing
+static __thread int	extra_char = NUL;  /* extra character to display when redrawing
 				    * the command line */
-static int	extra_char_shift;
+static __thread int	extra_char_shift;
 
 #ifdef FEAT_RIGHTLEFT
-static int	cmd_hkmap = 0;	/* Hebrew mapping during command line */
+static __thread int	cmd_hkmap = 0;	/* Hebrew mapping during command line */
 #endif
 
 static char_u	*getcmdline_int(int firstc, long count, int indent, int init_ccline);
@@ -3084,7 +3084,7 @@ realloc_cmdbuff(int len)
 }
 
 #if defined(FEAT_ARABIC) || defined(PROTO)
-static char_u	*arshape_buf = NULL;
+static __thread char_u	*arshape_buf = NULL;
 
 # if defined(EXITFREE) || defined(PROTO)
     void
@@ -3407,8 +3407,8 @@ put_on_cmdline(char_u *str, int len, int redraw)
     return retval;
 }
 
-static cmdline_info_T	prev_ccline;
-static int		prev_ccline_used = FALSE;
+static __thread cmdline_info_T	prev_ccline;
+static __thread int		prev_ccline_used = FALSE;
 
 /*
  * Save ccline, because obtaining the "=" register may execute "normal :cmd"

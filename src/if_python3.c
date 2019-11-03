@@ -432,19 +432,19 @@ static void(*py3_PyObject_GC_Del)(void *);
 static void(*py3_PyObject_GC_UnTrack)(void *);
 static int (*py3_PyType_IsSubtype)(PyTypeObject *, PyTypeObject *);
 
-static HINSTANCE hinstPy3 = 0; /* Instance of python.dll */
+static __thread HINSTANCE hinstPy3 = 0; /* Instance of python.dll */
 
 /* Imported exception objects */
-static PyObject *p3imp_PyExc_AttributeError;
-static PyObject *p3imp_PyExc_IndexError;
-static PyObject *p3imp_PyExc_KeyError;
-static PyObject *p3imp_PyExc_KeyboardInterrupt;
-static PyObject *p3imp_PyExc_TypeError;
-static PyObject *p3imp_PyExc_ValueError;
-static PyObject *p3imp_PyExc_SystemExit;
-static PyObject *p3imp_PyExc_RuntimeError;
-static PyObject *p3imp_PyExc_ImportError;
-static PyObject *p3imp_PyExc_OverflowError;
+static __thread PyObject *p3imp_PyExc_AttributeError;
+static __thread PyObject *p3imp_PyExc_IndexError;
+static __thread PyObject *p3imp_PyExc_KeyError;
+static __thread PyObject *p3imp_PyExc_KeyboardInterrupt;
+static __thread PyObject *p3imp_PyExc_TypeError;
+static __thread PyObject *p3imp_PyExc_ValueError;
+static __thread PyObject *p3imp_PyExc_SystemExit;
+static __thread PyObject *p3imp_PyExc_RuntimeError;
+static __thread PyObject *p3imp_PyExc_ImportError;
+static __thread PyObject *p3imp_PyExc_OverflowError;
 
 # define PyExc_AttributeError p3imp_PyExc_AttributeError
 # define PyExc_IndexError p3imp_PyExc_IndexError
@@ -461,7 +461,7 @@ static PyObject *p3imp_PyExc_OverflowError;
  * Table of name to function pointer of python.
  */
 # define PYTHON_PROC FARPROC
-static struct
+static __thread struct
 {
     char *name;
     PYTHON_PROC *ptr;
@@ -778,9 +778,9 @@ get_py3_exceptions(void)
 }
 #endif /* DYNAMIC_PYTHON3 */
 
-static int py3initialised = 0;
+static __thread int py3initialised = 0;
 #define PYINITIALISED py3initialised
-static int python_end_called = FALSE;
+static __thread int python_end_called = FALSE;
 
 #define DESTRUCTOR_FINISH(self) Py_TYPE(self)->tp_free((PyObject*)self)
 
@@ -826,7 +826,7 @@ static PyObject *ListGetattro(PyObject *, PyObject *);
 static int ListSetattro(PyObject *, PyObject *, PyObject *);
 static PyObject *FunctionGetattro(PyObject *, PyObject *);
 
-static struct PyModuleDef vimmodule;
+static __thread struct PyModuleDef vimmodule;
 
 #define PY_CAN_RECURSE
 
@@ -853,10 +853,15 @@ static PyObject *Py3Init_vim(void);
  * 1. Python interpreter main program.
  */
 
+#if TARGET_OS_IPHONE
+static __thread int recurse = 0;
+#endif
     void
 python3_end(void)
 {
+#if !TARGET_OS_IPHONE
     static int recurse = 0;
+#endif
 
     /* If a crash occurs while doing this, don't try again. */
     if (recurse != 0)
@@ -891,7 +896,7 @@ python3_loaded(void)
 }
 #endif
 
-static wchar_t *py_home_buf = NULL;
+static __thread wchar_t *py_home_buf = NULL;
 
     static int
 Python3_Init(void)
@@ -1066,10 +1071,15 @@ ex_py3(exarg_T *eap)
 /*
  * ":py3file"
  */
+#if TARGET_OS_IPHONE
+static __thread char buffer[BUFFER_SIZE];
+#endif
     void
 ex_py3file(exarg_T *eap)
 {
+#if !TARGET_OS_IPHONE
     static char buffer[BUFFER_SIZE];
+#endif
     const char *file;
     char *p;
     int i;
@@ -1201,7 +1211,7 @@ static Py_ssize_t RangeAsSubscript(PyObject *self, PyObject *idx, PyObject *val)
  * -----------------------------------------------
  */
 
-static PySequenceMethods BufferAsSeq = {
+static __thread PySequenceMethods BufferAsSeq = {
     (lenfunc)		BufferLength,	    /* sq_length,    len(x)   */
     (binaryfunc)	0,		    /* sq_concat,    x+y      */
     (ssizeargfunc)	0,		    /* sq_repeat,    x*n      */
@@ -1214,7 +1224,7 @@ static PySequenceMethods BufferAsSeq = {
     0,					    /* sq_inplace_repeat */
 };
 
-static PyMappingMethods BufferAsMapping = {
+static __thread PyMappingMethods BufferAsMapping = {
     /* mp_length	*/ (lenfunc)BufferLength,
     /* mp_subscript     */ (binaryfunc)BufferSubscript,
     /* mp_ass_subscript */ (objobjargproc)BufferAsSubscript,
@@ -1314,7 +1324,7 @@ BufferAsSubscript(PyObject *self, PyObject* idx, PyObject* val)
     }
 }
 
-static PySequenceMethods RangeAsSeq = {
+static __thread PySequenceMethods RangeAsSeq = {
     (lenfunc)		RangeLength,	 /* sq_length,	  len(x)   */
     (binaryfunc)	0,		 /* RangeConcat, sq_concat,  x+y   */
     (ssizeargfunc)	0,		 /* RangeRepeat, sq_repeat,  x*n   */
@@ -1327,7 +1337,7 @@ static PySequenceMethods RangeAsSeq = {
     0,					 /* sq_inplace_repeat */
 };
 
-static PyMappingMethods RangeAsMapping = {
+static __thread PyMappingMethods RangeAsMapping = {
     /* mp_length	*/ (lenfunc)RangeLength,
     /* mp_subscript     */ (binaryfunc)RangeSubscript,
     /* mp_ass_subscript */ (objobjargproc)RangeAsSubscript,
@@ -1477,7 +1487,7 @@ WindowSetattro(PyObject *self, PyObject *nameobj, PyObject *val)
 /* Tab page list object - Definitions
  */
 
-static PySequenceMethods TabListAsSeq = {
+static __thread PySequenceMethods TabListAsSeq = {
     (lenfunc)	     TabListLength,	    /* sq_length,    len(x)   */
     (binaryfunc)     0,			    /* sq_concat,    x+y      */
     (ssizeargfunc)   0,			    /* sq_repeat,    x*n      */
@@ -1493,7 +1503,7 @@ static PySequenceMethods TabListAsSeq = {
 /* Window list object - Definitions
  */
 
-static PySequenceMethods WinListAsSeq = {
+static __thread PySequenceMethods WinListAsSeq = {
     (lenfunc)	     WinListLength,	    /* sq_length,    len(x)   */
     (binaryfunc)     0,			    /* sq_concat,    x+y      */
     (ssizeargfunc)   0,			    /* sq_repeat,    x*n      */

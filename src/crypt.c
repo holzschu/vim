@@ -75,7 +75,7 @@ typedef struct {
 } cryptmethod_T;
 
 /* index is method_nr of cryptstate_T, CRYPT_M_* */
-static cryptmethod_T cryptmethods[CRYPT_M_COUNT] = {
+static __thread cryptmethod_T cryptmethods[CRYPT_M_COUNT] = {
     /* PK_Zip; very weak */
     {
 	"zip",
@@ -132,7 +132,7 @@ static cryptmethod_T cryptmethods[CRYPT_M_COUNT] = {
 };
 
 #define CRYPT_MAGIC_LEN	12	/* cannot change */
-static char	crypt_magic_head[] = "VimCrypt~";
+static __thread char	crypt_magic_head[] = "VimCrypt~";
 
 /*
  * Return int value for crypt method name.

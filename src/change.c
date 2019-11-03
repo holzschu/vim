@@ -152,7 +152,7 @@ changed_internal(void)
 }
 
 #ifdef FEAT_EVAL
-static long next_listener_id = 0;
+static __thread long next_listener_id = 0;
 
 /*
  * Check if the change at "lnum" is above or overlaps with an existing
@@ -336,6 +336,9 @@ may_invoke_listeners(buf_T *buf, linenr_T lnum, linenr_T lnume, int added)
  * Called when a sequence of changes is done: invoke listeners added with
  * listener_add().
  */
+#if TARGET_OS_IPHONE
+static __thread int	recursive = FALSE;
+#endif
     void
 invoke_listeners(buf_T *buf)
 {
@@ -347,7 +350,9 @@ invoke_listeners(buf_T *buf)
     linenr_T	end = 0;
     linenr_T	added = 0;
     int		save_updating_screen = updating_screen;
+#if !TARGET_OS_IPHONE
     static int	recursive = FALSE;
+#endif
 
     if (buf->b_recorded_changes == NULL  // nothing changed
 	    || buf->b_listener == NULL   // no listeners

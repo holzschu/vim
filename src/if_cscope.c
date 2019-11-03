@@ -91,6 +91,9 @@ static enum
  * Function given to ExpandGeneric() to obtain the cscope command
  * expansion.
  */
+#if TARGET_OS_IPHONE
+static __thread char connection[5];
+#endif
     char_u *
 get_cscope_name(expand_T *xp UNUSED, int idx)
 {
@@ -126,7 +129,9 @@ get_cscope_name(expand_T *xp UNUSED, int idx)
 	}
     case EXP_CSCOPE_KILL:
 	{
+#if !TARGET_OS_IPHONE
 	    static char	connection[5];
+#endif
 
 	    /* ":cscope kill" accepts connection numbers or partial names of
 	     * the pathname of the cscope database as argument.  Only complete
@@ -1663,6 +1668,12 @@ cs_make_vim_style_matches(
  *
  * Print: prints the tags
  */
+#if TARGET_OS_IPHONE
+static __thread char **mp = NULL;
+static __thread char **cp = NULL;
+static __thread int cnt = -1;
+static __thread int next = -1;
+#endif
     static char *
 cs_manage_matches(
     char **matches,
@@ -1670,10 +1681,12 @@ cs_manage_matches(
     int totmatches,
     mcmd_e cmd)
 {
+#if !TARGET_OS_IPHONE
     static char **mp = NULL;
     static char **cp = NULL;
     static int cnt = -1;
     static int next = -1;
+#endif
     char *p = NULL;
 
     switch (cmd)

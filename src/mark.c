@@ -24,7 +24,7 @@
  * There are marks 'A - 'Z (set by user) and '0 to '9 (set when writing
  * viminfo).
  */
-static xfmark_T namedfm[NMARKS + EXTRA_MARKS];		/* marks with file nr */
+static __thread xfmark_T namedfm[NMARKS + EXTRA_MARKS];		/* marks with file nr */
 
 static void fname2fnum(xfmark_T *fm);
 static void fmarks_check_one(xfmark_T *fm, char_u *name, buf_T *buf);
@@ -625,10 +625,15 @@ check_mark(pos_T *pos)
  *
  * Used mainly when trashing the entire buffer during ":e" type commands
  */
+#if TARGET_OS_IPHONE
+static __thread int i = -1;
+#endif
     void
 clrallmarks(buf_T *buf)
 {
+#if !TARGET_OS_IPHONE
     static int		i = -1;
+#endif
 
     if (i == -1)	/* first call ever: initialize */
 	for (i = 0; i < NMARKS + 1; i++)
@@ -736,6 +741,9 @@ ex_marks(exarg_T *eap)
     show_one_mark(-1, arg, NULL, NULL, FALSE);
 }
 
+#if TARGET_OS_IPHONE
+static __thread int did_title = FALSE;
+#endif
     static void
 show_one_mark(
     int		c,
@@ -744,7 +752,9 @@ show_one_mark(
     char_u	*name_arg,
     int		current)	/* in current file */
 {
+#if !TARGET_OS_IPHONE
     static int	did_title = FALSE;
+#endif
     int		mustfree = FALSE;
     char_u	*name = name_arg;
 
@@ -1039,6 +1049,9 @@ mark_adjust_nofold(
     mark_adjust_internal(line1, line2, amount, amount_after, FALSE);
 }
 
+#if TARGET_OS_IPHONE
+static __thread pos_T initpos = {1, 0, 0};
+#endif
     static void
 mark_adjust_internal(
     linenr_T line1,
@@ -1052,7 +1065,9 @@ mark_adjust_internal(
     linenr_T	*lp;
     win_T	*win;
     tabpage_T	*tab;
+#if !TARGET_OS_IPHONE
     static pos_T initpos = {1, 0, 0};
+#endif
 
     if (line2 < line1 && amount_after == 0L)	    /* nothing to do */
 	return;

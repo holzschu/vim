@@ -5501,6 +5501,8 @@ $as_echo "no" >&6; }
 	LUA_LIBS="-L${vi_cv_path_lua_pfx}/lib -llua"
       fi
     fi
+    # specific for iOS:
+    LUA_LIBS="-F.. -framework lua_ios"
     if test "$enable_luainterp" = "dynamic"; then
       lua_ok="yes"
     else
@@ -11858,7 +11860,9 @@ if ac_fn_c_try_link "$LINENO"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: OK" >&5
 $as_echo "OK" >&6; }
 else
-  as_fn_error $? "FAILED" "$LINENO" 5
+	# iOS: force yes
+$as_echo "OK" >&6; 
+#  as_fn_error $? "FAILED" "$LINENO" 5
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
@@ -11975,9 +11979,12 @@ if ac_fn_c_try_link "$LINENO"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 else
-  as_fn_error $? "NOT FOUND!
-      You need to install a terminal library; for example ncurses.
-      Or specify the name of the library with --with-tlib." "$LINENO" 5
+	# iOS: force yes on tgetent()
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; } 	
+#   as_fn_error $? "NOT FOUND!
+#      You need to install a terminal library; for example ncurses.
+#      Or specify the name of the library with --with-tlib." "$LINENO" 5
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
@@ -14778,8 +14785,10 @@ $as_echo "yes, we need CoreServices" >&6; }
       LIBS="$LIBS -framework CoreServices"
     else
       { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes, we need AppKit" >&5
-$as_echo "yes, we need AppKit" >&6; }
-      LIBS="$LIBS -framework AppKit"
+$as_echo "yes, we need AppKit/UIKit" >&6; }
+      # iOS, TODO: make this automatic 
+      # LIBS="$LIBS -framework AppKit"
+      LIBS="-F .. -framework ios_system $LIBS -framework UIKit -lobjc -framework Foundation -framework lua_ios -framework Python3_ios "
     fi
   else
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5

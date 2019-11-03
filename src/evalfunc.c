@@ -292,7 +292,7 @@ typedef struct
 #define FEARG_4    4	    // base is the fourth argument
 #define FEARG_LAST 9	    // base is the last argument
 
-static funcentry_T global_functions[] =
+static __thread funcentry_T global_functions[] =
 {
 #ifdef FEAT_FLOAT
     {"abs",		1, 1, FEARG_1,	  f_abs},
@@ -866,10 +866,16 @@ static funcentry_T global_functions[] =
  * Function given to ExpandGeneric() to obtain the list of internal
  * or user defined function names.
  */
+#if TARGET_OS_IPHONE
+#define intidx intidx_get_function_name
+static __thread int	intidx = -1;
+#endif
     char_u *
 get_function_name(expand_T *xp, int idx)
 {
+#if !TARGET_OS_IPHONE
     static int	intidx = -1;
+#endif
     char_u	*name;
 
     if (idx == 0)
@@ -891,15 +897,24 @@ get_function_name(expand_T *xp, int idx)
 
     return NULL;
 }
+#if TARGET_OS_IPHONE
+#undef intidx 
+#endif
 
 /*
  * Function given to ExpandGeneric() to obtain the list of internal or
  * user defined variable or function names.
  */
+#if TARGET_OS_IPHONE
+#define intidx intidx_get_expr_name
+static __thread int	intidx = -1;
+#endif
     char_u *
 get_expr_name(expand_T *xp, int idx)
 {
+#if !TARGET_OS_IPHONE
     static int	intidx = -1;
+#endif
     char_u	*name;
 
     if (idx == 0)
@@ -912,6 +927,9 @@ get_expr_name(expand_T *xp, int idx)
     }
     return get_user_var_name(xp, ++intidx);
 }
+#if TARGET_OS_IPHONE
+#undef intidx 
+#endif
 
 /*
  * Find internal function "name" in table "global_functions".
@@ -1923,7 +1941,7 @@ f_eventhandler(typval_T *argvars UNUSED, typval_T *rettv)
     rettv->vval.v_number = vgetc_busy;
 }
 
-static garray_T	redir_execute_ga;
+static __thread garray_T	redir_execute_ga;
 
 /*
  * Append "value[value_len]" to the execute() output.
@@ -3993,7 +4011,7 @@ f_index(typval_T *argvars, typval_T *rettv)
     }
 }
 
-static int inputsecret_flag = 0;
+static __thread int inputsecret_flag = 0;
 
 /*
  * "input()" function
@@ -4088,7 +4106,7 @@ f_inputlist(typval_T *argvars, typval_T *rettv)
     rettv->vval.v_number = selected;
 }
 
-static garray_T	    ga_userinput = {0, 0, sizeof(tasave_T), 4, NULL};
+static __thread garray_T	    ga_userinput = {0, 0, sizeof(tasave_T), 4, NULL};
 
 /*
  * "inputrestore()" function
@@ -4986,7 +5004,7 @@ f_prevnonblank(typval_T *argvars, typval_T *rettv)
  * - passing a NULL pointer doesn't work when va_list isn't a pointer
  * - locally in the function results in a "used before set" warning
  * - using va_start() to initialize it gives "function with fixed args" error */
-static va_list	ap;
+static __thread va_list	ap;
 
 /*
  * "printf()" function

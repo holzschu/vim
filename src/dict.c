@@ -18,7 +18,7 @@
 /* List head for garbage collection. Although there can be a reference loop
  * from partial to dict to partial, we don't need to keep track of the partial,
  * since it will get freed when the dict is unused and gets freed. */
-static dict_T		*first_dict = NULL;	/* list of all dicts */
+static __thread dict_T		*first_dict = NULL;	/* list of all dicts */
 
 /*
  * Allocate an empty header for a dictionary.

@@ -14,15 +14,15 @@
 #include "vim.h"
 
 #if defined(FEAT_EVAL) || defined(PROTO)
-static int debug_greedy = FALSE;	// batch mode debugging: don't save
+static __thread int debug_greedy = FALSE;	// batch mode debugging: don't save
 					// and restore typeahead.
 static void do_setdebugtracelevel(char_u *arg);
 static void do_checkbacktracelevel(void);
 static void do_showbacktrace(char_u *cmd);
 
-static char_u *debug_oldval = NULL;	// old and newval for debug expressions
-static char_u *debug_newval = NULL;
-static int     debug_expr   = 0;        // use debug_expr
+static __thread char_u *debug_oldval = NULL;	// old and newval for debug expressions
+static __thread char_u *debug_newval = NULL;
+static __thread int     debug_expr   = 0;        // use debug_expr
 
     int
 has_watchexpr(void)
@@ -34,6 +34,9 @@ has_watchexpr(void)
  * do_debug(): Debug mode.
  * Repeatedly get Ex commands, until told to continue normal execution.
  */
+#if TARGET_OS_IPHONE
+static __thread int	last_cmd = 0;
+#endif
     void
 do_debug(char_u *cmd)
 {
@@ -52,7 +55,9 @@ do_debug(char_u *cmd)
     char_u	*cmdline = NULL;
     char_u	*p;
     char	*tail = NULL;
+#if !TARGET_OS_IPHONE
     static int	last_cmd = 0;
+#endif
 #define CMD_CONT	1
 #define CMD_NEXT	2
 #define CMD_STEP	3
@@ -397,8 +402,8 @@ ex_debug(exarg_T *eap)
     debug_break_level = debug_break_level_save;
 }
 
-static char_u	*debug_breakpoint_name = NULL;
-static linenr_T	debug_breakpoint_lnum;
+static __thread char_u	*debug_breakpoint_name = NULL;
+static __thread linenr_T	debug_breakpoint_lnum;
 
 /*
  * When debugging or a breakpoint is set on a skipped command, no debug prompt
@@ -407,8 +412,8 @@ static linenr_T	debug_breakpoint_lnum;
  * a skipped command decides itself that a debug prompt should be displayed, it
  * can do so by calling dbg_check_skipped().
  */
-static int	debug_skipped;
-static char_u	*debug_skipped_name;
+static __thread int	debug_skipped;
+static __thread char_u	*debug_skipped_name;
 
 /*
  * Go to debug mode when a breakpoint was encountered or "ex_nesting_level" is
@@ -504,14 +509,14 @@ struct debuggy
     int		dbg_level;      // stored nested level for expr
 };
 
-static garray_T dbg_breakp = {0, 0, sizeof(struct debuggy), 4, NULL};
+static __thread garray_T dbg_breakp = {0, 0, sizeof(struct debuggy), 4, NULL};
 #define BREAKP(idx)		(((struct debuggy *)dbg_breakp.ga_data)[idx])
 #define DEBUGGY(gap, idx)	(((struct debuggy *)gap->ga_data)[idx])
-static int last_breakp = 0;	// nr of last defined breakpoint
+static __thread int last_breakp = 0;	// nr of last defined breakpoint
 
 #ifdef FEAT_PROFILE
 // Profiling uses file and func names similar to breakpoints.
-static garray_T prof_ga = {0, 0, sizeof(struct debuggy), 4, NULL};
+static __thread garray_T prof_ga = {0, 0, sizeof(struct debuggy), 4, NULL};
 #endif
 #define DBG_FUNC	1
 #define DBG_FILE	2

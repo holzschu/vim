@@ -13,8 +13,8 @@
 
 #include "vim.h"
 
-static int	quitmore = 0;
-static int	ex_pressedreturn = FALSE;
+static __thread int	quitmore = 0;
+static __thread int	ex_pressedreturn = FALSE;
 #ifndef FEAT_PRINTER
 # define ex_hardcopy	ex_ni
 #endif
@@ -379,7 +379,7 @@ static void	ex_folddo(exarg_T *eap);
 #include "ex_cmds.h"
 #include "ex_cmdidxs.h"
 
-static char_u dollar_command[2] = {'$', 0};
+static __thread char_u dollar_command[2] = {'$', 0};
 
 
 #ifdef FEAT_EVAL
@@ -607,6 +607,10 @@ do_cmdline_cmd(char_u *cmd)
  *
  * return FAIL if cmdline could not be executed, OK otherwise
  */
+#if TARGET_OS_IPHONE
+static __thread int recursive = 0;		/* recursive depth */
+static __thread int call_depth = 0;		/* recursiveness */
+#endif
     int
 do_cmdline(
     char_u	*cmdline,
@@ -617,7 +621,9 @@ do_cmdline(
     char_u	*next_cmdline;		/* next cmd to execute */
     char_u	*cmdline_copy = NULL;	/* copy of cmd line */
     int		used_getline = FALSE;	/* used "fgetline" to obtain command */
+#if !TARGET_OS_IPHONE
     static int	recursive = 0;		/* recursive depth */
+#endif
     int		msg_didout_before_start = 0;
     int		count = 0;		/* line number count */
     int		did_inc = FALSE;	/* incremented RedrawingDisabled */
@@ -644,7 +650,9 @@ do_cmdline(
 # define cmd_getline fgetline
 # define cmd_cookie cookie
 #endif
+#if !TARGET_OS_IPHONE
     static int	call_depth = 0;		/* recursiveness */
+#endif
 
 #ifdef FEAT_EVAL
     /* For every pair of do_cmdline()/do_one_cmd() calls, use an extra memory
@@ -3224,7 +3232,7 @@ find_command(exarg_T *eap, int *full UNUSED)
 }
 
 #if defined(FEAT_EVAL) || defined(PROTO)
-static struct cmdmod
+static __thread struct cmdmod
 {
     char	*name;
     int		minlen;
@@ -5482,12 +5490,12 @@ ex_shell(exarg_T *eap UNUSED)
 
 #if defined(HAVE_DROP_FILE) || defined(PROTO)
 
-static int drop_busy = FALSE;
-static int drop_filec;
-static char_u **drop_filev = NULL;
-static int drop_split;
-static void (*drop_callback)(void *);
-static void *drop_cookie;
+static __thread int drop_busy = FALSE;
+static __thread int drop_filec;
+static __thread char_u **drop_filev = NULL;
+static __thread int drop_split;
+static __thread void (*drop_callback)(void *);
+static __thread void *drop_cookie;
 
     static void
 handle_drop_internal(void)
@@ -6428,7 +6436,7 @@ ex_read(exarg_T *eap)
     }
 }
 
-static char_u	*prev_dir = NULL;
+static __thread char_u	*prev_dir = NULL;
 
 #if defined(EXITFREE) || defined(PROTO)
     void
@@ -8351,9 +8359,9 @@ ex_behave(exarg_T *eap)
 	semsg(_(e_invarg2), eap->arg);
 }
 
-static int filetype_detect = FALSE;
-static int filetype_plugin = FALSE;
-static int filetype_indent = FALSE;
+static __thread int filetype_detect = FALSE;
+static __thread int filetype_plugin = FALSE;
+static __thread int filetype_indent = FALSE;
 
 /*
  * ":filetype [plugin] [indent] {on,off,detect}"

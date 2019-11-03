@@ -75,13 +75,13 @@
  */
 
 #ifdef FEAT_SYN_HL
-static const long_u  cterm_color_8[8] =
+static __thread const long_u  cterm_color_8[8] =
 {
     (long_u)0x000000L, (long_u)0xff0000L, (long_u)0x00ff00L, (long_u)0xffff00L,
     (long_u)0x0000ffL, (long_u)0xff00ffL, (long_u)0x00ffffL, (long_u)0xffffffL
 };
 
-static const long_u  cterm_color_16[16] =
+static __thread const long_u  cterm_color_16[16] =
 {
     (long_u)0x000000L, (long_u)0x0000c0L, (long_u)0x008000L, (long_u)0x004080L,
     (long_u)0xc00000L, (long_u)0xc000c0L, (long_u)0x808000L, (long_u)0xc0c0c0L,
@@ -89,18 +89,18 @@ static const long_u  cterm_color_16[16] =
     (long_u)0xff8080L, (long_u)0xff40ffL, (long_u)0xffff00L, (long_u)0xffffffL
 };
 
-static int		current_syn_id;
+static __thread int		current_syn_id;
 #endif
 
 #define PRCOLOR_BLACK	(long_u)0
 #define PRCOLOR_WHITE	(long_u)0xFFFFFFL
 
-static int	curr_italic;
-static int	curr_bold;
-static int	curr_underline;
-static long_u	curr_bg;
-static long_u	curr_fg;
-static int	page_count;
+static __thread int	curr_italic;
+static __thread int	curr_bold;
+static __thread int	curr_underline;
+static __thread long_u	curr_bg;
+static __thread long_u	curr_fg;
+static __thread int	page_count;
 
 #if defined(FEAT_POSTSCRIPT)
 # define OPT_MBFONT_USECOURIER  0
@@ -111,7 +111,7 @@ static int	page_count;
 # define OPT_MBFONT_BOLDOBLIQUE 5
 # define OPT_MBFONT_NUM_OPTIONS 6
 
-static option_table_T mbfont_opts[OPT_MBFONT_NUM_OPTIONS] =
+static __thread option_table_T mbfont_opts[OPT_MBFONT_NUM_OPTIONS] =
 {
     {"c",	FALSE, 0, NULL, 0, FALSE},
     {"a",	FALSE, 0, NULL, 0, FALSE},
@@ -987,7 +987,7 @@ struct prt_mediasize_S
 
 #define PRT_MEDIASIZE_LEN  (sizeof(prt_mediasize) / sizeof(struct prt_mediasize_S))
 
-static struct prt_mediasize_S prt_mediasize[] =
+static __thread struct prt_mediasize_S prt_mediasize[] =
 {
     {"A4",		595.0,  842.0},
     {"letter",		612.0,  792.0},
@@ -1022,7 +1022,7 @@ struct prt_ps_font_S
 #define PRT_PS_FONT_BOLDOBLIQUE (3)
 
 /* Standard font metrics for Courier family */
-static struct prt_ps_font_S prt_ps_courier_font =
+static __thread struct prt_ps_font_S prt_ps_courier_font =
 {
     600,
     -100, 50,
@@ -1031,7 +1031,7 @@ static struct prt_ps_font_S prt_ps_courier_font =
 };
 
 /* Generic font metrics for multi-byte fonts */
-static struct prt_ps_font_S prt_ps_mb_font =
+static __thread struct prt_ps_font_S prt_ps_mb_font =
 {
     1000,
     -100, 50,
@@ -1040,7 +1040,7 @@ static struct prt_ps_font_S prt_ps_mb_font =
 };
 
 /* Pointer to current font set being used */
-static struct prt_ps_font_S* prt_ps_font;
+static __thread struct prt_ps_font_S* prt_ps_font;
 
 /* Structures to map user named encoding and mapping to PS equivalents for
  * building CID font name */
@@ -1068,6 +1068,7 @@ struct prt_ps_charset_S
 #define CS_KANJITALK6	(0x40)
 #define CS_KANJITALK7   (0x80)
 
+// iOS: Not __thread local
 /* Japanese encodings and charsets */
 static struct prt_ps_encoding_S j_encodings[] =
 {
@@ -1207,7 +1208,7 @@ struct prt_ps_mbfont_S
     char			*defcs;
 };
 
-static struct prt_ps_mbfont_S prt_ps_mbfonts[] =
+static __thread struct prt_ps_mbfont_S prt_ps_mbfonts[] =
 {
     {
 	NUM_ELEMENTS(j_encodings),
@@ -1273,7 +1274,7 @@ struct prt_ps_resource_S
 /* String versions of PS resource types - indexed by constants above so don't
  * re-order!
  */
-static char *prt_resource_types[] =
+static __thread char *prt_resource_types[] =
 {
     "procset",
     "encoding",
@@ -1315,7 +1316,7 @@ struct prt_dsc_line_S
 
 
 #define SIZEOF_CSTR(s)      (sizeof(s) - 1)
-static struct prt_dsc_comment_S prt_dsc_table[] =
+static __thread struct prt_dsc_comment_S prt_dsc_table[] =
 {
     {PRT_DSC_TITLE,       SIZEOF_CSTR(PRT_DSC_TITLE),     PRT_DSC_TITLE_TYPE},
     {PRT_DSC_VERSION,     SIZEOF_CSTR(PRT_DSC_VERSION),
@@ -1330,77 +1331,77 @@ static int prt_next_dsc(struct prt_dsc_line_S *p_dsc_line);
 /*
  * Variables for the output PostScript file.
  */
-static FILE *prt_ps_fd;
-static int prt_file_error;
-static char_u *prt_ps_file_name = NULL;
+static __thread FILE *prt_ps_fd;
+static __thread int prt_file_error;
+static __thread char_u *prt_ps_file_name = NULL;
 
 /*
  * Various offsets and dimensions in default PostScript user space (points).
  * Used for text positioning calculations
  */
-static float prt_page_width;
-static float prt_page_height;
-static float prt_left_margin;
-static float prt_right_margin;
-static float prt_top_margin;
-static float prt_bottom_margin;
-static float prt_line_height;
-static float prt_first_line_height;
-static float prt_char_width;
-static float prt_number_width;
-static float prt_bgcol_offset;
-static float prt_pos_x_moveto = 0.0;
-static float prt_pos_y_moveto = 0.0;
+static __thread float prt_page_width;
+static __thread float prt_page_height;
+static __thread float prt_left_margin;
+static __thread float prt_right_margin;
+static __thread float prt_top_margin;
+static __thread float prt_bottom_margin;
+static __thread float prt_line_height;
+static __thread float prt_first_line_height;
+static __thread float prt_char_width;
+static __thread float prt_number_width;
+static __thread float prt_bgcol_offset;
+static __thread float prt_pos_x_moveto = 0.0;
+static __thread float prt_pos_y_moveto = 0.0;
 
 /*
  * Various control variables used to decide when and how to change the
  * PostScript graphics state.
  */
-static int prt_need_moveto;
-static int prt_do_moveto;
-static int prt_need_font;
-static int prt_font;
-static int prt_need_underline;
-static int prt_underline;
-static int prt_do_underline;
-static int prt_need_fgcol;
-static int prt_fgcol;
-static int prt_need_bgcol;
-static int prt_do_bgcol;
-static int prt_bgcol;
-static int prt_new_bgcol;
-static int prt_attribute_change;
-static float prt_text_run;
-static int prt_page_num;
-static int prt_bufsiz;
+static __thread int prt_need_moveto;
+static __thread int prt_do_moveto;
+static __thread int prt_need_font;
+static __thread int prt_font;
+static __thread int prt_need_underline;
+static __thread int prt_underline;
+static __thread int prt_do_underline;
+static __thread int prt_need_fgcol;
+static __thread int prt_fgcol;
+static __thread int prt_need_bgcol;
+static __thread int prt_do_bgcol;
+static __thread int prt_bgcol;
+static __thread int prt_new_bgcol;
+static __thread int prt_attribute_change;
+static __thread float prt_text_run;
+static __thread int prt_page_num;
+static __thread int prt_bufsiz;
 
 /*
  * Variables controlling physical printing.
  */
-static int prt_media;
-static int prt_portrait;
-static int prt_num_copies;
-static int prt_duplex;
-static int prt_tumble;
-static int prt_collate;
+static __thread int prt_media;
+static __thread int prt_portrait;
+static __thread int prt_num_copies;
+static __thread int prt_duplex;
+static __thread int prt_tumble;
+static __thread int prt_collate;
 
 /*
  * Buffers used when generating PostScript output
  */
-static char_u prt_line_buffer[257];
-static garray_T prt_ps_buffer;
+static __thread char_u prt_line_buffer[257];
+static __thread garray_T prt_ps_buffer;
 
-static int prt_do_conv;
-static vimconv_T prt_conv;
+static __thread int prt_do_conv;
+static __thread vimconv_T prt_conv;
 
-static int prt_out_mbyte;
-static int prt_custom_cmap;
-static char prt_cmap[80];
-static int prt_use_courier;
-static int prt_in_ascii;
-static int prt_half_width;
-static char *prt_ascii_encoding;
-static char_u prt_hexchar[] = "0123456789abcdef";
+static __thread int prt_out_mbyte;
+static __thread int prt_custom_cmap;
+static __thread char prt_cmap[80];
+static __thread int prt_use_courier;
+static __thread int prt_in_ascii;
+static __thread int prt_half_width;
+static __thread char *prt_ascii_encoding;
+static __thread char_u prt_hexchar[] = "0123456789abcdef";
 
     static void
 prt_write_file_raw_len(char_u *buffer, int bytes)
@@ -1710,7 +1711,7 @@ struct prt_resfile_buffer_S
     int     line_end;
 };
 
-static struct prt_resfile_buffer_S prt_resfile;
+static __thread struct prt_resfile_buffer_S prt_resfile;
 
     static int
 prt_resfile_next_line(void)
@@ -3212,8 +3213,8 @@ mch_print_blank_page(void)
     return (mch_print_begin_page(NULL) ? (mch_print_end_page()) : FALSE);
 }
 
-static float prt_pos_x = 0;
-static float prt_pos_y = 0;
+static __thread float prt_pos_x = 0;
+static __thread float prt_pos_y = 0;
 
     void
 mch_print_start_line(int margin, int page_line)

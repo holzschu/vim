@@ -20,12 +20,12 @@
 # include <float.h>
 #endif
 
-static char *e_missbrac = N_("E111: Missing ']'");
-static char *e_dictrange = N_("E719: Cannot use [:] with a Dictionary");
+static __thread char *e_missbrac = N_("E111: Missing ']'");
+static __thread char *e_dictrange = N_("E719: Cannot use [:] with a Dictionary");
 #ifdef FEAT_FLOAT
-static char *e_float_as_string = N_("E806: using Float as a String");
+static __thread char *e_float_as_string = N_("E806: using Float as a String");
 #endif
-static char *e_nowhitespace = N_("E274: No white space allowed before parenthesis");
+static __thread char *e_nowhitespace = N_("E274: No white space allowed before parenthesis");
 
 #define NAMESPACE_CHAR	(char_u *)"abglstvw"
 
@@ -34,9 +34,26 @@ static char *e_nowhitespace = N_("E274: No white space allowed before parenthesi
  * have done to avoid endless recursiveness.  This unique ID is used for that.
  * The last bit is used for previous_funccal, ignored when comparing.
  */
-static int current_copyID = 0;
+static __thread int current_copyID = 0;
 
-static int echo_attr = 0;   /* attributes used for ":echo" */
+/*
+ * Array to hold the hashtab with variables local to each sourced script.
+ * Each item holds a variable (nameless) that points to the dict_T.
+ */
+typedef struct
+{
+    dictitem_T	sv_var;
+    dict_T	sv_dict;
+} scriptvar_T;
+
+static __thread garray_T	    ga_scripts = {0, 0, sizeof(scriptvar_T *), 4, NULL};
+#define SCRIPT_SV(id) (((scriptvar_T **)ga_scripts.ga_data)[(id) - 1])
+#define SCRIPT_VARS(id) (SCRIPT_SV(id)->sv_dict.dv_hashtab)
+
+static __thread int echo_attr = 0;   /* attributes used for ":echo" */
+
+/* The names of packages that once were loaded are remembered. */
+static __thread garray_T		ga_loaded = {0, 0, sizeof(char_u *), 4, NULL};
 
 /*
  * Info used by a ":for" loop.
@@ -145,6 +162,7 @@ eval_init(void)
 }
 
 #if defined(EXITFREE) || defined(PROTO)
+
     void
 eval_clear(void)
 {
@@ -3655,7 +3673,7 @@ partial_unref(partial_T *pt)
 	partial_free(pt);
 }
 
-static int tv_equal_recurse_limit;
+static __thread int tv_equal_recurse_limit;
 
     static int
 func_equal(
@@ -3714,6 +3732,9 @@ func_equal(
  * Compares the items just like "==" would compare them, but strings and
  * numbers are different.  Floats and numbers are also different.
  */
+#if TARGET_OS_IPHONE
+static __thread int  recursive_cnt = 0;	    /* catch recursive loops */
+#endif
     int
 tv_equal(
     typval_T *tv1,
@@ -3723,7 +3744,9 @@ tv_equal(
 {
     char_u	buf1[NUMBUFLEN], buf2[NUMBUFLEN];
     char_u	*s1, *s2;
+#if !TARGET_OS_IPHONE
     static int  recursive_cnt = 0;	    /* catch recursive loops */
+#endif
     int		r;
 
     /* Catch lists and dicts that have an endless loop by limiting
@@ -4332,6 +4355,9 @@ set_ref_in_item(
  * are replaced with "...".
  * May return NULL.
  */
+#if TARGET_OS_IPHONE
+static __thread int recurse = 0;
+#endif
     char_u *
 echo_string_core(
     typval_T	*tv,
@@ -4342,7 +4368,9 @@ echo_string_core(
     int		restore_copyID,
     int		composite_val)
 {
+#if !TARGET_OS_IPHONE
     static int	recurse = 0;
+#endif
     char_u	*r = NULL;
 
     if (recurse >= DICT_MAXNEST)
@@ -4694,6 +4722,9 @@ get_env_tv(char_u **arg, typval_T *rettv, int evaluate)
  * Translate a String variable into a position.
  * Returns NULL when there is an error.
  */
+#if TARGET_OS_IPHONE
+static __thread pos_T	pos;
+#endif
     pos_T *
 var2fpos(
     typval_T	*varp,
@@ -4701,7 +4732,9 @@ var2fpos(
     int		*fnum)		/* set to fnum for '0, 'A, etc. */
 {
     char_u		*name;
+#if !TARGET_OS_IPHONE
     static pos_T	pos;
+#endif
     pos_T		*pp;
 
     /* Argument can be [lnum, col, coladd]. */
@@ -5545,10 +5578,15 @@ tv_get_float(typval_T *varp)
  * tv_get_string_chk() and tv_get_string_buf_chk() are similar, but return
  * NULL on error.
  */
+#if TARGET_OS_IPHONE
+static __thread char_u   mybuf[NUMBUFLEN];
+#endif
     char_u *
 tv_get_string(typval_T *varp)
 {
+#if !TARGET_OS_IPHONE
     static char_u   mybuf[NUMBUFLEN];
+#endif
 
     return tv_get_string_buf(varp, mybuf);
 }
@@ -5564,10 +5602,15 @@ tv_get_string_buf(typval_T *varp, char_u *buf)
 /*
  * Careful: This uses a single, static buffer.  YOU CAN ONLY USE IT ONCE!
  */
+#if TARGET_OS_IPHONE
+static __thread char_u   mybuf[NUMBUFLEN];
+#endif
     char_u *
 tv_get_string_chk(typval_T *varp)
 {
+#if !TARGET_OS_IPHONE
     static char_u   mybuf[NUMBUFLEN];
+#endif
 
     return tv_get_string_buf_chk(varp, mybuf);
 }
@@ -5807,6 +5850,9 @@ copy_tv(typval_T *from, typval_T *to)
  * reference to an already copied list/dict can be used.
  * Returns FAIL or OK.
  */
+#if TARGET_OS_IPHONE
+static __thread int recurse_item_copy = 0;
+#endif
     int
 item_copy(
     typval_T	*from,
@@ -5814,15 +5860,25 @@ item_copy(
     int		deep,
     int		copyID)
 {
+#if !TARGET_OS_IPHONE
     static int	recurse = 0;
+#endif
     int		ret = OK;
 
+#if !TARGET_OS_IPHONE
     if (recurse >= DICT_MAXNEST)
+#else 
+    if (recurse_item_copy >= DICT_MAXNEST)
+#endif
     {
 	emsg(_("E698: variable nested too deep for making a copy"));
 	return FAIL;
     }
+#if !TARGET_OS_IPHONE
     ++recurse;
+#else
+    ++recurse_item_copy;
+#endif
 
     switch (from->v_type)
     {
@@ -5875,7 +5931,11 @@ item_copy(
 	    internal_error("item_copy(UNKNOWN)");
 	    ret = FAIL;
     }
+#if !TARGET_OS_IPHONE
     --recurse;
+#else
+    --recurse_item_copy;
+#endif
     return ret;
 }
 

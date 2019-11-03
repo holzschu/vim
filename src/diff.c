@@ -21,8 +21,8 @@
 
 #if defined(FEAT_DIFF) || defined(PROTO)
 
-static int diff_busy = FALSE;	    // using diff structs, don't change them
-static int diff_need_update = FALSE; // ex_diffupdate needs to be called
+static __thread int diff_busy = FALSE;	    // using diff structs, don't change them
+static __thread int diff_need_update = FALSE; // ex_diffupdate needs to be called
 
 /* flags obtained from the 'diffopt' option */
 #define DIFF_FILLER	0x001	// display filler lines
@@ -36,16 +36,16 @@ static int diff_need_update = FALSE; // ex_diffupdate needs to be called
 #define DIFF_HIDDEN_OFF	0x100	// diffoff when hidden
 #define DIFF_INTERNAL	0x200	// use internal xdiff algorithm
 #define ALL_WHITE_DIFF (DIFF_IWHITE | DIFF_IWHITEALL | DIFF_IWHITEEOL)
-static int	diff_flags = DIFF_INTERNAL | DIFF_FILLER;
+static __thread int	diff_flags = DIFF_INTERNAL | DIFF_FILLER;
 
-static long diff_algorithm = 0;
+static __thread long diff_algorithm = 0;
 
 #define LBUFLEN 50		/* length of line in diff file */
 
-static int diff_a_works = MAYBE; /* TRUE when "diff -a" works, FALSE when it
+static __thread int diff_a_works = MAYBE; /* TRUE when "diff -a" works, FALSE when it
 				    doesn't work, MAYBE when not checked yet */
 #if defined(MSWIN)
-static int diff_bin_works = MAYBE; /* TRUE when "diff --binary" works, FALSE
+static __thread int diff_bin_works = MAYBE; /* TRUE when "diff --binary" works, FALSE
 				      when it doesn't work, MAYBE when not
 				      checked yet */
 #endif
@@ -3233,17 +3233,27 @@ f_diff_filler(typval_T *argvars UNUSED, typval_T *rettv UNUSED)
 /*
  * "diff_hlID()" function
  */
+#if TARGET_OS_IPHONE
+static __thread linenr_T	prev_lnum = 0;
+static __thread varnumber_T	changedtick = 0;
+static __thread int		fnum = 0;
+static __thread int		change_start = 0;
+static __thread int		change_end = 0;
+static __thread hlf_T	hlID = (hlf_T)0;
+#endif
     void
 f_diff_hlID(typval_T *argvars UNUSED, typval_T *rettv UNUSED)
 {
 #ifdef FEAT_DIFF
     linenr_T		lnum = tv_get_lnum(argvars);
+#if !TARGET_OS_IPHONE
     static linenr_T	prev_lnum = 0;
     static varnumber_T	changedtick = 0;
     static int		fnum = 0;
     static int		change_start = 0;
     static int		change_end = 0;
     static hlf_T	hlID = (hlf_T)0;
+#endif
     int			filler_lines;
     int			col;
 

@@ -53,16 +53,16 @@ static void	clear_wininfo(buf_T *buf);
 #endif
 
 #if defined(FEAT_QUICKFIX)
-static char *msg_loclist = N_("[Location List]");
-static char *msg_qflist = N_("[Quickfix List]");
+static __thread char *msg_loclist = N_("[Location List]");
+static __thread char *msg_qflist = N_("[Quickfix List]");
 #endif
-static char *e_auabort = N_("E855: Autocommands caused command to abort");
+static __thread char *e_auabort = N_("E855: Autocommands caused command to abort");
 
 // Number of times free_buffer() was called.
-static int	buf_free_count = 0;
+static __thread int	buf_free_count = 0;
 
-static int	top_file_num = 1;	// highest file number
-static garray_T buf_reuse = GA_EMPTY;	// file numbers to recycle
+static __thread int	top_file_num = 1;	// highest file number
+static __thread garray_T buf_reuse = GA_EMPTY;	// file numbers to recycle
 
 /*
  * Return the highest possible buffer number.
@@ -3672,8 +3672,8 @@ col_print(
 }
 
 #if defined(FEAT_TITLE) || defined(PROTO)
-static char_u *lasttitle = NULL;
-static char_u *lasticon = NULL;
+static __thread char_u *lasttitle = NULL;
+static __thread char_u *lasticon = NULL;
 
 /*
  * Put the file name in the title bar and icon of the window.
@@ -3935,8 +3935,16 @@ resettitle(void)
     void
 free_titles(void)
 {
+#ifdef TARGET_OS_IPHONE
+    VIM_CLEAR(lasttitle);
+    VIM_CLEAR(lasticon);
+    top_file_num = 1;
+    buf_free_count = 0; 
+    buf_reuse = (garray_T) GA_EMPTY;	// file numbers to recycle
+#else
     vim_free(lasttitle);
     vim_free(lasticon);
+#endif
 }
 # endif
 

@@ -73,7 +73,7 @@ static char	*get_end_emsg(struct condstack *cstack);
  * error messages on parsing errors during the expression evaluation are given
  * (even if a try conditional is active).
  */
-static int cause_abort = FALSE;
+static __thread int cause_abort = FALSE;
 
 /*
  * Return TRUE when immediately aborting on error, or when an interrupt

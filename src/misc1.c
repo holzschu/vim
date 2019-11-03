@@ -22,7 +22,7 @@
 #define URL_BACKSLASH	2		/* path_is_url() has found ":\\" */
 
 // All user names (for ~user completion as done by shell).
-static garray_T	ga_users;
+static __thread garray_T	ga_users;
 
 /*
  * get_leader_len() returns the length in bytes of the prefix of the given
@@ -1240,7 +1240,12 @@ init_homedir(void)
     void
 free_homedir(void)
 {
+#if TARGET_OS_IPHONE
+    // We need to set the variable to NULL. It should work with other architectures too.
+    VIM_CLEAR(homedir); 
+#else
     vim_free(homedir);
+#endif
 }
 
     void
@@ -2123,7 +2128,10 @@ preserve_exit(void)
 
     /* Setting this will prevent free() calls.  That avoids calling free()
      * recursively when free() was invoked with a bad pointer. */
+#if !TARGET_OS_IPHONE
+    // iOS: we need these calls to free()
     really_exiting = TRUE;
+#endif
 
     out_str(IObuff);
     screen_start();		    /* don't know where cursor is now */
@@ -2161,7 +2169,7 @@ preserve_exit(void)
 # define BREAKCHECK_SKIP 1000
 #endif
 
-static int	breakcheck_count = 0;
+static __thread int	breakcheck_count = 0;
 
     void
 line_breakcheck(void)

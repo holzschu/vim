@@ -16,13 +16,13 @@
 /*
  * List used for abbreviations.
  */
-static mapblock_T	*first_abbr = NULL; // first entry in abbrlist
+static __thread mapblock_T	*first_abbr = NULL; // first entry in abbrlist
 
 /*
  * Each mapping is put in one of the 256 hash lists, to speed up finding it.
  */
-static mapblock_T	*(maphash[256]);
-static int		maphash_valid = FALSE;
+static __thread mapblock_T	*(maphash[256]);
+static __thread int		maphash_valid = FALSE;
 
 /*
  * Make a hash value for a mapping.
@@ -1052,9 +1052,9 @@ map_to_exists_mode(char_u *rhs, int mode, int abbr)
 /*
  * Used below when expanding mapping/abbreviation names.
  */
-static int	expand_mapmodes = 0;
-static int	expand_isabbrev = 0;
-static int	expand_buffer = FALSE;
+static __thread int	expand_mapmodes = 0;
+static __thread int	expand_isabbrev = 0;
+static __thread int	expand_buffer = FALSE;
 
 /*
  * Work out what to complete when doing command line completion of mapping
@@ -2152,7 +2152,7 @@ struct initmap
 
 # ifdef FEAT_GUI_MSWIN
 // Use the Windows (CUA) keybindings. (GUI)
-static struct initmap initmappings[] =
+static __thread struct initmap initmappings[] =
 {
 	// paste, copy and cut
 	{(char_u *)"<S-Insert> \"*P", NORMAL},
@@ -2168,7 +2168,7 @@ static struct initmap initmappings[] =
 
 # if defined(MSWIN) && (!defined(FEAT_GUI) || defined(VIMDLL))
 // Use the Windows (CUA) keybindings. (Console)
-static struct initmap cinitmappings[] =
+static __thread struct initmap cinitmappings[] =
 {
 	{(char_u *)"\316w <C-Home>", NORMAL+VIS_SEL},
 	{(char_u *)"\316w <C-Home>", INSERT+CMDLINE},
@@ -2196,7 +2196,7 @@ static struct initmap cinitmappings[] =
 # endif
 
 # if defined(MACOS_X)
-static struct initmap initmappings[] =
+static __thread struct initmap initmappings[] =
 {
 	// Use the Standard MacOS binding.
 	// paste, copy and cut
@@ -2282,7 +2282,7 @@ typedef struct
     int     to;
 } langmap_entry_T;
 
-static garray_T langmap_mapga;
+static __thread garray_T langmap_mapga;
 
 /*
  * Search for an entry in "langmap_mapga" for "from".  If found set the "to"

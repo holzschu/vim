@@ -223,10 +223,16 @@ find_start_rawstring(int ind_maxcomment)	// XXX
  * Return NULL when not inside a comment or raw string.
  * "CORS" -> Comment Or Raw String
  */
+#if TARGET_OS_IPHONE
+static __thread pos_T comment_pos_copy;
+#endif
+
     static pos_T *
 ind_find_start_CORS(linenr_T *is_raw)	    // XXX
 {
+#if !TARGET_OS_IPHONE
     static pos_T comment_pos_copy;
+#endif
     pos_T	*comment_pos;
     pos_T	*rs_pos;
 
@@ -345,10 +351,15 @@ cin_islinecomment(char_u *p)
 /*
  * Check previous lines for a "//" line comment, skipping over blank lines.
  */
+#if TARGET_OS_IPHONE
+static __thread pos_T pos;
+#endif
     static pos_T *
 find_line_comment(void) // XXX
 {
+#if !TARGET_OS_IPHONE
     static pos_T pos;
+#endif
     char_u	 *line;
     char_u	 *p;
 
@@ -1051,12 +1062,17 @@ cin_skip2pos(pos_T *trypos)
     return (int)(p - line);
 }
 
+#if TARGET_OS_IPHONE
+static __thread pos_T pos_copy;
+#endif
     static pos_T *
 find_match_char(int c, int ind_maxparen)	// XXX
 {
     pos_T	cursor_save;
     pos_T	*trypos;
+#if !TARGET_OS_IPHONE
     static pos_T pos_copy;
+#endif
     int		ind_maxp_wk;
 
     cursor_save = curwin->w_cursor;
@@ -1631,20 +1647,29 @@ get_baseclass_amount(int col)
 /* foo()    */
 /* {	    */
 /* }	    */
-
+#if TARGET_OS_IPHONE
+static __thread pos_T	pos_copy_brace;
+#endif
     static pos_T *
 find_start_brace(void)	    // XXX
 {
     pos_T	cursor_save;
     pos_T	*trypos;
     pos_T	*pos;
+#if !TARGET_OS_IPHONE
     static pos_T	pos_copy;
+#endif
 
     cursor_save = curwin->w_cursor;
     while ((trypos = findmatchlimit(NULL, '{', FM_BLOCKSTOP, 0)) != NULL)
     {
+#if !TARGET_OS_IPHONE
 	pos_copy = *trypos;	// copy pos_T, next findmatch will change it
 	trypos = &pos_copy;
+#else
+	pos_copy_brace = *trypos;	// copy pos_T, next findmatch will change it
+	trypos = &pos_copy_brace;
+#endif
 	curwin->w_cursor = *trypos;
 	pos = NULL;
 	// ignore the { if it's in a // or / *  * / comment

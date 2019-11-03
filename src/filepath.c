@@ -1831,10 +1831,15 @@ fail:
 /*
  * "tempname()" function
  */
+#if TARGET_OS_IPHONE
+static __thread int x = 'A';
+#endif
     void
 f_tempname(typval_T *argvars UNUSED, typval_T *rettv)
 {
+#if !TARGET_OS_IPHONE
     static int	x = 'A';
+#endif
 
     rettv->v_type = VAR_STRING;
     rettv->vval.v_string = vim_tempname(x, FALSE);
@@ -1969,6 +1974,9 @@ f_writefile(typval_T *argvars, typval_T *rettv)
  * Generic browse function.  Calls gui_mch_browse() when possible.
  * Later this may pop-up a non-GUI file selector (external command?).
  */
+#if TARGET_OS_IPHONE
+static __thread char_u	*last_dir = NULL;    // last used directory
+#endif
     char_u *
 do_browse(
     int		flags,		// BROWSE_SAVE and BROWSE_DIR
@@ -1981,7 +1989,9 @@ do_browse(
     buf_T	*buf)		// buffer to read/write for
 {
     char_u		*fname;
+#if !TARGET_OS_IPHONE
     static char_u	*last_dir = NULL;    // last used directory
+#endif
     char_u		*tofree = NULL;
     int			save_browse = cmdmod.browse;
 
@@ -2993,6 +3003,9 @@ pstrcmp(const void *a, const void *b)
  * Return the number of matches found.
  * NOTE: much of this is identical to unix_expandpath(), keep in sync!
  */
+#if TARGET_OS_IPHONE
+static __thread int stardepth = 0;	    // depth for "**" expansion
+#endif
     static int
 dos_expandpath(
     garray_T	*gap,
@@ -3011,7 +3024,9 @@ dos_expandpath(
     int		matches;
     int		len;
     int		starstar = FALSE;
+#if !TARGET_OS_IPHONE
     static int	stardepth = 0;	    // depth for "**" expansion
+#endif
     HANDLE		hFind = INVALID_HANDLE_VALUE;
     WIN32_FIND_DATAW    wfb;
     WCHAR		*wn = NULL;	// UCS-2 name, NULL when not used.
@@ -3240,6 +3255,9 @@ pstrcmp(const void *a, const void *b)
  * Return the number of matches found.
  * NOTE: much of this is identical to dos_expandpath(), keep in sync!
  */
+#if TARGET_OS_IPHONE
+static __thread int stardepth = 0;	    // depth for "**" expansion
+#endif
     int
 unix_expandpath(
     garray_T	*gap,
@@ -3258,7 +3276,9 @@ unix_expandpath(
     int		matches;
     int		len;
     int		starstar = FALSE;
+#if !TARGET_OS_IPHONE
     static int	stardepth = 0;	    // depth for "**" expansion
+#endif
 
     DIR		*dirp;
     struct dirent *dp;
@@ -3519,6 +3539,9 @@ has_special_wildchar(char_u *p)
  * Return OK when some files found.  "num_file" is set to the number of
  * matches, "file" to the array of matches.  Call FreeWild() later.
  */
+#if TARGET_OS_IPHONE
+static __thread int recursive = FALSE;
+#endif
     int
 gen_expand_wildcards(
     int		num_pat,	// number of input patterns
@@ -3530,7 +3553,9 @@ gen_expand_wildcards(
     int			i;
     garray_T		ga;
     char_u		*p;
+#if !TARGET_OS_IPHONE
     static int		recursive = FALSE;
+#endif
     int			add_pat;
     int			retval = OK;
 #if defined(FEAT_SEARCHPATH)

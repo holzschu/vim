@@ -13,7 +13,7 @@
  * Common code for if_python.c and if_python3.c.
  */
 
-static char_u e_py_systemexit[]	= "E880: Can't handle SystemExit of %s exception in vim";
+static __thread char_u e_py_systemexit[]	= "E880: Can't handle SystemExit of %s exception in vim";
 
 #if PY_VERSION_HEX < 0x02050000
 typedef int Py_ssize_t;  /* Python 2.4 and earlier don't have this type. */
@@ -22,7 +22,7 @@ typedef int Py_ssize_t;  /* Python 2.4 and earlier don't have this type. */
 #define ENC_OPT ((char *)p_enc)
 #define DOPY_FUNC "_vim_pydo"
 
-static const char *vim_special_path = "_vim_path_";
+static __thread const char *vim_special_path = "_vim_path_";
 
 #define PyErr_SET_STRING(exc, str) PyErr_SetString(exc, _(str))
 #define PyErr_SetVim(str) PyErr_SetString(VimError, str)
@@ -68,25 +68,25 @@ static PyObject *WindowNew(win_T *, tabpage_T *);
 static PyObject *BufferNew (buf_T *);
 static PyObject *LineToString(const char *);
 
-static PyInt RangeStart;
-static PyInt RangeEnd;
+static __thread PyInt RangeStart;
+static __thread PyInt RangeEnd;
 
-static PyObject *globals;
+static __thread PyObject *globals;
 
-static PyObject *py_chdir;
-static PyObject *py_fchdir;
-static PyObject *py_getcwd;
-static PyObject *vim_module;
-static PyObject *vim_special_path_object;
+static __thread PyObject *py_chdir;
+static __thread PyObject *py_fchdir;
+static __thread PyObject *py_getcwd;
+static __thread PyObject *vim_module;
+static __thread PyObject *vim_special_path_object;
 
 #if PY_VERSION_HEX >= 0x030700f0
-static PyObject *py_find_spec;
+static __thread PyObject *py_find_spec;
 #else
-static PyObject *py_load_module;
+static __thread PyObject *py_load_module;
 #endif
-static PyObject *py_find_module;
+static __thread PyObject *py_find_module;
 
-static PyObject *VimError;
+static __thread PyObject *VimError;
 
 /*
  * obtain a lock on the Vim data structures
@@ -318,7 +318,7 @@ typedef struct
     long error;
 } OutputObject;
 
-static char *OutputAttrs[] = {
+static __thread char *OutputAttrs[] = {
     "softspace",
     NULL
 };
@@ -351,8 +351,8 @@ OutputSetattr(OutputObject *self, char *name, PyObject *valObject)
 }
 
 /* Buffer IO, we write one whole line at a time. */
-static garray_T io_ga = {0, 0, 1, 80, NULL};
-static writefn old_fn = NULL;
+static __thread garray_T io_ga = {0, 0, 1, 80, NULL};
+static __thread writefn old_fn = NULL;
 
     static void
 PythonIO_Flush(void)
@@ -495,7 +495,7 @@ AlwaysTrue(PyObject *self UNUSED)
 
 /***************/
 
-static struct PyMethodDef OutputMethods[] = {
+static __thread struct PyMethodDef OutputMethods[] = {
     /* name,	    function,				calling,	doc */
     {"write",	    (PyCFunction)OutputWrite,		METH_O,		""},
     {"writelines",  (PyCFunction)OutputWritelines,	METH_O,		""},
@@ -510,14 +510,14 @@ static struct PyMethodDef OutputMethods[] = {
     { NULL,	    NULL,				0,		NULL}
 };
 
-static OutputObject Output =
+static __thread OutputObject Output =
 {
     PyObject_HEAD_INIT(&OutputType)
     0,
     0
 };
 
-static OutputObject Error =
+static __thread OutputObject Error =
 {
     PyObject_HEAD_INIT(&OutputType)
     0,
@@ -542,7 +542,7 @@ PythonIO_Init_io(void)
 }
 
 #if PY_VERSION_HEX < 0x030700f0
-static PyObject *call_load_module(char *name, int len, PyObject *find_module_result);
+static __thread PyObject *call_load_module(char *name, int len, PyObject *find_module_result);
 
 typedef struct
 {
@@ -550,7 +550,7 @@ typedef struct
     char	*fullname;
     PyObject	*result;
 } LoaderObject;
-static PyTypeObject LoaderType;
+static __thread PyTypeObject LoaderType;
 
     static void
 LoaderDestructor(LoaderObject *self)
@@ -595,7 +595,7 @@ LoaderLoadModule(LoaderObject *self, PyObject *args UNUSED)
     return module;
 }
 
-static struct PyMethodDef LoaderMethods[] = {
+static __thread struct PyMethodDef LoaderMethods[] = {
     /* name,	    function,				calling,	doc */
     {"load_module", (PyCFunction)LoaderLoadModule,	METH_VARARGS,	""},
     { NULL,	    NULL,				0,		NULL}
@@ -1402,7 +1402,7 @@ VimPathHook(PyObject *self UNUSED, PyObject *args)
  * Vim module - Definitions
  */
 
-static struct PyMethodDef VimMethods[] = {
+static __thread struct PyMethodDef VimMethods[] = {
     /* name,	    function,			calling,			documentation */
     {"command",	    VimCommand,			METH_O,				"Execute a Vim ex-mode command" },
     {"eval",	    VimEval,			METH_VARARGS,			"Evaluate an expression using Vim evaluator" },
@@ -1424,7 +1424,7 @@ static struct PyMethodDef VimMethods[] = {
  * Generic iterator object
  */
 
-static PyTypeObject IterType;
+static __thread PyTypeObject IterType;
 
 typedef PyObject *(*nextfun)(void **);
 typedef void (*destructorfun)(void *);
@@ -1511,9 +1511,9 @@ typedef struct pylinkedlist_S {
     PyObject			*pll_obj;
 } pylinkedlist_T;
 
-static pylinkedlist_T *lastdict = NULL;
-static pylinkedlist_T *lastlist = NULL;
-static pylinkedlist_T *lastfunc = NULL;
+static __thread pylinkedlist_T *lastdict = NULL;
+static __thread pylinkedlist_T *lastlist = NULL;
+static __thread pylinkedlist_T *lastfunc = NULL;
 
     static void
 pyll_remove(pylinkedlist_T *ref, pylinkedlist_T **last)
@@ -1631,7 +1631,7 @@ DictionaryDestructor(DictionaryObject *self)
     DESTRUCTOR_FINISH(self);
 }
 
-static char *DictionaryAttrs[] = {
+static __thread char *DictionaryAttrs[] = {
     "locked", "scope",
     NULL
 };
@@ -2204,7 +2204,7 @@ DictionaryHasKey(DictionaryObject *self, PyObject *keyObject)
     return _DictionaryItem(self, keyObject, DICT_FLAG_RETURN_BOOL);
 }
 
-static PySequenceMethods DictionaryAsSeq = {
+static __thread PySequenceMethods DictionaryAsSeq = {
     0,					/* sq_length */
     0,					/* sq_concat */
     0,					/* sq_repeat */
@@ -2217,13 +2217,13 @@ static PySequenceMethods DictionaryAsSeq = {
     0,					/* sq_inplace_repeat */
 };
 
-static PyMappingMethods DictionaryAsMapping = {
+static __thread PyMappingMethods DictionaryAsMapping = {
     (lenfunc)       DictionaryLength,
     (binaryfunc)    DictionaryItem,
     (objobjargproc) DictionaryAssItem,
 };
 
-static struct PyMethodDef DictionaryMethods[] = {
+static __thread struct PyMethodDef DictionaryMethods[] = {
     {"keys",	(PyCFunction)DictionaryListKeys,	METH_NOARGS,	""},
     {"values",	(PyCFunction)DictionaryListValues,	METH_NOARGS,	""},
     {"items",	(PyCFunction)DictionaryListItems,	METH_NOARGS,	""},
@@ -2833,7 +2833,7 @@ ListIter(ListObject *self)
 	    NULL, NULL);
 }
 
-static char *ListAttrs[] = {
+static __thread char *ListAttrs[] = {
     "locked",
     NULL
 };
@@ -2880,7 +2880,7 @@ ListSetattr(ListObject *self, char *name, PyObject *valObject)
     }
 }
 
-static PySequenceMethods ListAsSeq = {
+static __thread PySequenceMethods ListAsSeq = {
     (lenfunc)		ListLength,	 /* sq_length,	  len(x)   */
     (binaryfunc)	0,		 /* RangeConcat, sq_concat,  x+y   */
     0,					 /* RangeRepeat, sq_repeat,  x*n   */
@@ -2893,13 +2893,13 @@ static PySequenceMethods ListAsSeq = {
     0,					 /* sq_inplace_repeat */
 };
 
-static PyMappingMethods ListAsMapping = {
+static __thread PyMappingMethods ListAsMapping = {
     /* mp_length	*/ (lenfunc) ListLength,
     /* mp_subscript     */ (binaryfunc) ListItem,
     /* mp_ass_subscript */ (objobjargproc) ListAssItem,
 };
 
-static struct PyMethodDef ListMethods[] = {
+static __thread struct PyMethodDef ListMethods[] = {
     {"extend",	(PyCFunction)ListConcatInPlace,	METH_O,		""},
     {"__dir__",	(PyCFunction)ListDir,		METH_NOARGS,	""},
     { NULL,	NULL,				0,		NULL}
@@ -3087,7 +3087,7 @@ FunctionDestructor(FunctionObject *self)
     DESTRUCTOR_FINISH(self);
 }
 
-static char *FunctionAttrs[] = {
+static __thread char *FunctionAttrs[] = {
     "softspace", "args", "self", "auto_rebind",
     NULL
 };
@@ -3279,7 +3279,7 @@ FunctionRepr(FunctionObject *self)
     return ret;
 }
 
-static struct PyMethodDef FunctionMethods[] = {
+static __thread struct PyMethodDef FunctionMethods[] = {
     {"__dir__",	(PyCFunction)FunctionDir,   METH_NOARGS,		""},
     { NULL,	NULL,			0,				NULL}
 };
@@ -3641,7 +3641,7 @@ OptionsAssItem(OptionsObject *self, PyObject *keyObject, PyObject *valObject)
     return ret;
 }
 
-static PySequenceMethods OptionsAsSeq = {
+static __thread PySequenceMethods OptionsAsSeq = {
     0,					/* sq_length */
     0,					/* sq_concat */
     0,					/* sq_repeat */
@@ -3654,7 +3654,7 @@ static PySequenceMethods OptionsAsSeq = {
     0,					/* sq_inplace_repeat */
 };
 
-static PyMappingMethods OptionsAsMapping = {
+static __thread PyMappingMethods OptionsAsMapping = {
     (lenfunc)       NULL,
     (binaryfunc)    OptionsItem,
     (objobjargproc) OptionsAssItem,
@@ -3716,7 +3716,7 @@ TabPageDestructor(TabPageObject *self)
     DESTRUCTOR_FINISH(self);
 }
 
-static char *TabPageAttrs[] = {
+static __thread char *TabPageAttrs[] = {
     "windows", "number", "vars", "window", "valid",
     NULL
 };
@@ -3780,7 +3780,7 @@ TabPageRepr(TabPageObject *self)
     }
 }
 
-static struct PyMethodDef TabPageMethods[] = {
+static __thread struct PyMethodDef TabPageMethods[] = {
     /* name,	    function,			calling,	documentation */
     {"__dir__",	    (PyCFunction)TabPageDir,	METH_NOARGS,	""},
     { NULL,	    NULL,			0,		NULL}
@@ -3791,7 +3791,7 @@ static struct PyMethodDef TabPageMethods[] = {
  */
 
 static PyTypeObject TabListType;
-static PySequenceMethods TabListAsSeq;
+static __thread PySequenceMethods TabListAsSeq;
 
 typedef struct
 {
@@ -3933,7 +3933,7 @@ get_firstwin(TabPageObject *tabObject)
 }
 
 // Use the same order as in the WindowAttr() function.
-static char *WindowAttrs[] = {
+static __thread char *WindowAttrs[] = {
     "buffer",
     "cursor",
     "height",
@@ -4116,7 +4116,7 @@ WindowRepr(WindowObject *self)
     }
 }
 
-static struct PyMethodDef WindowMethods[] = {
+static __thread struct PyMethodDef WindowMethods[] = {
     /* name,	    function,			calling,	documentation */
     {"__dir__",	    (PyCFunction)WindowDir,	METH_NOARGS,	""},
     { NULL,	    NULL,			0,		NULL}
@@ -4127,7 +4127,7 @@ static struct PyMethodDef WindowMethods[] = {
  */
 
 static PyTypeObject WinListType;
-static PySequenceMethods WinListAsSeq;
+static __thread PySequenceMethods WinListAsSeq;
 
 typedef struct
 {
@@ -5000,8 +5000,8 @@ RBAppend(
  */
 
 static PyTypeObject RangeType;
-static PySequenceMethods RangeAsSeq;
-static PyMappingMethods RangeAsMapping;
+static __thread PySequenceMethods RangeAsSeq;
+static __thread PyMappingMethods RangeAsMapping;
 
 typedef struct
 {
@@ -5079,7 +5079,7 @@ RangeSlice(RangeObject *self, PyInt lo, PyInt hi)
     return RBSlice(self->buf, lo, hi, self->start, self->end);
 }
 
-static char *RangeAttrs[] = {
+static __thread char *RangeAttrs[] = {
     "start", "end",
     NULL
 };
@@ -5114,7 +5114,7 @@ RangeRepr(RangeObject *self)
     }
 }
 
-static struct PyMethodDef RangeMethods[] = {
+static __thread struct PyMethodDef RangeMethods[] = {
     /* name,	function,			calling,	documentation */
     {"append",	(PyCFunction)RangeAppend,	METH_VARARGS,	"Append data to the Vim range" },
     {"__dir__",	(PyCFunction)RangeDir,		METH_NOARGS,	""},
@@ -5122,8 +5122,8 @@ static struct PyMethodDef RangeMethods[] = {
 };
 
 static PyTypeObject BufferType;
-static PySequenceMethods BufferAsSeq;
-static PyMappingMethods BufferAsMapping;
+static __thread PySequenceMethods BufferAsSeq;
+static __thread PyMappingMethods BufferAsMapping;
 
     static PyObject *
 BufferNew(buf_T *buf)
@@ -5195,7 +5195,7 @@ BufferSlice(BufferObject *self, PyInt lo, PyInt hi)
     return RBSlice(self, lo, hi, 1, -1);
 }
 
-static char *BufferAttrs[] = {
+static __thread char *BufferAttrs[] = {
     "name", "number", "vars", "options", "valid",
     NULL
 };
@@ -5364,7 +5364,7 @@ BufferRepr(BufferObject *self)
     }
 }
 
-static struct PyMethodDef BufferMethods[] = {
+static __thread struct PyMethodDef BufferMethods[] = {
     /* name,	    function,			calling,	documentation */
     {"append",	    (PyCFunction)BufferAppend,	METH_VARARGS,	"Append data to Vim buffer" },
     {"mark",	    (PyCFunction)BufferMark,	METH_O,		"Return (row,col) representing position of named mark" },
@@ -5483,7 +5483,7 @@ BufMapIter(PyObject *self UNUSED)
 	    (traversefun) BufMapIterTraverse, (clearfun) BufMapIterClear);
 }
 
-static PyMappingMethods BufMapAsMapping = {
+static __thread PyMappingMethods BufMapAsMapping = {
     (lenfunc)       BufMapLength,
     (binaryfunc)    BufMapItem,
     (objobjargproc) 0,
@@ -5492,7 +5492,7 @@ static PyMappingMethods BufMapAsMapping = {
 /* Current items object
  */
 
-static char *CurrentAttrs[] = {
+static __thread char *CurrentAttrs[] = {
     "buffer", "window", "line", "range", "tabpage",
     NULL
 };
@@ -5633,7 +5633,7 @@ CurrentSetattr(PyObject *self UNUSED, char *name, PyObject *valObject)
     }
 }
 
-static struct PyMethodDef CurrentMethods[] = {
+static __thread struct PyMethodDef CurrentMethods[] = {
     /* name,	    function,			calling,	documentation */
     {"__dir__",	    (PyCFunction)CurrentDir,	METH_NOARGS,	""},
     { NULL,	    NULL,			0,		NULL}
@@ -5675,8 +5675,8 @@ run_cmd(const char *cmd, void *arg UNUSED
 	PyErr_PrintEx(1);
 }
 
-static const char	*code_hdr = "def " DOPY_FUNC "(line, linenr):\n ";
-static int		code_hdr_len = 30;
+static __thread const char	*code_hdr = "def " DOPY_FUNC "(line, linenr):\n ";
+static __thread int		code_hdr_len = 30;
 
     static void
 run_do(const char *cmd, void *arg UNUSED
@@ -6775,7 +6775,7 @@ static TabListObject TheTabPageList =
     PyObject_HEAD_INIT(&TabListType)
 };
 
-static struct numeric_constant {
+static __thread struct numeric_constant {
     char	*name;
     int		val;
 } numeric_constants[] = {
@@ -6785,7 +6785,7 @@ static struct numeric_constant {
     {"VAR_DEF_SCOPE",	VAR_DEF_SCOPE},
 };
 
-static struct object_constant {
+static __thread struct object_constant {
     char	*name;
     PyObject	*valObject;
 } object_constants[] = {

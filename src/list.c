@@ -15,10 +15,10 @@
 
 #if defined(FEAT_EVAL) || defined(PROTO)
 
-static char *e_listblobarg = N_("E899: Argument of %s must be a List or Blob");
+static __thread char *e_listblobarg = N_("E899: Argument of %s must be a List or Blob");
 
 /* List heads for garbage collection. */
-static list_T		*first_list = NULL;	/* list of all lists */
+static __thread list_T		*first_list = NULL;	/* list of all lists */
 
 /*
  * Add a watcher to a list.
@@ -1189,7 +1189,7 @@ typedef struct
     int		item_compare_func_err;
     int		item_compare_keep_zero;
 } sortinfo_T;
-static sortinfo_T	*sortinfo = NULL;
+static __thread sortinfo_T	*sortinfo = NULL;
 #define ITEM_COMPARE_FAIL 999
 
 /*

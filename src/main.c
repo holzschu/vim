@@ -7,7 +7,7 @@
  * See README.txt for an overview of the Vim source code.
  */
 
-#define EXTERN
+#define EXTERN __thread 
 #include "vim.h"
 
 #ifdef __CYGWIN__
@@ -66,7 +66,7 @@ static char_u *serverMakeName(char_u *arg, char *cmd);
 /*
  * Different types of error messages.
  */
-static char *(main_errors[]) =
+static __thread char *(main_errors[]) =
 {
     N_("Unknown option argument"),
 #define ME_UNKNOWN_OPTION	0
@@ -85,13 +85,13 @@ static char *(main_errors[]) =
 #ifndef PROTO		/* don't want a prototype for main() */
 
 /* Various parameters passed between main() and other functions. */
-static mparm_T	params;
+static __thread mparm_T	params;
 
 #ifndef NO_VIM_MAIN	/* skip this for unittests */
 
-static char_u *start_dir = NULL;	/* current working dir on startup */
+static __thread char_u *start_dir = NULL;	/* current working dir on startup */
 
-static int has_dash_c_arg = FALSE;
+static __thread int has_dash_c_arg = FALSE;
 
 # ifdef VIMDLL
 __declspec(dllexport)
@@ -106,6 +106,14 @@ main
 {
 #if defined(STARTUPTIME) || defined(CLEAN_RUNTIMEPATH)
     int		i;
+#endif
+#if TARGET_OS_IPHONE
+    // TODO: re-init variables. esp. "curwin"
+    // we are reading input from thread_stdin
+#include "globals_init.h" // reset all variables from globals.h
+    read_cmd_fd = fileno(thread_stdin);
+    start_dir = NULL; 
+    has_dash_c_arg = FALSE;
 #endif
 
     /*
@@ -1032,8 +1040,8 @@ is_not_a_term()
 
 
 // When TRUE in a safe state when starting to wait for a character.
-static int	was_safe = FALSE;
-static oparg_T	*current_oap = NULL;
+static __thread int	was_safe = FALSE;
+static __thread oparg_T	*current_oap = NULL;
 
 /*
  * Return TRUE if an operator was started but not finished yet.
@@ -3657,7 +3665,7 @@ check_swap_exists_action(void)
 #endif /* NO_VIM_MAIN */
 
 #if defined(STARTUPTIME) || defined(PROTO)
-static struct timeval	prev_timeval;
+static __thread struct timeval	prev_timeval;
 
 # ifdef MSWIN
 /*
@@ -3725,13 +3733,18 @@ time_diff(struct timeval *then, struct timeval *now)
     fprintf(time_fd, "%03ld.%03ld", msec, usec >= 0 ? usec : usec + 1000L);
 }
 
+#if TARGET_OS_IPHONE
+static __thread struct timeval	start;
+#endif
     void
 time_msg(
     char	*mesg,
     void	*tv_start)  /* only for do_source: start time; actually
 			       (struct timeval *) */
 {
+#if !TARGET_OS_IPHONE
     static struct timeval	start;
+#endif
     struct timeval		now;
 
     if (time_fd != NULL)
