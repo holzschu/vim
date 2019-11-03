@@ -9,6 +9,9 @@
 #ifndef VIM__H
 # define VIM__H
 
+// iOS/OSX architecture definitions
+#include <TargetConditionals.h>
+
 #include "protodef.h"
 
 // _WIN32 is defined as 1 when the compilation target is 32-bit or 64-bit.
@@ -190,12 +193,14 @@
 # endif
 #endif
 
-// The Mac conversion stuff doesn't work under X11.
+/* The Mac conversion stuff doesn't work under X11. */
+#if !TARGET_OS_IPHONE // It also does not work under iOS
 #if defined(MACOS_X_DARWIN)
 # define MACOS_CONVERT
 #endif
-
-// Can't use "PACKAGE" here, conflicts with a Perl include file.
+#endif 
+    
+/* Can't use "PACKAGE" here, conflicts with a Perl include file. */
 #ifndef VIMPACKAGE
 # define VIMPACKAGE	"vim"
 #endif
@@ -1754,7 +1759,7 @@ void *vim_memset(void *, int, size_t);
  * actually defined and initialized.
  */
 #ifndef EXTERN
-# define EXTERN extern
+# define EXTERN extern __thread 
 # define INIT(x)
 #else
 # ifndef INIT
@@ -2646,5 +2651,11 @@ long elapsed(DWORD start_tick);
 #define REPTERM_DO_LT		2
 #define REPTERM_SPECIAL		4
 #define REPTERM_NO_SIMPLIFY	8
+#if TARGET_OS_IPHONE 
+#include "ios_error.h"
+#define isatty ios_isatty
+#define fork   ios_fork
+#undef ECHILD // waitpid() does not set errno = ECHILD
+#endif
 
 #endif // VIM__H

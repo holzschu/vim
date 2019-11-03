@@ -250,6 +250,8 @@
 # ifdef __APPLE_CC__
 /* Assuming compiling for MacOS X */
 /* Trying to take advantage of the prebinding */
+// These are forbidden on the AppStore for iOS. 
+// We undefine them at the end of the file
 #  define HAVE_TGETENT
 #  define OSPEED_EXTERN
 #  define UP_BC_PC_EXTERN
@@ -291,3 +293,10 @@
 
 /* A Mac constant causing big problem to syntax highlighting */
 #define UNKNOWN_CREATOR '\?\?\?\?'
+
+#if TARGET_OS_IPHONE 
+// These are forbidden on the AppStore for iOS
+#  undef OSPEED_EXTERN
+#  undef UP_BC_PC_EXTERN
+#endif 
+
