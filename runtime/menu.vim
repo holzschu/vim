@@ -208,7 +208,8 @@ fun! s:EditVimrc()
   elseif has("amiga")
     let fname = "s:.vimrc"
   else
-    let fname = $HOME . "/.vimrc"
+  	" iOS: replace HOME with HOME/Documents
+    let fname = $HOME . "/Documents/.vimrc"
   endif
   let fname = s:FnameEscape(fname)
   if &mod
