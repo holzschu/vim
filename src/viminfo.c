@@ -28,7 +28,7 @@ typedef struct
 
 #if defined(FEAT_VIMINFO) || defined(PROTO)
 
-static int  viminfo_errcnt;
+static __thread int  viminfo_errcnt;
 
 /*
  * Find the parameter represented by the given character (eg ''', ':', '"', or
@@ -442,11 +442,11 @@ write_viminfo_bufferlist(FILE *fp)
 /*
  * Buffers for history read from a viminfo file.  Only valid while reading.
  */
-static histentry_T *viminfo_history[HIST_COUNT] =
+static __thread histentry_T *viminfo_history[HIST_COUNT] =
 					       {NULL, NULL, NULL, NULL, NULL};
-static int	viminfo_hisidx[HIST_COUNT] = {0, 0, 0, 0, 0};
-static int	viminfo_hislen[HIST_COUNT] = {0, 0, 0, 0, 0};
-static int	viminfo_add_at_front = FALSE;
+static __thread int	viminfo_hisidx[HIST_COUNT] = {0, 0, 0, 0, 0};
+static __thread int	viminfo_hislen[HIST_COUNT] = {0, 0, 0, 0, 0};
+static __thread int	viminfo_add_at_front = FALSE;
 
 /*
  * Translate a history type number to the associated character.
@@ -1370,6 +1370,9 @@ write_viminfo_sub_string(FILE *fp)
  * Functions relating to reading/writing the search pattern from viminfo
  */
 
+#if TARGET_OS_IPHONE
+static __thread int hlsearch_on = FALSE;
+#endif
     static int
 read_viminfo_search_pattern(vir_T *virp, int force)
 {
@@ -1382,7 +1385,9 @@ read_viminfo_search_pattern(vir_T *virp, int force)
     long	off = 0;
     int		setlast = FALSE;
 #ifdef FEAT_SEARCH_EXTRA
+#if !TARGET_OS_IPHONE
     static int	hlsearch_on = FALSE;
+#endif
 #endif
     char_u	*val;
     spat_T	*spat;
@@ -1496,7 +1501,7 @@ write_viminfo_search_pattern(FILE *fp)
  * Functions relating to reading/writing registers from viminfo
  */
 
-static yankreg_T *y_read_regs = NULL;
+static __thread yankreg_T *y_read_regs = NULL;
 
 #define REG_PREVIOUS 1
 #define REG_EXEC 2
@@ -1891,10 +1896,10 @@ write_viminfo_registers(FILE *fp)
  * Functions relating to reading/writing marks from viminfo
  */
 
-static xfmark_T *vi_namedfm = NULL;
+static __thread xfmark_T *vi_namedfm = NULL;
 #ifdef FEAT_JUMPLIST
-static xfmark_T *vi_jumplist = NULL;
-static int vi_jumplist_len = 0;
+static __thread xfmark_T *vi_jumplist = NULL;
+static __thread int vi_jumplist_len = 0;
 #endif
 
     static void

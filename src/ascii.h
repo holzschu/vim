@@ -154,13 +154,13 @@
 #define Ctrl__		0x1F
 
 #define Ctrl_chr(x)	(CtrlTable[(x)])
-extern char CtrlTable[];
+extern __thread char CtrlTable[];
 
 #define CtrlChar(x)	((x < ' ') ? CtrlCharTable[(x)] : 0)
-extern char CtrlCharTable[];
+extern __thread char CtrlCharTable[];
 
 #define MetaChar(x)	((x < ' ') ? MetaCharTable[(x)] : 0)
-extern char MetaCharTable[];
+extern __thread char MetaCharTable[];
 
 #endif /* defined EBCDIC */
 

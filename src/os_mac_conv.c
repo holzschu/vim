@@ -35,9 +35,9 @@ static char_u	    *mac_utf16_to_utf8(UniChar *from, size_t fromLen, size_t *actu
 static UniChar	    *mac_utf8_to_utf16(char_u *from, size_t fromLen, size_t *actualLen);
 
 /* Converter for composing decomposed HFS+ file paths */
-static TECObjectRef gPathConverter;
+static __thread TECObjectRef gPathConverter;
 /* Converter used by mac_utf16_to_utf8 */
-static TECObjectRef gUTF16ToUTF8Converter;
+static __thread TECObjectRef gUTF16ToUTF8Converter;
 
 /*
  * A Mac version of string_convert_ext() for special cases.

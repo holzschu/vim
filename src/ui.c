@@ -68,9 +68,9 @@ ui_write(char_u *s, int len)
  * are not consumed by it.  Give them back to ui_inchar() and they are stored
  * here for the next call.
  */
-static char_u *ta_str = NULL;
-static int ta_off;	/* offset for next char to use when ta_str != NULL */
-static int ta_len;	/* length of ta_str when it's not NULL*/
+static __thread char_u *ta_str = NULL;
+static __thread int ta_off;	/* offset for next char to use when ta_str != NULL */
+static __thread int ta_len;	/* length of ta_str when it's not NULL*/
 
     void
 ui_inchar_undo(char_u *s, int len)
@@ -112,6 +112,9 @@ ui_inchar_undo(char_u *s, int len)
  * from a remote client) "buf" can no longer be used.  "tb_change_cnt" is NULL
  * otherwise.
  */
+#if TARGET_OS_IPHONE
+static __thread int count = 0;
+#endif
     int
 ui_inchar(
     char_u	*buf,
@@ -151,7 +154,9 @@ ui_inchar(
      * this very often we probably got stuck, exit Vim. */
     if (no_console_input())
     {
+#if !TARGET_OS_IPHONE
 	static int count = 0;
+#endif
 
 # ifndef NO_CONSOLE
 	retval = mch_inchar(buf, maxlen, wtime, tb_change_cnt);
@@ -677,10 +682,15 @@ ui_breakcheck(void)
  * When "force" is true also check when the terminal is not in raw mode.
  * This is useful to read input on channels.
  */
+#if TARGET_OS_IPHONE
+static __thread int recursive = FALSE;
+#endif
     void
 ui_breakcheck_force(int force)
 {
+#if !TARGET_OS_IPHONE
     static int	recursive = FALSE;
+#endif
     int		save_updating_screen = updating_screen;
 
     // We could be called recursively if stderr is redirected, calling
@@ -896,9 +906,9 @@ clip_copy_selection(Clipboard_T *clip)
  * prevents accessing the clipboard very often which might slow down Vim
  * considerably.
  */
-static int global_change_count = 0; /* if set, inside a start_global_changes */
-static int clipboard_needs_update = FALSE; /* clipboard needs to be updated */
-static int clip_did_set_selection = TRUE;
+static __thread int global_change_count = 0; /* if set, inside a start_global_changes */
+static __thread int clipboard_needs_update = FALSE; /* clipboard needs to be updated */
+static __thread int clip_did_set_selection = TRUE;
 
 /*
  * Save clip_unnamed and reset it.
@@ -1973,8 +1983,8 @@ clip_gen_owner_exists(Clipboard_T *cbd UNUSED)
 # define INBUFLEN 250
 #endif
 
-static char_u	inbuf[INBUFLEN + MAX_KEY_CODE_LEN];
-static int	inbufcount = 0;	    /* number of chars in inbuf[] */
+static __thread char_u	inbuf[INBUFLEN + MAX_KEY_CODE_LEN];
+static __thread int	inbufcount = 0;	    /* number of chars in inbuf[] */
 
 /*
  * vim_is_input_buf_full(), vim_is_input_buf_empty(), add_to_input_buf(), and
@@ -2148,15 +2158,22 @@ read_from_input_buf(char_u *buf, long maxlen)
     return (int)maxlen;
 }
 
+#if TARGET_OS_IPHONE
+static __thread int	did_read_something = FALSE;
+static __thread char_u *rest = NULL;	    /* unconverted rest of previous read */
+static __thread int	restlen = 0;
+#endif
     void
 fill_input_buf(int exit_on_error UNUSED)
 {
 #if defined(UNIX) || defined(VMS) || defined(MACOS_X)
     int		len;
     int		try;
+#if !TARGET_OS_IPHONE
     static int	did_read_something = FALSE;
     static char_u *rest = NULL;	    /* unconverted rest of previous read */
     static int	restlen = 0;
+#endif
     int		unconverted;
 #endif
 
@@ -2388,13 +2405,13 @@ open_app_context(void)
     }
 }
 
-static Atom	vim_atom;	/* Vim's own special selection format */
-static Atom	vimenc_atom;	/* Vim's extended selection format */
-static Atom	utf8_atom;
-static Atom	compound_text_atom;
-static Atom	text_atom;
-static Atom	targets_atom;
-static Atom	timestamp_atom;	/* Used to get a timestamp */
+static __thread Atom	vim_atom;	/* Vim's own special selection format */
+static __thread Atom	vimenc_atom;	/* Vim's extended selection format */
+static __thread Atom	utf8_atom;
+static __thread Atom	compound_text_atom;
+static __thread Atom	text_atom;
+static __thread Atom	targets_atom;
+static __thread Atom	timestamp_atom;	/* Used to get a timestamp */
 
     void
 x11_setup_atoms(Display *dpy)

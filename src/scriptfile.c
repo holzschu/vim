@@ -15,7 +15,7 @@
 
 #if defined(FEAT_EVAL) || defined(PROTO)
 // The names of packages that once were loaded are remembered.
-static garray_T		ga_loaded = {0, 0, sizeof(char_u *), 4, NULL};
+static __thread garray_T		ga_loaded = {0, 0, sizeof(char_u *), 4, NULL};
 #endif
 
 /*
@@ -455,11 +455,17 @@ theend:
 /*
  * Load scripts in "plugin" and "ftdetect" directories of the package.
  */
+#if TARGET_OS_IPHONE
+static __thread char *plugpat = "%s/plugin/**/*.vim";
+static __thread char *ftpat = "%s/ftdetect/*.vim";
+#endif
     static int
 load_pack_plugin(char_u *fname)
 {
+#if !TARGET_OS_IPHONE
     static char *plugpat = "%s/plugin/**/*.vim";
     static char *ftpat = "%s/ftdetect/*.vim";
+#endif
     int		len;
     char_u	*ffname = fix_fname(fname);
     char_u	*pat = NULL;
@@ -497,9 +503,9 @@ theend:
 }
 
 // used for "cookie" of add_pack_plugin()
-static int APP_ADD_DIR;
-static int APP_LOAD;
-static int APP_BOTH;
+static __thread int APP_ADD_DIR;
+static __thread int APP_LOAD;
+static __thread int APP_BOTH;
 
     static void
 add_pack_plugin(char_u *fname, void *cookie)
@@ -574,10 +580,16 @@ ex_packloadall(exarg_T *eap)
 /*
  * ":packadd[!] {name}"
  */
+#if TARGET_OS_IPHONE
+#define plugpat plugpat_ex_packadd
+static __thread char *plugpat = "pack/*/%s/%s";
+#endif
     void
 ex_packadd(exarg_T *eap)
 {
+#if !TARGET_OS_IPHONE
     static char *plugpat = "pack/*/%s/%s";
+#endif
     int		len;
     char	*pat;
     int		round;
@@ -603,6 +615,9 @@ ex_packadd(exarg_T *eap)
 	vim_free(pat);
     }
 }
+#if TARGET_OS_IPHONE
+#undef plugpat 
+#endif
 #endif
 
 /*
@@ -940,6 +955,10 @@ fopen_noinh_readbin(char *filename)
  *
  * return FAIL if file could not be opened, OK otherwise
  */
+#if TARGET_OS_IPHONE
+static __thread scid_T	    last_current_SID = 0;
+static __thread int		    last_current_SID_seq = 0;
+#endif
     int
 do_source(
     char_u	*fname,
@@ -955,8 +974,10 @@ do_source(
     int			    retval = FAIL;
 #ifdef FEAT_EVAL
     sctx_T		    save_current_sctx;
+#if !TARGET_OS_IPHONE
     static scid_T	    last_current_SID = 0;
     static int		    last_current_SID_seq = 0;
+#endif
     funccal_entry_T	    funccalp_entry;
     int			    save_debug_break_level = debug_break_level;
     scriptitem_T	    *si = NULL;

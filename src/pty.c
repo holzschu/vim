@@ -391,8 +391,8 @@ static char TtyProto[] = "/dev/pty/ttyXY";
 static char PtyProto[] = "/dev/pt/XY";
 static char TtyProto[] = "/dev/tt/XY";
 #  else
-static char PtyProto[] = "/dev/ptyXY";
-static char TtyProto[] = "/dev/ttyXY";
+static __thread char PtyProto[] = "/dev/ptyXY";
+static __thread char TtyProto[] = "/dev/ttyXY";
 #  endif
 # endif
 

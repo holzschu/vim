@@ -111,8 +111,8 @@ struct qf_info_S
     int		qf_bufnr;	    // quickfix window buffer number
 };
 
-static qf_info_T ql_info;	// global quickfix list
-static int_u last_qf_id = 0;	// Last used quickfix list id
+static __thread qf_info_T ql_info;	// global quickfix list
+static __thread int_u last_qf_id = 0;	// Last used quickfix list id
 
 #define FMT_PATTERNS 11		// maximum number of % recognized
 
@@ -151,13 +151,13 @@ typedef struct qf_delq_S
     struct qf_delq_S	*next;
     qf_info_T		*qi;
 } qf_delq_T;
-static qf_delq_T *qf_delq_head = NULL;
+static __thread qf_delq_T *qf_delq_head = NULL;
 
 // Counter to prevent autocmds from freeing up location lists when they are
 // still being used.
-static int	quickfix_busy = 0;
+static __thread int	quickfix_busy = 0;
 
-static efm_T	*fmt_start = NULL; // cached across qf_parse_line() calls
+static __thread efm_T	*fmt_start = NULL; // cached across qf_parse_line() calls
 
 static void	qf_new_list(qf_info_T *qi, char_u *qf_title);
 static int	qf_add_entry(qf_list_T *qfl, char_u *dir, char_u *fname, char_u *module, int bufnum, char_u *mesg, long lnum, int col, int vis_col, char_u *pattern, int nr, int type, int valid);
@@ -178,7 +178,7 @@ static buf_T	*load_dummy_buffer(char_u *fname, char_u *dirname_start, char_u *re
 static void	wipe_dummy_buffer(buf_T *buf, char_u *dirname_start);
 static void	unload_dummy_buffer(buf_T *buf, char_u *dirname_start);
 static qf_info_T *ll_get_or_alloc_list(win_T *);
-static char_u	*e_no_more_items = (char_u *)N_("E553: No more items");
+static __thread char_u	*e_no_more_items = (char_u *)N_("E553: No more items");
 
 // Quickfix window check helper macro
 #define IS_QF_WINDOW(wp) (bt_quickfix(wp->w_buffer) && wp->w_llist_ref == NULL)
@@ -208,10 +208,10 @@ static char_u	*e_no_more_items = (char_u *)N_("E553: No more items");
  * Looking up a buffer can be slow if there are many.  Remember the last one
  * to make this a lot faster if there are multiple matches in the same file.
  */
-static char_u   *qf_last_bufname = NULL;
-static bufref_T  qf_last_bufref = {NULL, 0, 0};
+static __thread char_u   *qf_last_bufname = NULL;
+static __thread bufref_T  qf_last_bufref = {NULL, 0, 0};
 
-static char	*e_loc_list_changed =
+static __thread char	*e_loc_list_changed =
 				 N_("E926: Current location list was changed");
 
 /*
@@ -219,7 +219,7 @@ static char	*e_loc_list_changed =
  */
 #define LINE_MAXLEN 4096
 
-static struct fmtpattern
+static __thread struct fmtpattern
 {
     char_u	convchar;
     char	*pattern;
@@ -1124,7 +1124,7 @@ qf_parse_fmt_o(regmatch_T *rmp, int midx, qffields_T *fields)
  * The '%f' and '%r' formats are parsed differently from other formats.
  * See qf_parse_match() for details.
  */
-static int (*qf_parse_fmt[FMT_PATTERNS])(regmatch_T *, int, qffields_T *) =
+static __thread int (*qf_parse_fmt[FMT_PATTERNS])(regmatch_T *, int, qffields_T *) =
 {
     NULL,
     qf_parse_fmt_n,
@@ -1649,6 +1649,10 @@ qf_init_process_nextline(
  * Set the title of the list to "qf_title".
  * Return -1 for error, number of errors for success.
  */
+#if TARGET_OS_IPHONE
+static __thread efm_T    *fmt_first = NULL;
+static __thread char_u   *last_efm = NULL;
+#endif
     static int
 qf_init_ext(
     qf_info_T	    *qi,
@@ -1668,9 +1672,13 @@ qf_init_ext(
     qffields_T	    fields;
     qfline_T	    *old_last = NULL;
     int		    adding = FALSE;
+#if !TARGET_OS_IPHONE
     static efm_T    *fmt_first = NULL;
+#endif
     char_u	    *efm;
+#if !TARGET_OS_IPHONE
     static char_u   *last_efm = NULL;
+#endif
     int		    retval = -1;	// default: return error flag
     int		    status;
 
@@ -1830,10 +1838,15 @@ qf_store_title(qf_list_T *qfl, char_u *title)
  * Create a quickfix list title string by prepending ":" to a user command.
  * Returns a pointer to a static buffer with the title.
  */
+#if TARGET_OS_IPHONE
+static __thread char_u qftitle_str[IOSIZE];
+#endif
     static char_u *
 qf_cmdtitle(char_u *cmd)
 {
+#if !TARGET_OS_IPHONE
     static char_u qftitle_str[IOSIZE];
+#endif
 
     vim_snprintf((char *)qftitle_str, IOSIZE, ":%s", (char *)cmd);
     return qftitle_str;
@@ -3467,9 +3480,9 @@ theend:
 }
 
 // Highlight attributes used for displaying entries from the quickfix list.
-static int	qfFileAttr;
-static int	qfSepAttr;
-static int	qfLineAttr;
+static __thread int	qfFileAttr;
+static __thread int	qfSepAttr;
+static __thread int	qfLineAttr;
 
 /*
  * Display information about a single entry from the quickfix/location list.
@@ -3898,11 +3911,17 @@ qf_mark_adjust(
  *  other     n		" c n"
  *  1	      x		""	:helpgrep
  */
+#if TARGET_OS_IPHONE
+static __thread char_u	buf[20];
+static __thread char_u	cc[3];
+#endif
     static char_u *
 qf_types(int c, int nr)
 {
+#if !TARGET_OS_IPHONE
     static char_u	buf[20];
     static char_u	cc[3];
+#endif
     char_u		*p;
 
     if (c == 'W' || c == 'w')
@@ -4671,13 +4690,19 @@ make_get_auname(cmdidx_T cmdidx)
  * Find a new unique name when 'makeef' contains "##".
  * Returns NULL for error.
  */
+#if TARGET_OS_IPHONE
+static __thread int	start = -1;
+static __thread int	off = 0;
+#endif
     static char_u *
 get_mef_name(void)
 {
     char_u	*p;
     char_u	*name;
+#if !TARGET_OS_IPHONE
     static int	start = -1;
     static int	off = 0;
+#endif
 #ifdef HAVE_LSTAT
     stat_T	sb;
 #endif
@@ -6739,6 +6764,9 @@ qf_get_properties(win_T *wp, dict_T *what, dict_T *retdict)
  * items in the dict 'd'. If it is a valid error entry, then set 'valid_entry'
  * to TRUE.
  */
+#if TARGET_OS_IPHONE
+static __thread int	did_bufnr_emsg;
+#endif
     static int
 qf_add_entry_from_dict(
 	qf_list_T	*qfl,
@@ -6746,7 +6774,9 @@ qf_add_entry_from_dict(
 	int		first_entry,
 	int		*valid_entry)
 {
+#if !TARGET_OS_IPHONE
     static int	did_bufnr_emsg;
+#endif
     char_u	*filename, *module, *pattern, *text, *type;
     int		bufnum, valid, status, col, vcol, nr;
     long	lnum;
@@ -7887,6 +7917,10 @@ f_getqflist(typval_T *argvars UNUSED, typval_T *rettv UNUSED)
 /*
  * Used by "setqflist()" and "setloclist()" functions
  */
+#if TARGET_OS_IPHONE
+static __thread char *e_invact = N_("E927: Invalid action: '%s'");
+static __thread int	recursive = 0;
+# endif
     static void
 set_qf_ll_list(
     win_T	*wp UNUSED,
@@ -7896,10 +7930,14 @@ set_qf_ll_list(
     typval_T	*rettv)
 {
 # ifdef FEAT_QUICKFIX
+#if !TARGET_OS_IPHONE
     static char *e_invact = N_("E927: Invalid action: '%s'");
+#endif
     char_u	*act;
     int		action = 0;
+#if !TARGET_OS_IPHONE
     static int	recursive = 0;
+#endif
 # endif
 
     rettv->vval.v_number = -1;

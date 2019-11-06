@@ -15,7 +15,7 @@
 
 #if defined(FEAT_SOUND) || defined(PROTO)
 
-static long	    sound_id = 0;
+static __thread long	    sound_id = 0;
 
 typedef struct soundcb_S soundcb_T;
 
@@ -28,7 +28,7 @@ struct soundcb_S {
     soundcb_T	*snd_next;
 };
 
-static soundcb_T    *first_callback = NULL;
+static __thread soundcb_T    *first_callback = NULL;
 
 /*
  * Return TRUE when a sound callback has been created, it may be invoked when
@@ -93,7 +93,7 @@ delete_sound_callback(soundcb_T *soundcb)
  */
 # include <canberra.h>
 
-static ca_context   *context = NULL;
+static __thread ca_context   *context = NULL;
 
 // Structure to store info about a sound callback to be invoked soon.
 typedef struct soundcb_queue_S soundcb_queue_T;
@@ -279,6 +279,11 @@ sound_free(void)
 	delete_sound_callback(scb->scb_callback);
 	vim_free(scb);
     }
+#if TARGET_OS_IPHONE
+    context = NULL; 
+    sound_id = 0;
+    first_callback = NULL;
+#endif
 }
 # endif
 
@@ -288,7 +293,7 @@ sound_free(void)
  * Sound implementation for MS-Windows.
  */
 
-static HWND g_hWndSound = NULL;
+static __thread HWND g_hWndSound = NULL;
 
     static LRESULT CALLBACK
 sound_wndproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)

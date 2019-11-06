@@ -1050,6 +1050,10 @@ beep_flush(void)
 /*
  * Give a warning for an error.
  */
+#if TARGET_OS_IPHONE
+static __thread int		did_init = FALSE;
+static __thread elapsed_T	start_tv;
+#endif
     void
 vim_beep(
     unsigned val) /* one of the BO_ values, e.g., BO_OPER */
@@ -1063,8 +1067,10 @@ vim_beep(
 	if (!((bo_flags & val) || (bo_flags & BO_ALL)))
 	{
 #ifdef ELAPSED_FUNC
+#if !TARGET_OS_IPHONE
 	    static int		did_init = FALSE;
 	    static elapsed_T	start_tv;
+#endif
 
 	    /* Only beep once per half a second, otherwise a sequence of beeps
 	     * would freeze Vim. */
@@ -1900,6 +1906,10 @@ vim_setenv(char_u *name, char_u *val)
 /*
  * Function given to ExpandGeneric() to obtain an environment variable name.
  */
+# define ENVNAMELEN 100
+#if TARGET_OS_IPHONE
+static __thread char_u	name[ENVNAMELEN];
+#endif
     char_u *
 get_env_name(
     expand_T	*xp UNUSED,
@@ -1915,8 +1925,9 @@ get_env_name(
     /* Borland C++ 5.2 has this in a header file. */
     extern char		**environ;
 # endif
-# define ENVNAMELEN 100
+#if !TARGET_OS_IPHONE
     static char_u	name[ENVNAMELEN];
+#endif
     char_u		*str;
     int			n;
 
@@ -1958,10 +1969,15 @@ add_user(char_u *user, int need_copy)
  * Find all user names for user completion.
  * Done only once and then cached.
  */
+#if TARGET_OS_IPHONE
+static __thread int lazy_init_done = FALSE;
+#endif
     static void
 init_users(void)
 {
+#if !TARGET_OS_IPHONE
     static int	lazy_init_done = FALSE;
+#endif
 
     if (lazy_init_done)
 	return;

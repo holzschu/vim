@@ -29,7 +29,7 @@ static int	fmt_check_par(linenr_T, int *, char_u **, int do_comments);
  * IMPORTANT: Index must correspond with defines in vim.h!!!
  * The third field holds OPF_ flags.
  */
-static char opchars[][3] =
+static __thread char opchars[][3] =
 {
     {NUL, NUL, 0},			// OP_NOP
     {'d', NUL, OPF_CHANGE},		// OP_DELETE
@@ -2998,6 +2998,9 @@ op_addsub(
  *
  * Returns TRUE if some character was changed.
  */
+#if TARGET_OS_IPHONE
+static __thread int	hexupper = FALSE;	/* 0xABC */
+#endif
     static int
 do_addsub(
     int		op_type,
@@ -3009,7 +3012,9 @@ do_addsub(
     char_u	*buf1;
     char_u	buf2[NUMBUFLEN];
     int		pre;		/* 'X'/'x': hex; '0': octal; 'B'/'b': bin */
+#if !TARGET_OS_IPHONE
     static int	hexupper = FALSE;	/* 0xABC */
+#endif
     uvarnumber_T	n;
     uvarnumber_T	oldn;
     char_u	*ptr;
@@ -4008,6 +4013,14 @@ get_op_vcol(
  * Handle an operator after Visual mode or when the movement is finished.
  * "gui_yank" is true when yanking text for the clipboard.
  */
+#if TARGET_OS_IPHONE
+// The visual area is remembered for redo
+static __thread int	    redo_VIsual_mode = NUL; // 'v', 'V', or Ctrl-V
+static __thread linenr_T redo_VIsual_line_count; // number of lines
+static __thread colnr_T  redo_VIsual_vcol;	    // number of cols or end column
+static __thread long	    redo_VIsual_count;	    // count for Visual operator
+static __thread int	    redo_VIsual_arg;	    // extra argument
+#endif
     void
 do_pending_operator(cmdarg_T *cap, int old_col, int gui_yank)
 {
@@ -4019,12 +4032,15 @@ do_pending_operator(cmdarg_T *cap, int old_col, int gui_yank)
     int		lbr_saved = curwin->w_p_lbr;
 #endif
 
+
+#if !TARGET_OS_IPHONE
     // The visual area is remembered for redo
     static int	    redo_VIsual_mode = NUL; // 'v', 'V', or Ctrl-V
     static linenr_T redo_VIsual_line_count; // number of lines
     static colnr_T  redo_VIsual_vcol;	    // number of cols or end column
     static long	    redo_VIsual_count;	    // count for Visual operator
     static int	    redo_VIsual_arg;	    // extra argument
+#endif
     int		    include_line_break = FALSE;
 
 #if defined(FEAT_CLIPBOARD)

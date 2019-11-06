@@ -42,7 +42,7 @@
 /*
  * The attributes that are actually active for writing to the screen.
  */
-static int	screen_attr = 0;
+static __thread int	screen_attr = 0;
 
 static void screen_char_2(unsigned off, int row, int col);
 static void screenclear2(void);
@@ -54,7 +54,7 @@ static void msg_pos_mode(void);
 static void recording_mode(int attr);
 
 /* Ugly global: overrule attribute used by screen_char() */
-static int screen_char_attr = 0;
+static __thread int screen_char_attr = 0;
 
 #if defined(FEAT_CONCEAL) || defined(PROTO)
 /*
@@ -874,6 +874,9 @@ skip_status_match_char(expand_T *xp, char_u *s)
  *
  * If inversion is possible we use it. Else '=' characters are used.
  */
+#if TARGET_OS_IPHONE
+static __thread int first_match = 0;
+#endif
     void
 win_redr_status_matches(
     expand_T	*xp,
@@ -894,7 +897,9 @@ win_redr_status_matches(
     char_u	*selstart = NULL;
     int		selstart_col = 0;
     char_u	*selend = NULL;
+#if !TARGET_OS_IPHONE
     static int	first_match = 0;
+#endif
     int		add_left = FALSE;
     char_u	*s;
 #ifdef FEAT_MENU
@@ -1165,12 +1170,17 @@ get_keymap_str(
  * Redraw the status line or ruler of window "wp".
  * When "wp" is NULL redraw the tab pages line from 'tabline'.
  */
+#if TARGET_OS_IPHONE
+static __thread int entered = FALSE;
+#endif
     void
 win_redr_custom(
     win_T	*wp,
     int		draw_ruler)	// TRUE or FALSE
 {
+#if !TARGET_OS_IPHONE
     static int	entered = FALSE;
+#endif
     int		attr;
     int		curattr;
     int		row;
@@ -2448,6 +2458,11 @@ screen_valid(int doclear)
  * in ScreenLines[].  Use Rows and Columns for positioning text etc. where the
  * final size of the shell is needed.
  */
+#if TARGET_OS_IPHONE
+#define entered entered_screenalloc
+static __thread int entered = FALSE;		/* avoid recursiveness */
+static __thread int done_outofmem_msg = FALSE;	/* did outofmem message */
+#endif
     void
 screenalloc(int doclear)
 {
@@ -2473,8 +2488,10 @@ screenalloc(int doclear)
     char	    *new_popup_transparent;
 #endif
     tabpage_T	    *tp;
+#if !TARGET_OS_IPHONE
     static int	    entered = FALSE;		/* avoid recursiveness */
     static int	    done_outofmem_msg = FALSE;	/* did outofmem message */
+#endif
     int		    retry_count = 0;
 
 retry:
@@ -2776,6 +2793,9 @@ give_up:
 	goto retry;
     }
 }
+#if TARGET_OS_IPHONE
+#undef entered 
+#endif
 
     void
 free_screenlines(void)

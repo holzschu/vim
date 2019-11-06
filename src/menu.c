@@ -40,7 +40,7 @@ static char_u *menu_text(char_u *text, int *mnemonic, char_u **actext);
 static void gui_create_tearoffs_recurse(vimmenu_T *menu, const char_u *pname, int *pri_tab, int pri_idx);
 static void gui_add_tearoff(char_u *tearpath, int *pri_tab, int pri_idx);
 static void gui_destroy_tearoffs_recurse(vimmenu_T *menu);
-static int s_tearoffs = FALSE;
+static __thread int s_tearoffs = FALSE;
 #endif
 
 static int menu_is_hidden(char_u *name);
@@ -57,13 +57,13 @@ static void menu_unescape_name(char_u	*p);
 static char_u *menu_translate_tab_and_shift(char_u *arg_start);
 
 /* The character for each menu mode */
-static char *menu_mode_chars[] = {"n", "v", "s", "o", "i", "c", "tl", "t"};
+static __thread char *menu_mode_chars[] = {"n", "v", "s", "o", "i", "c", "tl", "t"};
 
-static char_u e_notsubmenu[] = N_("E327: Part of menu-item path is not sub-menu");
-static char_u e_nomenu[] = N_("E329: No menu \"%s\"");
+static __thread char_u e_notsubmenu[] = N_("E327: Part of menu-item path is not sub-menu");
+static __thread char_u e_nomenu[] = N_("E329: No menu \"%s\"");
 
 #ifdef FEAT_TOOLBAR
-static const char *toolbar_names[] =
+static __thread const char *toolbar_names[] =
 {
     /*  0 */ "New", "Open", "Save", "Undo", "Redo",
     /*  5 */ "Cut", "Copy", "Paste", "Print", "Help",
@@ -1237,10 +1237,10 @@ show_menus_recursive(vimmenu_T *menu, int modes, int depth)
 /*
  * Used when expanding menu names.
  */
-static vimmenu_T	*expand_menu = NULL;
-static vimmenu_T	*expand_menu_alt = NULL;
-static int		expand_modes = 0x0;
-static int		expand_emenu;	/* TRUE for ":emenu" command */
+static __thread vimmenu_T	*expand_menu = NULL;
+static __thread vimmenu_T	*expand_menu_alt = NULL;
+static __thread int		expand_modes = 0x0;
+static __thread int		expand_emenu;	/* TRUE for ":emenu" command */
 
 /*
  * Work out what to complete when doing command line completion of menu names.
@@ -1376,14 +1376,23 @@ set_context_in_menu_cmd(
  * Function given to ExpandGeneric() to obtain the list of (sub)menus (not
  * entries).
  */
+#if TARGET_OS_IPHONE
+static __thread vimmenu_T	*menu = NULL;
+static __thread int		did_alt_menu = FALSE;
+#ifdef FEAT_MULTI_LANG
+static  __thread int		should_advance = FALSE;
+#endif
+#endif
     char_u *
 get_menu_name(expand_T *xp UNUSED, int idx)
 {
+    char_u		*str;
+#if !TARGET_OS_IPHONE
     static vimmenu_T	*menu = NULL;
     static int		did_alt_menu = FALSE;
-    char_u		*str;
 #ifdef FEAT_MULTI_LANG
     static  int		should_advance = FALSE;
+#endif
 #endif
 
     if (idx == 0)	    /* first call: start at first item */
@@ -1452,16 +1461,30 @@ get_menu_name(expand_T *xp UNUSED, int idx)
  * Function given to ExpandGeneric() to obtain the list of menus and menu
  * entries.
  */
+#if TARGET_OS_IPHONE
+#define menu menu_names
+#define did_alt_menu did_alt_menu_names
+#define should_advance should_advance_names
+static __thread vimmenu_T	*menu = NULL;
+static __thread int		did_alt_menu = FALSE;
+#define TBUFFER_LEN 256
+static __thread char_u	tbuffer[TBUFFER_LEN]; /*hack*/
+#ifdef FEAT_MULTI_LANG
+static  __thread int		should_advance = FALSE;
+#endif
+#endif
     char_u *
 get_menu_names(expand_T *xp UNUSED, int idx)
 {
+    char_u		*str;
+#if !TARGET_OS_IPHONE
     static vimmenu_T	*menu = NULL;
     static int		did_alt_menu = FALSE;
 #define TBUFFER_LEN 256
     static char_u	tbuffer[TBUFFER_LEN]; /*hack*/
-    char_u		*str;
 #ifdef FEAT_MULTI_LANG
     static  int		should_advance = FALSE;
+#endif
 #endif
 
     if (idx == 0)	    /* first call: start at first item */
@@ -1553,6 +1576,11 @@ get_menu_names(expand_T *xp UNUSED, int idx)
 
     return str;
 }
+#if TARGET_OS_IPHONE
+#undef menu 
+#undef did_alt_menu 
+#undef should_advance 
+#endif
 
 /*
  * Skip over this element of the menu path and return the start of the next
@@ -2053,10 +2081,15 @@ gui_update_menus_recurse(vimmenu_T *menu, int mode)
  * force_menu_update is not TRUE, then we only do this if the mode has changed
  * since last time.  If "modes" is not 0, then we use these modes instead.
  */
+#if TARGET_OS_IPHONE
+static __thread int prev_mode = -1;
+#endif
     void
 gui_update_menus(int modes)
 {
+#if !TARGET_OS_IPHONE
     static int	    prev_mode = -1;
+#endif
     int		    mode = 0;
 
     if (modes != 0x0)
@@ -2594,7 +2627,7 @@ typedef struct
     char_u	*to;		/* translated name */
 } menutrans_T;
 
-static garray_T menutrans_ga = {0, 0, 0, 0, NULL};
+static __thread garray_T menutrans_ga = {0, 0, 0, 0, NULL};
 #endif
 
 /*

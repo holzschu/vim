@@ -211,7 +211,7 @@ void qsort(void *base, size_t elm_count, size_t elm_size, int (*cmp)(const void 
 # ifdef FEAT_TERMINAL
 #  include "terminal.pro"
 # endif
-# if defined(HAVE_TGETENT) && (defined(AMIGA) || defined(VMS))
+# if defined(HAVE_TGETENT) && (defined(AMIGA) || defined(VMS) || defined(TARGET_OS_IPHONE))
 #  include "termlib.pro"
 # endif
 # ifdef FEAT_TEXT_PROP

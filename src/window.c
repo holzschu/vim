@@ -67,11 +67,11 @@ static win_T *win_alloc(win_T *after, int hidden);
 
 #define ROWS_AVAIL (Rows - p_ch - tabline_height())
 
-static char *m_onlyone = N_("Already only one window");
+static __thread char *m_onlyone = N_("Already only one window");
 
 // When non-zero splitting a window is forbidden.  Used to avoid that nasty
 // autocommands mess up the window structure.
-static int split_disallowed = 0;
+static __thread int split_disallowed = 0;
 
 // #define WIN_DEBUG
 #ifdef WIN_DEBUG
@@ -4736,7 +4736,7 @@ buf_jump_open_tab(buf_T *buf)
     return wp;
 }
 
-static int last_win_id = LOWEST_WIN_ID - 1;
+static __thread int last_win_id = LOWEST_WIN_ID - 1;
 
 /*
  * Allocate a window structure and link it in the window list when "hidden" is

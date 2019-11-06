@@ -225,7 +225,7 @@ sha256_update(context_sha256_T *ctx, char_u *input, UINT32_T length)
 	memcpy((void *)(ctx->buffer + left), (void *)input, length);
 }
 
-static char_u sha256_padding[64] = {
+static __thread char_u sha256_padding[64] = {
     0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -312,13 +312,13 @@ sha256_key(
  * These are the standard FIPS-180-2 test vectors
  */
 
-static char *sha_self_test_msg[] = {
+static __thread char *sha_self_test_msg[] = {
     "abc",
     "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
     NULL
 };
 
-static char *sha_self_test_vector[] = {
+static __thread char *sha_self_test_vector[] = {
     "ba7816bf8f01cfea414140de5dae2223" \
     "b00361a396177a9cb410ff61f20015ad",
     "248d6a61d20638b8e5c026930c3e6039" \

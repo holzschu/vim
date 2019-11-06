@@ -12,32 +12,32 @@
  */
 #include "vim.h"
 
-static pumitem_T *pum_array = NULL;	/* items of displayed pum */
-static int pum_size;			/* nr of items in "pum_array" */
-static int pum_selected;		/* index of selected item or -1 */
-static int pum_first = 0;		/* index of top item */
+static __thread pumitem_T *pum_array = NULL;	/* items of displayed pum */
+static __thread int pum_size;			/* nr of items in "pum_array" */
+static __thread int pum_selected;		/* index of selected item or -1 */
+static __thread int pum_first = 0;		/* index of top item */
 
-static int call_update_screen = FALSE;
+static __thread int call_update_screen = FALSE;
 
-static int pum_height;			/* nr of displayed pum items */
-static int pum_width;			/* width of displayed pum items */
-static int pum_base_width;		/* width of pum items base */
-static int pum_kind_width;		/* width of pum items kind column */
-static int pum_extra_width;		/* width of extra stuff */
-static int pum_scrollbar;		/* TRUE when scrollbar present */
+static __thread int pum_height;			/* nr of displayed pum items */
+static __thread int pum_width;			/* width of displayed pum items */
+static __thread int pum_base_width;		/* width of pum items base */
+static __thread int pum_kind_width;		/* width of pum items kind column */
+static __thread int pum_extra_width;		/* width of extra stuff */
+static __thread int pum_scrollbar;		/* TRUE when scrollbar present */
 
-static int pum_row;			/* top row of pum */
-static int pum_col;			/* left column of pum */
+static __thread int pum_row;			/* top row of pum */
+static __thread int pum_col;			/* left column of pum */
 
-static win_T *pum_window = NULL;
-static int pum_win_row;
-static int pum_win_height;
-static int pum_win_col;
-static int pum_win_wcol;
-static int pum_win_width;
+static __thread win_T *pum_window = NULL;
+static __thread int pum_win_row;
+static __thread int pum_win_height;
+static __thread int pum_win_col;
+static __thread int pum_win_wcol;
+static __thread int pum_win_width;
 
-static int pum_do_redraw = FALSE;	// do redraw anyway
-static int pum_skip_redraw = FALSE;	// skip redraw
+static __thread int pum_do_redraw = FALSE;	// do redraw anyway
+static __thread int pum_skip_redraw = FALSE;	// skip redraw
 
 static int pum_set_selected(int n, int repeat);
 
@@ -1099,8 +1099,8 @@ pum_position_at_mouse(int min_width)
 #endif
 
 #if defined(FEAT_BEVAL_TERM) || defined(PROTO)
-static pumitem_T *balloon_array = NULL;
-static int balloon_arraysize;
+static __thread pumitem_T *balloon_array = NULL;
+static __thread int balloon_arraysize;
 
 # define BALLOON_MIN_WIDTH 50
 # define BALLOON_MIN_HEIGHT 10

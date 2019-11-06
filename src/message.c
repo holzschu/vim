@@ -33,13 +33,13 @@ static int  msg_check_screen(void);
 static void redir_write(char_u *s, int maxlen);
 #ifdef FEAT_CON_DIALOG
 static char_u *msg_show_console_dialog(char_u *message, char_u *buttons, int dfltbutton);
-static int	confirm_msg_used = FALSE;	/* displaying confirm_msg */
-static char_u	*confirm_msg = NULL;		/* ":confirm" message */
-static char_u	*confirm_msg_tail;		/* tail of confirm_msg */
+static __thread int	confirm_msg_used = FALSE;	/* displaying confirm_msg */
+static __thread char_u	*confirm_msg = NULL;		/* ":confirm" message */
+static __thread char_u	*confirm_msg_tail;		/* tail of confirm_msg */
 static void display_confirm_msg(void);
 #endif
 #ifdef FEAT_JOB_CHANNEL
-static int emsg_to_channel_log = FALSE;
+static __thread int emsg_to_channel_log = FALSE;
 #endif
 
 struct msg_hist
@@ -49,12 +49,12 @@ struct msg_hist
     int			attr;
 };
 
-static struct msg_hist *first_msg_hist = NULL;
-static struct msg_hist *last_msg_hist = NULL;
-static int msg_hist_len = 0;
+static __thread struct msg_hist *first_msg_hist = NULL;
+static __thread struct msg_hist *last_msg_hist = NULL;
+static __thread int msg_hist_len = 0;
 
-static FILE *verbose_fd = NULL;
-static int  verbose_did_open = FALSE;
+static __thread FILE *verbose_fd = NULL;
+static __thread int  verbose_did_open = FALSE;
 
 /*
  * When writing messages to the screen, there are many different situations.
@@ -124,13 +124,18 @@ msg_attr(char *s, int attr)
     return msg_attr_keep(s, attr, FALSE);
 }
 
+#if TARGET_OS_IPHONE
+static __thread int entered = 0;
+#endif
     int
 msg_attr_keep(
     char	*s,
     int		attr,
     int		keep)	    /* TRUE: set keep_msg if it doesn't scroll */
 {
+#if !TARGET_OS_IPHONE
     static int	entered = 0;
+#endif
     int		retval;
     char_u	*buf = NULL;
 
@@ -419,8 +424,8 @@ smsg_attr_keep(int attr, const char *s, ...)
  * Remember the last sourcing name/lnum used in an error message, so that it
  * isn't printed each time when it didn't change.
  */
-static int	last_sourcing_lnum = 0;
-static char_u   *last_sourcing_name = NULL;
+static __thread int	last_sourcing_lnum = 0;
+static __thread char_u   *last_sourcing_name = NULL;
 
 /*
  * Reset the last used sourcing name/lnum.  Makes sure it is displayed again
@@ -551,7 +556,7 @@ emsg_not_now(void)
 }
 
 #if defined(FEAT_EVAL) || defined(PROTO)
-static garray_T ignore_error_list = GA_EMPTY;
+static __thread garray_T ignore_error_list = GA_EMPTY;
 
     void
 ignore_error_for_testing(char_u *error)
@@ -1672,13 +1677,18 @@ str2special_save(
  * Used for translating the lhs or rhs of a mapping to printable chars.
  * Advances "sp" to the next code.
  */
+#if TARGET_OS_IPHONE
+static __thread char_u	buf[7];
+#endif
     char_u *
 str2special(
     char_u	**sp,
     int		from)	/* TRUE for lhs of mapping */
 {
     int			c;
+#if !TARGET_OS_IPHONE
     static char_u	buf[7];
+#endif
     char_u		*str = *sp;
     int			modifiers = 0;
     int			special = FALSE;
@@ -2356,7 +2366,7 @@ struct msgchunk_S
     char_u	sb_text[1];	/* text to be displayed, actually longer */
 };
 
-static msgchunk_T *last_msgchunk = NULL; /* last displayed text */
+static __thread msgchunk_T *last_msgchunk = NULL; /* last displayed text */
 
 static msgchunk_T *msg_sb_start(msgchunk_T *mps);
 
@@ -2368,7 +2378,7 @@ typedef enum {
 } sb_clear_T;
 
 /* When to clear text on next msg. */
-static sb_clear_T do_clear_sb_text = SB_CLEAR_NONE;
+static __thread sb_clear_T do_clear_sb_text = SB_CLEAR_NONE;
 
 /*
  * Store part of a printed message for displaying when scrolling back.
@@ -2475,6 +2485,10 @@ clear_sb_text(int all)
 	vim_free(*lastp);
 	*lastp = mp;
     }
+#if TARGET_OS_IPHONE
+    if (all) 
+	last_msgchunk = NULL; /* last displayed text */    
+#endif
 }
 
 /*
@@ -2687,10 +2701,16 @@ msg_puts_printf(char_u *str, int maxlen)
  * otherwise it's NUL.
  * Returns TRUE when jumping ahead to "confirm_msg_tail".
  */
+#if TARGET_OS_IPHONE
+#define entered entered_prompt
+static __thread int entered = FALSE;
+#endif
     static int
 do_more_prompt(int typed_char)
 {
+#if !TARGET_OS_IPHONE
     static int	entered = FALSE;
+#endif
     int		used_typed_char = typed_char;
     int		oldState = State;
     int		c;
@@ -2953,6 +2973,9 @@ do_more_prompt(int typed_char)
     return FALSE;
 #endif
 }
+#if TARGET_OS_IPHONE
+#undef entered 
+#endif
 
 #if defined(USE_MCH_ERRMSG) || defined(PROTO)
 
@@ -3343,11 +3366,16 @@ msg_check(void)
  * May write a string to the redirection file.
  * When "maxlen" is -1 write the whole string, otherwise up to "maxlen" bytes.
  */
+#if TARGET_OS_IPHONE
+static __thread int cur_col = 0;
+#endif
     static void
 redir_write(char_u *str, int maxlen)
 {
     char_u	*s = str;
+#if !TARGET_OS_IPHONE
     static int	cur_col = 0;
+#endif
 
     /* Don't do anything for displaying prompts and the like. */
     if (redir_off)
@@ -3989,7 +4017,7 @@ vim_dialog_yesnoallcancel(
 #endif /* FEAT_GUI_DIALOG || FEAT_CON_DIALOG */
 
 #if defined(FEAT_EVAL)
-static char *e_printf = N_("E766: Insufficient arguments for printf()");
+static __thread char *e_printf = N_("E766: Insufficient arguments for printf()");
 
 /*
  * Get number argument from "idxp" entry in "tvs".  First entry is 1.
@@ -4021,12 +4049,17 @@ tv_nr(typval_T *tvs, int *idxp)
  * a string with the same format as ":echo".  The caller must free "*tofree".
  * Returns NULL for an error.
  */
+#if TARGET_OS_IPHONE
+static __thread char_u   numbuf[NUMBUFLEN];
+#endif
     static char *
 tv_str(typval_T *tvs, int *idxp, char_u **tofree)
 {
     int		    idx = *idxp - 1;
     char	    *s = NULL;
+#if !TARGET_OS_IPHONE
     static char_u   numbuf[NUMBUFLEN];
+#endif
 
     if (tvs[idx].v_type == VAR_UNKNOWN)
 	emsg(_(e_printf));

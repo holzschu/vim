@@ -424,7 +424,7 @@ buf_valid(buf_T *buf)
 /*
  * A hash table used to quickly lookup a buffer by its number.
  */
-static hashtab_T buf_hashtab;
+static __thread hashtab_T buf_hashtab;
 
     static void
 buf_hashtab_add(buf_T *buf)

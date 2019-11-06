@@ -1413,8 +1413,17 @@ free_all_marks(void)
     int		i;
 
     for (i = 0; i < NMARKS + EXTRA_MARKS; i++)
+#if TARGET_OS_IPHONE
+	{
+	    VIM_CLEAR(namedfm[i].fname);
+	    namedfm[i].time_set = 0; 
+	    namedfm[i].fmark.fnum = 0; 
+	    namedfm[i].fmark.mark = (pos_T) {0, 0, 0}; 
+	}
+#else
 	if (namedfm[i].fmark.mark.lnum != 0)
 	    vim_free(namedfm[i].fname);
+#endif
 }
 #endif
 

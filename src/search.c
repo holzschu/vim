@@ -53,30 +53,30 @@ static void search_stat(int dirc, pos_T *pos, int show_top_bot_msg, char_u *msgb
  * one for other searches.  last_idx points to the one that was used the last
  * time.
  */
-static spat_T spats[2] =
+static __thread spat_T spats[2] =
 {
     {NULL, TRUE, FALSE, {'/', 0, 0, 0L}},	/* last used search pat */
     {NULL, TRUE, FALSE, {'/', 0, 0, 0L}}	/* last used substitute pat */
 };
 
-static int last_idx = 0;	/* index in spats[] for RE_LAST */
+static __thread int last_idx = 0;	/* index in spats[] for RE_LAST */
 
-static char_u lastc[2] = {NUL, NUL};	/* last character searched for */
-static int lastcdir = FORWARD;		/* last direction of character search */
-static int last_t_cmd = TRUE;		/* last search t_cmd */
-static char_u	lastc_bytes[MB_MAXBYTES + 1];
-static int	lastc_bytelen = 1;	/* >1 for multi-byte char */
+static __thread char_u lastc[2] = {NUL, NUL};	/* last character searched for */
+static __thread int lastcdir = FORWARD;		/* last direction of character search */
+static __thread int last_t_cmd = TRUE;		/* last search t_cmd */
+static __thread char_u	lastc_bytes[MB_MAXBYTES + 1];
+static __thread int	lastc_bytelen = 1;	/* >1 for multi-byte char */
 
 /* copy of spats[], for keeping the search patterns while executing autocmds */
-static spat_T	    saved_spats[2];
+static __thread spat_T	    saved_spats[2];
 # ifdef FEAT_SEARCH_EXTRA
-static int	    saved_spats_last_idx = 0;
-static int	    saved_spats_no_hlsearch = 0;
+static __thread int	    saved_spats_last_idx = 0;
+static __thread int	    saved_spats_no_hlsearch = 0;
 # endif
 
-static char_u	    *mr_pattern = NULL;	/* pattern used by search_regcomp() */
+static __thread char_u	    *mr_pattern = NULL;	/* pattern used by search_regcomp() */
 #ifdef FEAT_RIGHTLEFT
-static int	    mr_pattern_alloced = FALSE; /* mr_pattern was allocated */
+static __thread int	    mr_pattern_alloced = FALSE; /* mr_pattern was allocated */
 #endif
 
 #ifdef FEAT_FIND_ID
@@ -265,7 +265,7 @@ save_re_pat(int idx, char_u *pat, int magic)
  * Save the search patterns, so they can be restored later.
  * Used before/after executing autocommands and user functions.
  */
-static int save_level = 0;
+static __thread int save_level = 0;
 
     void
 save_search_patterns(void)
@@ -319,16 +319,38 @@ free_search_patterns(void)
 	mr_pattern = NULL;
     }
 # endif
+#if TARGET_OS_IPHONE
+    // Extra dose of reinitialisation
+    spats[0] = (spat_T) {NULL, TRUE, FALSE, {'/', 0, 0, 0L}};	/* last used search pat */
+    spats[1] = (spat_T) {NULL, TRUE, FALSE, {'/', 0, 0, 0L}};	/* last used substitute pat */
+    last_idx = 0;	/* index in spats[] for RE_LAST */
+
+    lastc[0] = NUL;	/* last character searched for */
+    lastc[1] = NUL;	/* last character searched for */
+    lastcdir = FORWARD;		/* last direction of character search */
+    last_t_cmd = TRUE;		/* last search t_cmd */
+    lastc_bytelen = 1;	/* >1 for multi-byte char */
+
+# ifdef FEAT_SEARCH_EXTRA
+    saved_spats_last_idx = 0;
+    saved_spats_no_hlsearch = 0;
+# endif
+    mr_pattern = NULL;	/* pattern used by search_regcomp() */
+#ifdef FEAT_RIGHTLEFT
+    mr_pattern_alloced = FALSE; /* mr_pattern was allocated */
+#endif
+    
+#endif
 }
 #endif
 
 #ifdef FEAT_SEARCH_EXTRA
 // copy of spats[RE_SEARCH], for keeping the search patterns while incremental
 // searching
-static spat_T	    saved_last_search_spat;
-static int	    did_save_last_search_spat = 0;
-static int	    saved_last_idx = 0;
-static int	    saved_no_hlsearch = 0;
+static __thread spat_T	    saved_last_search_spat;
+static __thread int	    did_save_last_search_spat = 0;
+static __thread int	    saved_last_idx = 0;
+static __thread int	    saved_no_hlsearch = 0;
 
 /*
  * Save and restore the search pattern for incremental highlight search
@@ -1938,6 +1960,9 @@ find_rawstring_end(char_u *linep, pos_T *startpos, pos_T *endpos)
  * NULL
  */
 
+#if TARGET_OS_IPHONE
+static __thread pos_T pos;			/* current search position */
+#endif
     pos_T *
 findmatchlimit(
     oparg_T	*oap,
@@ -1945,7 +1970,9 @@ findmatchlimit(
     int		flags,
     int		maxtravel)
 {
+#if !TARGET_OS_IPHONE
     static pos_T pos;			/* current search position */
+#endif
     int		findc = 0;		/* matching brace */
     int		c;
     int		count = 0;		/* cumulative number of braces */
@@ -3017,7 +3044,7 @@ startPS(linenr_T lnum, int para, int both)
  * 2 or higher - keyword characters (letters, digits and underscore)
  */
 
-static int	cls_bigword;	/* TRUE for "W", "B" or "E" */
+static __thread int	cls_bigword;	/* TRUE for "W", "B" or "E" */
 
 /*
  * cls() - returns the class of character at curwin->w_cursor
@@ -4904,6 +4931,14 @@ linewhite(linenr_T lnum)
  * Add the search count "[3/19]" to "msgbuf".
  * When "recompute" is TRUE always recompute the numbers.
  */
+#if TARGET_OS_IPHONE
+static __thread  pos_T   lastpos = {0, 0, 0};
+static __thread int	    cur = 0;
+static __thread int	    cnt = 0;
+static __thread int	    chgtick = 0;
+static __thread char_u   *lastpat = NULL;
+static __thread buf_T    *lbuf = NULL;
+#endif
     static void
 search_stat(
     int	    dirc,
@@ -4915,12 +4950,14 @@ search_stat(
     int		    save_ws = p_ws;
     int		    wraparound = FALSE;
     pos_T	    p = (*pos);
+#if !TARGET_OS_IPHONE
     static  pos_T   lastpos = {0, 0, 0};
     static int	    cur = 0;
     static int	    cnt = 0;
     static int	    chgtick = 0;
     static char_u   *lastpat = NULL;
     static buf_T    *lbuf = NULL;
+#endif
 #ifdef FEAT_RELTIME
     proftime_T  start;
 #endif

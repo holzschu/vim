@@ -66,7 +66,7 @@ typedef struct pointer_entry	PTR_EN;	    /* block/line-count pair */
 #define BLOCK0_ID1_C2  'd'		    /* block 0 id 1 'cm' 2 */
 
 #if defined(FEAT_CRYPT)
-static int id1_codes[] = {
+static __thread int id1_codes[] = {
     BLOCK0_ID1_C0,  /* CRYPT_M_ZIP */
     BLOCK0_ID1_C1,  /* CRYPT_M_BF */
     BLOCK0_ID1_C2,  /* CRYPT_M_BF2 */
@@ -216,7 +216,7 @@ struct block0
  * (always used for the current buffer only, no buffer change possible while
  * executing a global command).
  */
-static linenr_T	lowest_marked = 0;
+static __thread linenr_T	lowest_marked = 0;
 
 /*
  * arguments for ml_find_line()
@@ -2033,7 +2033,7 @@ make_percent_swname(char_u *dir, char_u *name)
 #if (defined(UNIX) || defined(VMS) || defined(MSWIN)) \
 	&& (defined(FEAT_GUI_DIALOG) || defined(FEAT_CON_DIALOG))
 # define HAVE_PROCESS_STILL_RUNNING
-static int process_still_running;
+static __thread int process_still_running;
 #endif
 
 #if defined(FEAT_EVAL) || defined(PROTO)
@@ -2085,7 +2085,7 @@ get_b0_dict(char_u *fname, dict_T *d)
  * where unset, up to 64 octets long including trailing null byte.
  */
 #if defined(HAVE_LOCALTIME_R) && defined(HAVE_TZSET)
-static char	tz_cache[64];
+static __thread char	tz_cache[64];
 #endif
 
 /*

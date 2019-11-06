@@ -606,7 +606,7 @@ static int setlineinfo(int row, const VTermLineInfo *newinfo, const VTermLineInf
   return 1;
 }
 
-static VTermStateCallbacks state_cbs = {
+static __thread VTermStateCallbacks state_cbs = {
   &putglyph, // putglyph
   &movecursor, // movecursor
   &scrollrect, // scrollrect

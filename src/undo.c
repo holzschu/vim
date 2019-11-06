@@ -127,24 +127,24 @@ static void u_saveline(linenr_T lnum);
 #define U_ALLOC_LINE(size) lalloc(size, FALSE)
 
 /* used in undo_end() to report number of added and deleted lines */
-static long	u_newcount, u_oldcount;
+static __thread long	u_newcount, u_oldcount;
 
 /*
  * When 'u' flag included in 'cpoptions', we behave like vi.  Need to remember
  * the action that "u" should do.
  */
-static int	undo_undoes = FALSE;
+static __thread int	undo_undoes = FALSE;
 
-static int	lastmark = 0;
+static __thread int	lastmark = 0;
 
 #if defined(U_DEBUG) || defined(PROTO)
 /*
  * Check the undo structures for being valid.  Print a warning when something
  * looks wrong.
  */
-static int seen_b_u_curhead;
-static int seen_b_u_newhead;
-static int header_count;
+static __thread int seen_b_u_curhead;
+static __thread int seen_b_u_newhead;
+static __thread int header_count;
 
     static void
 u_check_tree(u_header_T *uhp,
@@ -746,7 +746,7 @@ nomem:
 /* extra fields for uhp */
 # define UHP_SAVE_NR		1
 
-static char_u e_not_open[] = N_("E828: Cannot open undo file for writing: %s");
+static __thread char_u e_not_open[] = N_("E828: Cannot open undo file for writing: %s");
 
 /*
  * Compute the hash for the current buffer text into hash[UNDO_HASH_SIZE].

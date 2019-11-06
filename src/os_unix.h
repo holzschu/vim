@@ -247,6 +247,8 @@ typedef struct dsc$descriptor   DESC;
 #ifndef USR_EXRC_FILE
 # ifdef VMS
 #  define USR_EXRC_FILE "sys$login:.exrc"
+# elif TARGET_OS_IPHONE
+#  define USR_EXRC_FILE "$HOME/Documents/.exrc"
 # else
 #  define USR_EXRC_FILE "$HOME/.exrc"
 # endif
@@ -259,6 +261,8 @@ typedef struct dsc$descriptor   DESC;
 #ifndef USR_VIMRC_FILE
 # ifdef VMS
 # define USR_VIMRC_FILE  "sys$login:.vimrc"
+# elif TARGET_OS_IPHONE
+#  define USR_VIMRC_FILE "$HOME/Documents/.vimrc"
 # else
 #  define USR_VIMRC_FILE "$HOME/.vimrc"
 # endif
@@ -268,6 +272,8 @@ typedef struct dsc$descriptor   DESC;
 #if !defined(USR_VIMRC_FILE2)
 # ifdef VMS
 #  define USR_VIMRC_FILE2	"sys$login:vimfiles/vimrc"
+# elif TARGET_OS_IPHONE
+#   define USR_VIMRC_FILE2	"~/Documents/.vim/vimrc"
 # else
 #   define USR_VIMRC_FILE2	"~/.vim/vimrc"
 # endif
@@ -280,6 +286,8 @@ typedef struct dsc$descriptor   DESC;
 #ifndef USR_GVIMRC_FILE
 # ifdef VMS
 #  define USR_GVIMRC_FILE "sys$login:.gvimrc"
+# elif TARGET_OS_IPHONE
+#  define USR_GVIMRC_FILE "$HOME/Documents/.gvimrc"
 # else
 #  define USR_GVIMRC_FILE "$HOME/.gvimrc"
 # endif
@@ -288,6 +296,8 @@ typedef struct dsc$descriptor   DESC;
 #ifndef USR_GVIMRC_FILE2
 # ifdef VMS
 #  define USR_GVIMRC_FILE2	"sys$login:vimfiles/gvimrc"
+# elif TARGET_OS_IPHONE
+#  define USR_GVIMRC_FILE2	"~/Documents/.vim/gvimrc"
 # else
 #  define USR_GVIMRC_FILE2	"~/.vim/gvimrc"
 # endif
@@ -311,6 +321,8 @@ typedef struct dsc$descriptor   DESC;
 # ifndef VIMINFO_FILE
 #  ifdef VMS
 #   define VIMINFO_FILE  "sys$login:.viminfo"
+#  elif TARGET_OS_IPHONE
+#   define VIMINFO_FILE "$HOME/Documents/.viminfo"
 #  else
 #   define VIMINFO_FILE "$HOME/.viminfo"
 #  endif
@@ -341,6 +353,8 @@ typedef struct dsc$descriptor   DESC;
 #ifndef DFLT_BDIR
 # ifdef VMS
 #  define DFLT_BDIR    "./,sys$login:,tmp:"
+# elif TARGET_OS_IPHONE
+#  define DFLT_BDIR    ".,~/tmp,~/Documents"    /* default for 'backupdir' */
 # else
 #  define DFLT_BDIR    ".,~/tmp,~/"    /* default for 'backupdir' */
 # endif
@@ -357,6 +371,8 @@ typedef struct dsc$descriptor   DESC;
 #ifndef DFLT_VDIR
 # ifdef VMS
 #  define DFLT_VDIR    "sys$login:vimfiles/view"
+# elif TARGET_OS_IPHONE
+#  define DFLT_VDIR    "$HOME/Documents/.vim/view"       /* default for 'viewdir' */
 # else
 #  define DFLT_VDIR    "$HOME/.vim/view"       /* default for 'viewdir' */
 # endif
@@ -367,6 +383,9 @@ typedef struct dsc$descriptor   DESC;
 #ifdef VMS
 # define DFLT_RUNTIMEPATH      "sys$login:vimfiles,$VIM/vimfiles,$VIMRUNTIME,$VIM/vimfiles/after,sys$login:vimfiles/after"
 # define CLEAN_RUNTIMEPATH      "$VIM/vimfiles,$VIMRUNTIME,$VIM/vimfiles/after"
+#elif TARGET_OS_IPHONE
+#  define DFLT_RUNTIMEPATH	"~/Documents/.vim,$VIM/vimfiles,$VIMRUNTIME,$VIM/vimfiles/after,~/Documents/.vim/after"
+#  define CLEAN_RUNTIMEPATH	"$VIM/vimfiles,$VIMRUNTIME,$VIM/vimfiles/after"
 #else
 # ifdef RUNTIME_GLOBAL
 #  ifdef RUNTIME_GLOBAL_AFTER

@@ -241,19 +241,19 @@
 #define HASLOOKBH	0x10	// Contains "\@<=" or "\@<!".
 #define WORST		0	// Worst case.
 
-static int	num_complex_braces; // Complex \{...} count
-static char_u	*regcode;	// Code-emit pointer, or JUST_CALC_SIZE
-static long	regsize;	// Code size.
-static int	reg_toolong;	// TRUE when offset out of range
-static char_u	had_endbrace[NSUBEXP];	// flags, TRUE if end of () found
-static long	brace_min[10];	// Minimums for complex brace repeats
-static long	brace_max[10];	// Maximums for complex brace repeats
-static int	brace_count[10]; // Current counts for complex brace repeats
-static int	one_exactly = FALSE;	// only do one char for EXACTLY
+static __thread int	num_complex_braces; // Complex \{...} count
+static __thread char_u	*regcode;	// Code-emit pointer, or JUST_CALC_SIZE
+static __thread long	regsize;	// Code size.
+static __thread int	reg_toolong;	// TRUE when offset out of range
+static __thread char_u	had_endbrace[NSUBEXP];	// flags, TRUE if end of () found
+static __thread long	brace_min[10];	// Minimums for complex brace repeats
+static __thread long	brace_max[10];	// Maximums for complex brace repeats
+static __thread int	brace_count[10]; // Current counts for complex brace repeats
+static __thread int	one_exactly = FALSE;	// only do one char for EXACTLY
 
 // When making changes to classchars also change nfa_classcodes.
-static char_u	*classchars = (char_u *)".iIkKfFpPsSdDxXoOwWhHaAlLuU";
-static int	classcodes[] = {
+static __thread char_u	*classchars = (char_u *)".iIkKfFpPsSdDxXoOwWhHaAlLuU";
+static __thread int	classcodes[] = {
     ANY, IDENT, SIDENT, KWORD, SKWORD,
     FNAME, SFNAME, PRINT, SPRINT,
     WHITE, NWHITE, DIGIT, NDIGIT,
@@ -369,10 +369,10 @@ typedef struct backpos_S
  * or regbehind_T.
  * "backpos_T" is a table with backpos_T for BACK
  */
-static garray_T	regstack = {0, 0, 0, 0, NULL};
-static garray_T	backpos = {0, 0, 0, 0, NULL};
+static __thread garray_T	regstack = {0, 0, 0, 0, NULL};
+static __thread garray_T	backpos = {0, 0, 0, 0, NULL};
 
-static regsave_T behind_pos;
+static __thread regsave_T behind_pos;
 
 /*
  * Both for regstack and backpos tables we use the following strategy of
@@ -447,7 +447,7 @@ static int	re_num_cmp(long_u val, char_u *scan);
 #ifdef DEBUG
 static char_u	*regprop(char_u *);
 
-static int	regnarrate = 0;
+static __thread int	regnarrate = 0;
 #endif
 
 
@@ -2454,8 +2454,8 @@ bt_regfree(regprog_T *prog)
  * to regmatch(), but they are here to reduce the amount of stack space used
  * (it can be called recursively many times).
  */
-static long	bl_minval;
-static long	bl_maxval;
+static __thread long	bl_minval;
+static __thread long	bl_maxval;
 
 /*
  * Save the input line and position in a regsave_T.
@@ -4976,6 +4976,7 @@ regdump(char_u *pattern, bt_regprog_T *r)
 regprop(char_u *op)
 {
     char	    *p;
+    // iOS: this is in DEBUG branch, no need to move outside
     static char	    buf[50];
 
     STRCPY(buf, ":");

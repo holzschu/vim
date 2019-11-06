@@ -22,11 +22,11 @@
  *     37 = Selection register '*'. Only if FEAT_CLIPBOARD defined
  *     38 = Clipboard register '+'. Only if FEAT_CLIPBOARD and FEAT_X11 defined
  */
-static yankreg_T	y_regs[NUM_REGISTERS];
+static __thread yankreg_T	y_regs[NUM_REGISTERS];
 
-static yankreg_T	*y_current;	    // ptr to current yankreg
-static int		y_append;	    // TRUE when appending
-static yankreg_T	*y_previous = NULL; // ptr to last written yankreg
+static __thread yankreg_T	*y_current;	    // ptr to current yankreg
+static __thread int		y_append;	    // TRUE when appending
+static __thread yankreg_T	*y_previous = NULL; // ptr to last written yankreg
 
 static int	stuff_yank(int, char_u *);
 static void	put_reedit_in_typebuf(int silent);
@@ -71,7 +71,7 @@ set_y_previous(yankreg_T *yreg)
 /*
  * Keep the last expression line here, for repeating.
  */
-static char_u	*expr_line = NULL;
+static __thread char_u	*expr_line = NULL;
 
 /*
  * Get an expression for the "\"=expr1" or "CTRL-R =expr1"
@@ -107,12 +107,17 @@ set_expr_line(char_u *new_line)
  * Get the result of the '=' register expression.
  * Returns a pointer to allocated memory, or NULL for failure.
  */
+#if TARGET_OS_IPHONE
+static __thread int nested = 0;
+#endif
     char_u *
 get_expr_line(void)
 {
     char_u	*expr_copy;
     char_u	*rv;
+#if !TARGET_OS_IPHONE
     static int	nested = 0;
+#endif
 
     if (expr_line == NULL)
 	return NULL;
@@ -371,11 +376,16 @@ yank_register_mline(int regname)
  *
  * Return FAIL for failure, OK otherwise.
  */
+#if TARGET_OS_IPHONE
+static __thread int regname;
+#endif
     int
 do_record(int c)
 {
     char_u	    *p;
+#if !TARGET_OS_IPHONE
     static int	    regname;
+#endif
     yankreg_T	    *old_y_previous, *old_y_current;
     int		    retval;
 
@@ -478,7 +488,7 @@ stuff_yank(int regname, char_u *p)
     return OK;
 }
 
-static int execreg_lastc = NUL;
+static __thread int execreg_lastc = NUL;
 
     int
 get_execreg_lastc(void)
@@ -928,10 +938,15 @@ shift_delete_registers()
 }
 
 #if defined(FEAT_EVAL)
+#if TARGET_OS_IPHONE
+static __thread int recursive = FALSE;
+#endif 
     void
 yank_do_autocmd(oparg_T *oap, yankreg_T *reg)
 {
+#if !TARGET_OS_IPHONE
     static int	recursive = FALSE;
+#endif 
     dict_T	*v_event;
     list_T	*list;
     int		n;

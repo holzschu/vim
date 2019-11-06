@@ -29,8 +29,8 @@
 
 #include "vim.h"
 
-FILE		*nb_debug = NULL;
-u_int		 nb_dlevel = 0;		/* nb_debug verbosity level */
+__thread FILE		*nb_debug = NULL;
+__thread u_int		 nb_dlevel = 0;		/* nb_debug verbosity level */
 
 void		 nbdb(char *, ...);
 

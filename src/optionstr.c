@@ -566,12 +566,17 @@ valid_filetype(char_u *val)
  * Check validity of options with the 'statusline' format.
  * Return error message or NULL.
  */
+#if TARGET_OS_IPHONE
+static __thread char errbuf[80];
+static __thread int syn_recursive = 0;
+static __thread int  ft_recursive = 0;
+#endif
     static char *
 check_stl_option(char_u *s)
 {
     int		itemcnt = 0;
     int		groupdepth = 0;
-    static __thread char errbuf[80];
+    static char errbuf[80];
 
     while (*s && itemcnt < STL_MAX_ITEM)
     {
@@ -2318,7 +2323,9 @@ did_set_string_option(
 	// When 'syntax' is set, load the syntax of that name
 	if (varp == &(curbuf->b_p_syn))
 	{
+#if !TARGET_OS_IPHONE
 	    static int syn_recursive = 0;
+#endif
 
 	    ++syn_recursive;
 	    // Only pass TRUE for "force" when the value changed or not used
@@ -2336,7 +2343,9 @@ did_set_string_option(
 	    // already set to this value.
 	    if (!(opt_flags & OPT_MODELINE) || value_changed)
 	    {
+#if !TARGET_OS_IPHONE
 		static int  ft_recursive = 0;
+#endif
 		int	    secure_save = secure;
 
 		// Reset the secure flag, since the value of 'filetype' has

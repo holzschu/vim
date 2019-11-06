@@ -67,7 +67,7 @@ extern int dos2;			/* this is in os_amiga.c */
 
 #define MEMFILE_PAGE_SIZE 4096		/* default page size */
 
-static long_u	total_mem_used = 0;	/* total memory used for memfiles */
+static __thread long_u	total_mem_used = 0;	/* total memory used for memfiles */
 
 static void mf_ins_hash(memfile_T *, bhdr_T *);
 static void mf_rem_hash(memfile_T *, bhdr_T *);

@@ -1644,8 +1644,13 @@ slang_alloc(char_u *lang)
     void
 slang_free(slang_T *lp)
 {
+#if !TARGET_OS_IPHONE
     vim_free(lp->sl_name);
     vim_free(lp->sl_fname);
+#else
+    VIM_CLEAR(lp->sl_name);
+    VIM_CLEAR(lp->sl_fname);
+#endif
     slang_clear(lp);
     vim_free(lp);
 }
@@ -2431,8 +2436,14 @@ spell_free_all(void)
     {
 	slang = first_lang;
 	first_lang = slang->sl_next;
+#if TARGET_OS_IPHONE
+	slang->sl_next = NULL; 
+#endif
 	slang_free(slang);
     }
+#if TARGET_OS_IPHONE
+    first_lang = NULL;
+#endif
 
     spell_delete_wordlist();
 
@@ -4276,7 +4287,7 @@ spell_word_start(int startcol)
  * Need to check for 'spellcapcheck' now, the word is removed before
  * expand_spelling() is called.  Therefore the ugly global variable.
  */
-static int spell_expand_need_cap;
+static __thread int spell_expand_need_cap;
 
     void
 spell_expand_check_cap(colnr_T col)

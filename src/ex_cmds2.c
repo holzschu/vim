@@ -387,6 +387,10 @@ timer_free_all()
 	remove_timer(timer);
 	free_timer(timer);
     }
+#if TARGET_OS_IPHONE
+    first_timer = NULL;
+    last_timer_id = 0;
+#endif 
 }
 # endif
 

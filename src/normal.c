@@ -14,8 +14,8 @@
 
 #include "vim.h"
 
-static int	VIsual_mode_orig = NUL;		// saved Visual mode
-static int	restart_VIsual_select = 0;
+static __thread int	VIsual_mode_orig = NUL;		// saved Visual mode
+static __thread int	restart_VIsual_select = 0;
 
 #ifdef FEAT_EVAL
 static void	set_vcount_ca(cmdarg_T *cap, int *set_prevcount);
@@ -129,7 +129,7 @@ static void	nv_drop(cmdarg_T *cap);
 #endif
 static void	nv_cursorhold(cmdarg_T *cap);
 
-static char *e_noident = N_("E349: No identifier under cursor");
+static __thread char *e_noident = N_("E349: No identifier under cursor");
 
 /*
  * Function to be called for a Normal or Visual mode command.
@@ -165,7 +165,7 @@ typedef void (*nv_func_T)(cmdarg_T *cap);
  * The order doesn't matter, init_normal_cmds() will create a sorted index.
  * It is faster when all keys from zero to '~' are present.
  */
-static const struct nv_cmd
+static __thread const struct nv_cmd
 {
     int		cmd_char;	/* (first) command character */
     nv_func_T   cmd_func;	/* function for this command */
@@ -381,11 +381,11 @@ static const struct nv_cmd
 #define NV_CMDS_SIZE (sizeof(nv_cmds) / sizeof(struct nv_cmd))
 
 /* Sorted index of commands in nv_cmds[]. */
-static short nv_cmd_idx[NV_CMDS_SIZE];
+static __thread short nv_cmd_idx[NV_CMDS_SIZE];
 
 /* The highest index for which
  * nv_cmds[idx].cmd_char == nv_cmd_idx[nv_cmds[idx].cmd_char] */
-static int nv_max_linear;
+static __thread int nv_max_linear;
 
 /*
  * Compare functions for qsort() below, that checks the command character
@@ -480,6 +480,9 @@ find_command(int cmdchar)
 /*
  * Execute a command in Normal mode.
  */
+#if TARGET_OS_IPHONE
+static __thread int old_mapped_len = 0;
+#endif
     void
 normal_cmd(
     oparg_T	*oap,
@@ -494,7 +497,9 @@ normal_cmd(
 #endif
     pos_T	old_pos;		/* cursor position before command */
     int		mapped_len;
+#if !TARGET_OS_IPHONE
     static int	old_mapped_len = 0;
+#endif
     int		idx;
 #ifdef FEAT_EVAL
     int		set_prevcount = FALSE;
@@ -1282,10 +1287,15 @@ set_vcount_ca(cmdarg_T *cap, int *set_prevcount)
  * Check if  highlighting for visual mode is possible, give a warning message
  * if not.
  */
+#if TARGET_OS_IPHONE
+static __thread int	    did_check = FALSE;
+#endif
     void
 check_visual_highlight(void)
 {
+#if !TARGET_OS_IPHONE
     static int	    did_check = FALSE;
+#endif
 
     if (full_screen)
     {
@@ -1726,10 +1736,10 @@ may_clear_cmdline(void)
  */
 
 #define SHOWCMD_BUFLEN SHOWCMD_COLS + 1 + 30
-static char_u	showcmd_buf[SHOWCMD_BUFLEN];
-static char_u	old_showcmd_buf[SHOWCMD_BUFLEN];  /* For push_showcmd() */
-static int	showcmd_is_clear = TRUE;
-static int	showcmd_visual = FALSE;
+static __thread char_u	showcmd_buf[SHOWCMD_BUFLEN];
+static __thread char_u	old_showcmd_buf[SHOWCMD_BUFLEN];  /* For push_showcmd() */
+static __thread int	showcmd_is_clear = TRUE;
+static __thread int	showcmd_visual = FALSE;
 
 static void display_showcmd(void);
 
@@ -1836,6 +1846,23 @@ clear_showcmd(void)
  * Add 'c' to string of shown command chars.
  * Return TRUE if output has been written (and setcursor() has been called).
  */
+#if TARGET_OS_IPHONE
+static __thread int	ignore[] =
+    {
+#ifdef FEAT_GUI
+	K_VER_SCROLLBAR, K_HOR_SCROLLBAR,
+	K_LEFTMOUSE_NM, K_LEFTRELEASE_NM,
+#endif
+	K_IGNORE, K_PS,
+	K_LEFTMOUSE, K_LEFTDRAG, K_LEFTRELEASE, K_MOUSEMOVE,
+	K_MIDDLEMOUSE, K_MIDDLEDRAG, K_MIDDLERELEASE,
+	K_RIGHTMOUSE, K_RIGHTDRAG, K_RIGHTRELEASE,
+	K_MOUSEDOWN, K_MOUSEUP, K_MOUSELEFT, K_MOUSERIGHT,
+	K_X1MOUSE, K_X1DRAG, K_X1RELEASE, K_X2MOUSE, K_X2DRAG, K_X2RELEASE,
+	K_CURSORHOLD,
+	0
+    };
+#endif
     int
 add_to_showcmd(int c)
 {
@@ -1844,6 +1871,7 @@ add_to_showcmd(int c)
     int		extra_len;
     int		overflow;
     int		i;
+#if !TARGET_OS_IPHONE
     static int	ignore[] =
     {
 #ifdef FEAT_GUI
@@ -1859,6 +1887,7 @@ add_to_showcmd(int c)
 	K_CURSORHOLD,
 	0
     };
+#endif
 
     if (!p_sc || msg_silent != 0)
 	return FALSE;
@@ -1974,9 +2003,19 @@ display_showcmd(void)
  * When "check" is TRUE, take care of scroll-binding after the window has
  * scrolled.  Called from normal_cmd() and edit().
  */
+#if TARGET_OS_IPHONE
+static __thread win_T	*old_curwin = NULL;
+static __thread linenr_T	old_topline = 0;
+#ifdef FEAT_DIFF
+static __thread int		old_topfill = 0;
+#endif
+static __thread buf_T	*old_buf = NULL;
+static __thread colnr_T	old_leftcol = 0;
+#endif
     void
 do_check_scrollbind(int check)
 {
+#if !TARGET_OS_IPHONE
     static win_T	*old_curwin = NULL;
     static linenr_T	old_topline = 0;
 #ifdef FEAT_DIFF
@@ -1984,6 +2023,7 @@ do_check_scrollbind(int check)
 #endif
     static buf_T	*old_buf = NULL;
     static colnr_T	old_leftcol = 0;
+#endif
 
     if (check && curwin->w_p_scb)
     {
@@ -5282,10 +5322,15 @@ nv_cursormark(cmdarg_T *cap, int flag, pos_T *pos)
 /*
  * Handle commands that are operators in Visual mode.
  */
+#if TARGET_OS_IPHONE
+static __thread char_u trans[] = "YyDdCcxdXdAAIIrr";
+#endif
     static void
 v_visop(cmdarg_T *cap)
 {
+#if !TARGET_OS_IPHONE
     static char_u trans[] = "YyDdCcxdXdAAIIrr";
+#endif
 
     /* Uppercase means linewise, except in block mode, then "D" deletes till
      * the end of the line, and "C" replaces till EOL */
@@ -5354,14 +5399,23 @@ nv_abbrev(cmdarg_T *cap)
 /*
  * Translate a command into another command.
  */
+#if TARGET_OS_IPHONE
+static __thread char_u *(ar[8]) = {(char_u *)"dl", (char_u *)"dh",
+    		      (char_u *)"d$", (char_u *)"c$",
+    		      (char_u *)"cl", (char_u *)"cc",
+    		      (char_u *)"yy", (char_u *)":s\r"};
+static __thread char_u *str = (char_u *)"xXDCsSY&";
+#endif
     static void
 nv_optrans(cmdarg_T *cap)
 {
+#if !TARGET_OS_IPHONE
     static char_u *(ar[8]) = {(char_u *)"dl", (char_u *)"dh",
 			      (char_u *)"d$", (char_u *)"c$",
 			      (char_u *)"cl", (char_u *)"cc",
 			      (char_u *)"yy", (char_u *)":s\r"};
     static char_u *str = (char_u *)"xXDCsSY&";
+#endif
 
     if (!checkclearopq(cap->oap))
     {

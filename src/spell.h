@@ -282,10 +282,10 @@ typedef struct spelltab_S
 /* First language that is loaded, start of the linked list of loaded
  * languages. */
 # ifdef IN_SPELL_C
-#  define SPELL_EXTERN
+#  define SPELL_EXTERN __thread 
 #  define SPELL_INIT(x) x
 # else
-#  define SPELL_EXTERN extern
+#  define SPELL_EXTERN extern __thread
 #  define SPELL_INIT(x)
 # endif
 

@@ -28,8 +28,8 @@
 
 #include "version.h"
 
-char		*Version = VIM_VERSION_SHORT;
-static char	*mediumVersion = VIM_VERSION_MEDIUM;
+__thread char		*Version = VIM_VERSION_SHORT;
+static __thread char	*mediumVersion = VIM_VERSION_MEDIUM;
 
 #if defined(HAVE_DATE_TIME) || defined(PROTO)
 # if (defined(VMS) && defined(VAXC)) || defined(PROTO)
@@ -79,7 +79,7 @@ init_longVersion(void)
 }
 #endif
 
-static char *(features[]) =
+static __thread char *(features[]) =
 {
 #ifdef HAVE_ACL
 	"+acl",
@@ -739,7 +739,7 @@ static char *(features[]) =
 	NULL
 };
 
-static int included_patches[] =
+static __thread int included_patches[] =
 {   /* Add new patch number below this line */
 /**/
     2238,
@@ -5228,7 +5228,7 @@ static int included_patches[] =
  * See the official Vim patches for the diff format: It must use a context of
  * one line only.  Create it by hand or use "diff -C2" and edit the patch.
  */
-static char *(extra_patches[]) =
+static __thread char *(extra_patches[]) =
 {   /* Add your patch description below this line */
 /**/
     NULL

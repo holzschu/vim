@@ -53,11 +53,11 @@ typedef struct tag_pointers
 #define MT_MASK		7		/* mask for printing priority */
 #define MT_COUNT	16
 
-static char	*mt_names[MT_COUNT/2] =
+static __thread char	*mt_names[MT_COUNT/2] =
 		{"FSC", "F C", "F  ", "FS ", " SC", "  C", "   ", " S "};
 
 #define NOTAGFILE	99		/* return value for jumpto_tag */
-static char_u	*nofile_fname = NULL;	/* fname for NOTAGFILE error */
+static __thread char_u	*nofile_fname = NULL;	/* fname for NOTAGFILE error */
 
 static void taglen_advance(int l);
 
@@ -83,25 +83,25 @@ static int add_llist_tags(char_u *tag, int num_matches, char_u **matches);
 #endif
 static void tagstack_clear_entry(taggy_T *item);
 
-static char_u *bottommsg = (char_u *)N_("E555: at bottom of tag stack");
-static char_u *topmsg = (char_u *)N_("E556: at top of tag stack");
+static __thread char_u *bottommsg = (char_u *)N_("E555: at bottom of tag stack");
+static __thread char_u *topmsg = (char_u *)N_("E556: at top of tag stack");
 #ifdef FEAT_EVAL
-static char_u *recurmsg = (char_u *)N_("E986: cannot modify the tag stack within tagfunc");
-static char_u *tfu_inv_ret_msg = (char_u *)N_("E987: invalid return value from tagfunc");
+static __thread char_u *recurmsg = (char_u *)N_("E986: cannot modify the tag stack within tagfunc");
+static __thread char_u *tfu_inv_ret_msg = (char_u *)N_("E987: invalid return value from tagfunc");
 #endif
 
-static char_u	*tagmatchname = NULL;	/* name of last used tag */
+static __thread char_u	*tagmatchname = NULL;	/* name of last used tag */
 
 #if defined(FEAT_QUICKFIX)
 /*
  * Tag for preview window is remembered separately, to avoid messing up the
  * normal tagstack.
  */
-static taggy_T ptag_entry = {NULL, {{0, 0, 0}, 0}, 0, 0, NULL};
+static __thread taggy_T ptag_entry = {NULL, {{0, 0, 0}, 0}, 0, 0, NULL};
 #endif
 
 #ifdef FEAT_EVAL
-static int  tfu_in_use = FALSE;	    // disallow recursive call of tagfunc
+static __thread int  tfu_in_use = FALSE;	    // disallow recursive call of tagfunc
 #endif
 
 // Used instead of NUL to separate tag fields in the growarrays.
@@ -2828,7 +2828,7 @@ findtag_end:
     return retval;
 }
 
-static garray_T tag_fnames = GA_EMPTY;
+static __thread garray_T tag_fnames = GA_EMPTY;
 
 /*
  * Callback function for finding all "tags" and "tags-??" files in

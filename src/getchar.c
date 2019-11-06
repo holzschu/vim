@@ -3467,3 +3467,20 @@ input_available(void)
 	    );
 }
 #endif
+#if TARGET_OS_IPHONE
+/* 
+ * Reset all variables and hashmaps to their state at startup time
+ */
+    void
+getchar_reset() {
+    redobuff = (buffheader_T) {{NULL, {NUL}}, NULL, 0, 0};
+    old_redobuff = (buffheader_T) {{NULL, {NUL}}, NULL, 0, 0};
+    recordbuff = (buffheader_T) {{NULL, {NUL}}, NULL, 0, 0};
+    typeahead_char = 0;		/* typeahead char that's not flushed */
+    block_redo = FALSE;
+    KeyNoremap = 0;	    /* remapping flags */
+    last_recorded_len = 0;	/* number of last recorded chars */
+}
+#endif
+
+

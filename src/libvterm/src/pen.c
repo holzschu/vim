@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-static const VTermColor ansi_colors[] = {
+static __thread const VTermColor ansi_colors[] = {
   // R    G    B   index
   {   0,   0,   0,  1 }, // black
   { 224,   0,   0,  2 }, // red
@@ -24,12 +24,12 @@ static const VTermColor ansi_colors[] = {
   { 255, 255, 255, 16 }, // white for real
 };
 
-static int ramp6[] = {
+static __thread int ramp6[] = {
   0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF,
 };
 
 // Use 0x81 instead of 0x80 to be able to distinguish from ansi black
-static int ramp24[] = {
+static __thread int ramp24[] = {
   0x08, 0x12, 0x1C, 0x26, 0x30, 0x3A, 0x44, 0x4E, 0x58, 0x62, 0x6C, 0x76,
   0x81, 0x8A, 0x94, 0x9E, 0xA8, 0xB2, 0xBC, 0xC6, 0xD0, 0xDA, 0xE4, 0xEE,
 };

@@ -42,7 +42,7 @@
 
 /* The first implementation (working only with Netbeans) returned "1.1".  The
  * protocol implemented here also supports A-A-P. */
-static char *ExtEdProtocolVersion = "2.5";
+static __thread char *ExtEdProtocolVersion = "2.5";
 
 static long pos2off(buf_T *, pos_T *);
 static pos_T *off2pos(buf_T *, long);
@@ -62,10 +62,10 @@ static void nb_send(char *buf, char *fun);
 static void nb_free(void);
 
 #define NETBEANS_OPEN (channel_can_write_to(nb_channel))
-static channel_T *nb_channel = NULL;
+static __thread channel_T *nb_channel = NULL;
 
-static int r_cmdno;			/* current command number for reply */
-static int dosetvisible = FALSE;
+static __thread int r_cmdno;			/* current command number for reply */
+static __thread int dosetvisible = FALSE;
 
 /*
  * Include the debugging code if wanted.
@@ -74,8 +74,8 @@ static int dosetvisible = FALSE;
 # include "nbdebug.c"
 #endif
 
-static int needupdate = 0;
-static int inAtomic = 0;
+static __thread int needupdate = 0;
+static __thread int inAtomic = 0;
 
 /*
  * Callback invoked when the channel is closed.
@@ -308,7 +308,7 @@ struct keyqueue
 
 typedef struct keyqueue keyQ_T;
 
-static keyQ_T keyHead; /* dummy node, header for circular queue */
+static __thread keyQ_T keyHead; /* dummy node, header for circular queue */
 
 
 /*
@@ -539,13 +539,13 @@ struct nbbuf_struct
 
 typedef struct nbbuf_struct nbbuf_T;
 
-static nbbuf_T *buf_list = NULL;
-static int buf_list_size = 0;	/* size of buf_list */
-static int buf_list_used = 0;	/* nr of entries in buf_list actually in use */
+static __thread nbbuf_T *buf_list = NULL;
+static __thread int buf_list_size = 0;	/* size of buf_list */
+static __thread int buf_list_used = 0;	/* nr of entries in buf_list actually in use */
 
-static char **globalsignmap = NULL;
-static int globalsignmaplen = 0;
-static int globalsignmapused = 0;
+static __thread char **globalsignmap = NULL;
+static __thread int globalsignmaplen = 0;
+static __thread int globalsignmapused = 0;
 
 static int  mapsigntype(nbbuf_T *, int localsigntype);
 static void addsigntype(nbbuf_T *, int localsigntype, char_u *typeName,
@@ -554,7 +554,7 @@ static void addsigntype(nbbuf_T *, int localsigntype, char_u *typeName,
 static void print_read_msg(nbbuf_T *buf);
 static void print_save_msg(nbbuf_T *buf, off_T nchars);
 
-static int curPCtype = -1;
+static __thread int curPCtype = -1;
 
 /*
  * Free netbeans resources.

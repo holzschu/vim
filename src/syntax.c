@@ -27,7 +27,7 @@
 #define SPO_LC_OFF	6	/* leading context offset */
 #define SPO_COUNT	7
 
-static char *(spo_name_tab[SPO_COUNT]) =
+static __thread char *(spo_name_tab[SPO_COUNT]) =
 	    {"ms=", "me=", "hs=", "he=", "rs=", "re=", "lc="};
 
 /*
@@ -97,15 +97,15 @@ typedef struct syn_pattern
 /*
  * The attributes of the syntax item that has been recognized.
  */
-static int current_attr = 0;	    /* attr of current syntax word */
+static __thread int current_attr = 0;	    /* attr of current syntax word */
 #ifdef FEAT_EVAL
-static int current_id = 0;	    /* ID of current char for syn_get_id() */
-static int current_trans_id = 0;    /* idem, transparency removed */
+static __thread int current_id = 0;	    /* ID of current char for syn_get_id() */
+static __thread int current_trans_id = 0;    /* idem, transparency removed */
 #endif
 #ifdef FEAT_CONCEAL
-static int current_flags = 0;
-static int current_seqnr = 0;
-static int current_sub_char = 0;
+static __thread int current_flags = 0;
+static __thread int current_seqnr = 0;
+static __thread int current_sub_char = 0;
 #endif
 
 typedef struct syn_cluster_S
@@ -145,15 +145,15 @@ typedef struct syn_cluster_S
  * expand_filename().  Most of the other syntax commands don't need it, so
  * instead of passing it to them, we stow it here.
  */
-static char_u **syn_cmdlinep;
+static __thread char_u **syn_cmdlinep;
 
 /*
  * Another Annoying Hack(TM):  To prevent rules from other ":syn include"'d
  * files from leaking into ALLBUT lists, we assign a unique ID to the
  * rules in each ":syn include"'d file.
  */
-static int current_syn_inc_tag = 0;
-static int running_syn_inc_tag = 0;
+static __thread int current_syn_inc_tag = 0;
+static __thread int running_syn_inc_tag = 0;
 
 /*
  * In a hashtable item "hi_key" points to "keyword" in a keyentry.
@@ -162,7 +162,7 @@ static int running_syn_inc_tag = 0;
  * HIKEY2KE() converts a hashitem key pointer to a var pointer.
  * HI2KE() converts a hashitem pointer to a var pointer.
  */
-static keyentry_T dumkey;
+static __thread keyentry_T dumkey;
 #define KE2HIKEY(kp)  ((kp)->keyword)
 #define HIKEY2KE(p)   ((keyentry_T *)((p) - (dumkey.keyword - (char_u *)&dumkey)))
 #define HI2KE(hi)      HIKEY2KE((hi)->hi_key)
@@ -172,9 +172,9 @@ static keyentry_T dumkey;
  * stack the first item with "keepend" is present.  When "-1", there is no
  * "keepend" on the stack.
  */
-static int keepend_level = -1;
+static __thread int keepend_level = -1;
 
-static char msg_no_items[] = N_("No Syntax items defined for this buffer");
+static __thread char msg_no_items[] = N_("No Syntax items defined for this buffer");
 
 /*
  * For the current state we need to remember more than just the idx.
@@ -213,7 +213,7 @@ typedef struct state_item
 				       but contained groups */
 
 #ifdef FEAT_CONCEAL
-static int next_seqnr = 1;		/* value to use for si_seqnr */
+static __thread int next_seqnr = 1;		/* value to use for si_seqnr */
 #endif
 
 /*
@@ -239,16 +239,16 @@ typedef struct
  * If next_match_col == MAXCOL, no match found in this line.
  * (All end positions have the column of the char after the end)
  */
-static int next_match_col;		/* column for start of next match */
-static lpos_T next_match_m_endpos;	/* position for end of next match */
-static lpos_T next_match_h_startpos;  /* pos. for highl. start of next match */
-static lpos_T next_match_h_endpos;	/* pos. for highl. end of next match */
-static int next_match_idx;		/* index of matched item */
-static long next_match_flags;		/* flags for next match */
-static lpos_T next_match_eos_pos;	/* end of start pattn (start region) */
-static lpos_T next_match_eoe_pos;	/* pos. for end of end pattern */
-static int next_match_end_idx;		/* ID of group for end pattn or zero */
-static reg_extmatch_T *next_match_extmatch = NULL;
+static __thread int next_match_col;		/* column for start of next match */
+static __thread lpos_T next_match_m_endpos;	/* position for end of next match */
+static __thread lpos_T next_match_h_startpos;  /* pos. for highl. start of next match */
+static __thread lpos_T next_match_h_endpos;	/* pos. for highl. end of next match */
+static __thread int next_match_idx;		/* index of matched item */
+static __thread long next_match_flags;		/* flags for next match */
+static __thread lpos_T next_match_eos_pos;	/* end of start pattn (start region) */
+static __thread lpos_T next_match_eoe_pos;	/* pos. for end of end pattern */
+static __thread int next_match_end_idx;		/* ID of group for end pattn or zero */
+static __thread reg_extmatch_T *next_match_extmatch = NULL;
 
 /*
  * A state stack is an array of integers or stateitem_T, stored in a
@@ -261,22 +261,22 @@ static reg_extmatch_T *next_match_extmatch = NULL;
  * The current state (within the line) of the recognition engine.
  * When current_state.ga_itemsize is 0 the current state is invalid.
  */
-static win_T	*syn_win;		/* current window for highlighting */
-static buf_T	*syn_buf;		/* current buffer for highlighting */
-static synblock_T *syn_block;		/* current buffer for highlighting */
+static __thread win_T	*syn_win;		/* current window for highlighting */
+static __thread buf_T	*syn_buf;		/* current buffer for highlighting */
+static __thread synblock_T *syn_block;		/* current buffer for highlighting */
 #ifdef FEAT_RELTIME
-static proftime_T *syn_tm;		/* timeout limit */
+static __thread proftime_T *syn_tm;		/* timeout limit */
 #endif
-static linenr_T current_lnum = 0;	/* lnum of current state */
-static colnr_T	current_col = 0;	/* column of current state */
-static int	current_state_stored = 0; /* TRUE if stored current state
+static __thread linenr_T current_lnum = 0;	/* lnum of current state */
+static __thread colnr_T	current_col = 0;	/* column of current state */
+static __thread int	current_state_stored = 0; /* TRUE if stored current state
 					   * after setting current_finished */
-static int	current_finished = 0;	/* current line has been finished */
-static garray_T current_state		/* current stack of state_items */
+static __thread int	current_finished = 0;	/* current line has been finished */
+static __thread garray_T current_state		/* current stack of state_items */
 		= {0, 0, 0, 0, NULL};
-static short	*current_next_list = NULL; /* when non-zero, nextgroup list */
-static int	current_next_flags = 0; /* flags for current_next_list */
-static int	current_line_id = 0;	/* unique number for current line */
+static __thread short	*current_next_list = NULL; /* when non-zero, nextgroup list */
+static __thread int	current_next_flags = 0; /* flags for current_next_list */
+static __thread int	current_line_id = 0;	/* unique number for current line */
 
 #define CUR_STATE(idx)	((stateitem_T *)(current_state.ga_data))[idx]
 
@@ -367,6 +367,9 @@ syn_set_timeout(proftime_T *tm)
  * it.	Careful: curbuf and curwin are likely to point to another buffer and
  * window.
  */
+#if TARGET_OS_IPHONE
+static __thread varnumber_T changedtick = 0;	/* remember the last change ID */
+#endif
     void
 syntax_start(win_T *wp, linenr_T lnum)
 {
@@ -377,7 +380,9 @@ syntax_start(win_T *wp, linenr_T lnum)
     linenr_T	parsed_lnum;
     linenr_T	first_stored;
     int		dist;
+#if !TARGET_OS_IPHONE
     static varnumber_T changedtick = 0;	/* remember the last change ID */
+#endif
 
 #ifdef FEAT_CONCEAL
     current_sub_char = NUL;
@@ -1750,6 +1755,9 @@ get_syntax_attr(
 /*
  * Get syntax attributes for current_lnum, current_col.
  */
+#if TARGET_OS_IPHONE
+static __thread int	try_next_column = FALSE;    /* must try in next col */
+#endif
     static int
 syn_current_attr(
     int		syncing,		/* When 1: called for syncing */
@@ -1773,7 +1781,9 @@ syn_current_attr(
     int		cchar;
     short	*next_list;
     int		found_match;		    /* found usable match */
+#if !TARGET_OS_IPHONE
     static int	try_next_column = FALSE;    /* must try in next col */
+#endif
     int		do_keywords;
     regmmatch_T	regmatch;
     lpos_T	pos;
@@ -3916,7 +3926,7 @@ syn_match_msg(void)
     }
 }
 
-static int  last_matchgroup;
+static __thread int  last_matchgroup;
 
 struct name_list
 {
@@ -6077,6 +6087,9 @@ copy_id_list(short *list)
  * the current item.
  * This function is called very often, keep it fast!!
  */
+#if TARGET_OS_IPHONE
+static __thread int depth = 0;
+#endif
     static int
 in_id_list(
     stateitem_T	*cur_si,	/* current item or NULL */
@@ -6088,7 +6101,9 @@ in_id_list(
     short	*scl_list;
     short	item;
     short	id = ssp->id;
+#if !TARGET_OS_IPHONE
     static int	depth = 0;
+#endif
     int		r;
 
     /* If ssp has a "containedin" list and "cur_si" is in it, return TRUE. */
@@ -6181,7 +6196,7 @@ struct subcommand
     void    (*func)(exarg_T *, int);	/* function to call */
 };
 
-static struct subcommand subcommands[] =
+static __thread struct subcommand subcommands[] =
 {
     {"case",		syn_cmd_case},
     {"clear",		syn_cmd_clear},
@@ -6303,7 +6318,7 @@ syntax_present(win_T *win)
 }
 
 
-static enum
+static __thread enum
 {
     EXP_SUBCMD,	    /* expand ":syn" sub-commands */
     EXP_CASE,	    /* expand ":syn case" arguments */

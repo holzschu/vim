@@ -314,12 +314,12 @@ static int set_spell_chartab(char_u *fol, char_u *low, char_u *upp);
 static void set_map_str(slang_T *lp, char_u *map);
 
 
-static char *e_spell_trunc = N_("E758: Truncated spell file");
-static char *e_afftrailing = N_("Trailing text in %s line %d: %s");
-static char *e_affname = N_("Affix name too long in %s line %d: %s");
-static char *e_affform = N_("E761: Format error in affix file FOL, LOW or UPP");
-static char *e_affrange = N_("E762: Character in FOL, LOW or UPP is out of range");
-static char *msg_compressing = N_("Compressing word tree...");
+static __thread char *e_spell_trunc = N_("E758: Truncated spell file");
+static __thread char *e_afftrailing = N_("Trailing text in %s line %d: %s");
+static __thread char *e_affname = N_("Affix name too long in %s line %d: %s");
+static __thread char *e_affform = N_("E761: Format error in affix file FOL, LOW or UPP");
+static __thread char *e_affrange = N_("E762: Character in FOL, LOW or UPP is out of range");
+static __thread char *msg_compressing = N_("Compressing word tree...");
 
 /*
  * Load one spell file and store the info into a slang_T.
@@ -2009,9 +2009,9 @@ static void init_spellfile(void);
 /*
  * Tunable parameters for when the tree is compressed.  See 'mkspellmem'.
  */
-static long compress_start = 30000;	/* memory / SBLOCKSIZE */
-static long compress_inc = 100;		/* memory / SBLOCKSIZE */
-static long compress_added = 500000;	/* word count */
+static __thread long compress_start = 30000;	/* memory / SBLOCKSIZE */
+static __thread long compress_inc = 100;		/* memory / SBLOCKSIZE */
+static __thread long compress_added = 500000;	/* word count */
 
 /*
  * Check the 'mkspellmem' option.  Return FAIL if it's wrong.
@@ -2066,9 +2066,9 @@ spell_check_msm(void)
 #define PRINTSOME(l, depth, fmt, a1, a2) vim_snprintf(l + depth * PRINTWIDTH, \
 	    PRINTLINESIZE - PRINTWIDTH * depth, fmt, a1, a2)
 
-static char line1[PRINTLINESIZE];
-static char line2[PRINTLINESIZE];
-static char line3[PRINTLINESIZE];
+static __thread char line1[PRINTLINESIZE];
+static __thread char line2[PRINTLINESIZE];
+static __thread char line3[PRINTLINESIZE];
 
     static void
 spell_clear_flags(wordnode_T *node)

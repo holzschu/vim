@@ -20,7 +20,7 @@ typedef struct {
     poppos_T	pp_val;
 } poppos_entry_T;
 
-static poppos_entry_T poppos_entries[] = {
+static __thread poppos_entry_T poppos_entries[] = {
     {"botleft", POPPOS_BOTLEFT},
     {"topleft", POPPOS_TOPLEFT},
     {"botright", POPPOS_BOTRIGHT},
@@ -208,11 +208,11 @@ popup_close_if_on_X(win_T *wp, int row, int col)
 }
 
 // Values set when dragging a popup window starts.
-static int drag_start_row;
-static int drag_start_col;
-static int drag_start_wantline;
-static int drag_start_wantcol;
-static int drag_on_resize_handle;
+static __thread int drag_start_row;
+static __thread int drag_start_col;
+static __thread int drag_start_wantline;
+static __thread int drag_start_wantcol;
+static __thread int drag_on_resize_handle;
 
 /*
  * Mouse down on border of popup window: start dragging it.
@@ -582,10 +582,15 @@ popup_show_curline(win_T *wp)
  * Get the sign group name for window "wp".
  * Returns a pointer to a static buffer, overwritten on the next call.
  */
+#if TARGET_OS_IPHONE
+static __thread char    buf[30];
+#endif
     static char_u *
 popup_get_sign_name(win_T *wp)
 {
+#if !TARGET_OS_IPHONE
     static char    buf[30];
+#endif
 
     vim_snprintf(buf, sizeof(buf), "popup-%d", wp->w_id);
     return (char_u *)buf;
@@ -2838,10 +2843,15 @@ invoke_popup_filter(win_T *wp, int c)
  * Called when "c" was typed: invoke popup filter callbacks.
  * Returns TRUE when the character was consumed,
  */
+#if TARGET_OS_IPHONE
+static __thread int recursive = FALSE;
+#endif
     int
 popup_do_filter(int c)
 {
+#if !TARGET_OS_IPHONE
     static int	recursive = FALSE;
+#endif
     int		res = FALSE;
     win_T	*wp;
     int		save_KeyTyped = KeyTyped;

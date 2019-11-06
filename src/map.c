@@ -80,10 +80,29 @@ map_free(mapblock_T **mpp)
     mapblock_T	*mp;
 
     mp = *mpp;
+#if !TARGET_OS_IPHONE
     vim_free(mp->m_keys);
     vim_free(mp->m_str);
     vim_free(mp->m_orig_str);
+#else 
+    VIM_CLEAR(mp->m_keys);
+    VIM_CLEAR(mp->m_str);
+    VIM_CLEAR(mp->m_orig_str);
+#endif
     *mpp = mp->m_next;
+#if TARGET_OS_IPHONE
+    // clear memory before freeing it
+    mp->m_next = NULL;
+    mp->m_keylen = 0;	// strlen(m_keys)
+    mp->m_mode = 0;		// valid mode
+    mp->m_noremap = 0;	// if non-zero no re-mapping for m_str
+    mp->m_silent = 0;	// <silent> used, don't echo commands
+    mp->m_nowait = 0;	// <nowait> used
+#ifdef FEAT_EVAL
+    mp->m_expr = 0;		// <expr> used, m_str is an expression
+    mp->m_script_ctx = (sctx_T) {0, 0, 0, 0};	// SCTX where map was defined
+#endif
+#endif
     vim_free(mp);
 }
 
@@ -887,6 +906,17 @@ map_clear(
     mode = get_map_mode(&cmdp, forceit);
     map_clear_int(curbuf, mode, local, abbr);
 }
+
+#if TARGET_OS_IPHONE
+/* 
+ * Reset all variables and hashmaps to their state at startup time
+ */
+    void
+map_reset() {
+    maphash_valid = FALSE; // this will cause a reset of maphash next time
+    first_abbr = NULL; /* first entry in abbrlist */
+}
+#endif
 
 /*
  * Clear all mappings in "mode".

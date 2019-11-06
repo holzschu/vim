@@ -864,7 +864,11 @@ static __thread char_u	*prevcmd = NULL;	/* the previous command */
     void
 free_prev_shellcmd(void)
 {
+#if !TARGET_OS_IPHONE
     vim_free(prevcmd);
+#else 
+    VIM_CLEAR(prevcmd);
+#endif
 }
 #endif
 
@@ -4935,6 +4939,11 @@ set_old_sub(char_u *val)
 free_old_sub(void)
 {
     vim_free(old_sub);
+#if TARGET_OS_IPHONE
+    // reset all variables
+    old_sub = NULL; 
+    global_need_beginline = 0;
+#endif
 }
 #endif
 

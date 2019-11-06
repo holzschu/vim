@@ -34,13 +34,13 @@ struct sign
     int		sn_text_hl;	// highlight ID for text
 };
 
-static sign_T	*first_sign = NULL;
-static int	next_sign_typenr = 1;
+static __thread sign_T	*first_sign = NULL;
+static __thread int	next_sign_typenr = 1;
 
 static void sign_list_defined(sign_T *sp);
 static void sign_undefine(sign_T *sp, sign_T *sp_prev);
 
-static char *cmds[] = {
+static __thread char *cmds[] = {
 			"define",
 # define SIGNCMD_DEFINE	0
 			"undefine",
@@ -57,8 +57,8 @@ static char *cmds[] = {
 # define SIGNCMD_LAST	6
 };
 
-static hashtab_T	sg_table;	// sign group (signgroup_T) hashtable
-static int		next_sign_id = 1; // next sign id in the global group
+static __thread hashtab_T	sg_table;	// sign group (signgroup_T) hashtable
+static __thread int		next_sign_id = 1; // next sign id in the global group
 
 /*
  * Initialize data needed for managing signs
@@ -1876,9 +1876,15 @@ free_signs(void)
 {
     while (first_sign != NULL)
 	sign_undefine(first_sign, NULL);
+#if TARGET_OS_IPHONE
+    first_sign = NULL;
+    next_sign_typenr = 1;
+    // Should we reset "sg_table"? 
+    next_sign_id = 1; // next sign id in the global group
+#endif    
 }
 
-static enum
+static __thread enum
 {
     EXP_SUBCMD,		// expand :sign sub-commands
     EXP_DEFINE,		// expand :sign define {name} args

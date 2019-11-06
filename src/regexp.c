@@ -71,19 +71,19 @@ toggle_Magic(int x)
 
 #define MAX_LIMIT	(32767L << 16L)
 
-static char_u e_missingbracket[] = N_("E769: Missing ] after %s[");
-static char_u e_reverse_range[] = N_("E944: Reverse range in character class");
-static char_u e_large_class[] = N_("E945: Range too large in character class");
-static char_u e_unmatchedpp[] = N_("E53: Unmatched %s%%(");
-static char_u e_unmatchedp[] = N_("E54: Unmatched %s(");
-static char_u e_unmatchedpar[] = N_("E55: Unmatched %s)");
+static __thread char_u e_missingbracket[] = N_("E769: Missing ] after %s[");
+static __thread char_u e_reverse_range[] = N_("E944: Reverse range in character class");
+static __thread char_u e_large_class[] = N_("E945: Range too large in character class");
+static __thread char_u e_unmatchedpp[] = N_("E53: Unmatched %s%%(");
+static __thread char_u e_unmatchedp[] = N_("E54: Unmatched %s(");
+static __thread char_u e_unmatchedpar[] = N_("E55: Unmatched %s)");
 #ifdef FEAT_SYN_HL
-static char_u e_z_not_allowed[] = N_("E66: \\z( not allowed here");
-static char_u e_z1_not_allowed[] = N_("E67: \\z1 - \\z9 not allowed here");
+static __thread char_u e_z_not_allowed[] = N_("E66: \\z( not allowed here");
+static __thread char_u e_z1_not_allowed[] = N_("E67: \\z1 - \\z9 not allowed here");
 #endif
-static char_u e_missing_sb[] = N_("E69: Missing ] after %s%%[");
-static char_u e_empty_sb[]  = N_("E70: Empty %s%%[]");
-static char_u e_recursive[]  = N_("E956: Cannot use pattern recursively");
+static __thread char_u e_missing_sb[] = N_("E69: Missing ] after %s%%[");
+static __thread char_u e_empty_sb[]  = N_("E70: Empty %s%%[]");
+static __thread char_u e_recursive[]  = N_("E956: Cannot use pattern recursively");
 
 #define NOT_MULTI	0
 #define MULTI_ONE	1
@@ -111,7 +111,7 @@ re_multi_type(int c)
     return NOT_MULTI;
 }
 
-static char_u		*reg_prev_sub = NULL;
+static __thread char_u		*reg_prev_sub = NULL;
 
 /*
  * REGEXP_INRANGE contains all characters which are always special in a []
@@ -129,8 +129,8 @@ static char_u		*reg_prev_sub = NULL;
  *  \u	- Multibyte character code, eg \u20ac
  *  \U	- Long multibyte character code, eg \U12345678
  */
-static char_u REGEXP_INRANGE[] = "]^-n\\";
-static char_u REGEXP_ABBR[] = "nrtebdoxuU";
+static __thread char_u REGEXP_INRANGE[] = "]^-n\\";
+static __thread char_u REGEXP_ABBR[] = "nrtebdoxuU";
 
 /*
  * Translate '\x' to its control character, except "\n", which is Magic.
@@ -216,7 +216,7 @@ get_char_class(char_u **pp)
  * Specific version of character class functions.
  * Using a table to keep this fast.
  */
-static short	class_tab[256];
+static __thread short	class_tab[256];
 
 #define	    RI_DIGIT	0x01
 #define	    RI_HEX	0x02
@@ -228,11 +228,16 @@ static short	class_tab[256];
 #define	    RI_UPPER	0x80
 #define	    RI_WHITE	0x100
 
+#if TARGET_OS_IPHONE
+static __thread int done = FALSE;
+#endif
     static void
 init_class_tab(void)
 {
     int		i;
+#if !TARGET_OS_IPHONE
     static int	done = FALSE;
+#endif
 
     if (done)
 	return;
@@ -292,36 +297,36 @@ init_class_tab(void)
  * Global work variables for vim_regcomp().
  */
 
-static char_u	*regparse;	/* Input-scan pointer. */
-static int	regnpar;	/* () count. */
+static __thread char_u	*regparse;	/* Input-scan pointer. */
+static __thread int	regnpar;	/* () count. */
 #ifdef FEAT_SYN_HL
-static int	regnzpar;	/* \z() count. */
-static int	re_has_z;	/* \z item detected */
+static __thread int	regnzpar;	/* \z() count. */
+static __thread int	re_has_z;	/* \z item detected */
 #endif
-static unsigned	regflags;	/* RF_ flags for prog */
+static __thread unsigned	regflags;	/* RF_ flags for prog */
 #if defined(FEAT_SYN_HL) || defined(PROTO)
-static int	had_eol;	/* TRUE when EOL found by vim_regcomp() */
+static __thread int	had_eol;	/* TRUE when EOL found by vim_regcomp() */
 #endif
 
-static int	reg_magic;	/* magicness of the pattern: */
+static __thread int	reg_magic;	/* magicness of the pattern: */
 #define MAGIC_NONE	1	/* "\V" very unmagic */
 #define MAGIC_OFF	2	/* "\M" or 'magic' off */
 #define MAGIC_ON	3	/* "\m" or 'magic' */
 #define MAGIC_ALL	4	/* "\v" very magic */
 
-static int	reg_string;	/* matching with a string instead of a buffer
+static __thread int	reg_string;	/* matching with a string instead of a buffer
 				   line */
-static int	reg_strict;	/* "[abc" is illegal */
+static __thread int	reg_strict;	/* "[abc" is illegal */
 
 /*
  * META contains all characters that may be magic, except '^' and '$'.
  */
 
 #ifdef EBCDIC
-static char_u META[] = "%&()*+.123456789<=>?@ACDFHIKLMOPSUVWX[_acdfhiklmnopsuvwxz{|~";
+static __thread char_u META[] = "%&()*+.123456789<=>?@ACDFHIKLMOPSUVWX[_acdfhiklmnopsuvwxz{|~";
 #else
 /* META[] is used often enough to justify turning it into a table. */
-static char_u META_flags[] = {
+static __thread char_u META_flags[] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 /*		   %  &     (  )  *  +	      .    */
@@ -339,13 +344,13 @@ static char_u META_flags[] = {
 };
 #endif
 
-static int	curchr;		/* currently parsed character */
+static __thread int	curchr;		/* currently parsed character */
 /* Previous character.  Note: prevchr is sometimes -1 when we are not at the
  * start, eg in /[ ^I]^ the pattern was never found even if it existed,
  * because ^ was taken to be magic -- webb */
-static int	prevchr;
-static int	prevprevchr;	/* previous-previous character */
-static int	nextchr;	/* used for ungetchr() */
+static __thread int	prevchr;
+static __thread int	prevprevchr;	/* previous-previous character */
+static __thread int	nextchr;	/* used for ungetchr() */
 
 /* arguments for reg() */
 #define REG_NOPAREN	0	/* toplevel reg() */
@@ -382,8 +387,8 @@ static char_u	*cstrchr(char_u *, int);
 static int	re_mult_next(char *what);
 static int	reg_iswordc(int);
 
-static regengine_T bt_regengine;
-static regengine_T nfa_regengine;
+static __thread regengine_T bt_regengine;
+static __thread regengine_T nfa_regengine;
 
 /*
  * Return TRUE if compiled regular expression "prog" can match a line break.
@@ -477,8 +482,8 @@ get_coll_element(char_u **pp)
     return 0;
 }
 
-static int reg_cpo_lit; /* 'cpoptions' contains 'l' flag */
-static int reg_cpo_bsl; /* 'cpoptions' contains '\' flag */
+static __thread int reg_cpo_lit; /* 'cpoptions' contains 'l' flag */
+static __thread int reg_cpo_bsl; /* 'cpoptions' contains '\' flag */
 
     static void
 get_cpo_flags(void)
@@ -598,9 +603,9 @@ skip_regexp(
 /*
  * Functions for getting characters from the regexp input.
  */
-static int	prevchr_len;	/* byte length of previous char */
-static int	at_start;	// True when on the first character
-static int	prev_at_start;  // True when on the second character
+static __thread int	prevchr_len;	/* byte length of previous char */
+static __thread int	at_start;	// True when on the first character
+static __thread int	prev_at_start;  // True when on the second character
 
 /*
  * Start parsing at "str".
@@ -654,10 +659,15 @@ restore_parse_state(parse_state_T *ps)
 /*
  * Get the next character without advancing.
  */
+#if TARGET_OS_IPHONE
+static __thread int after_slash = FALSE;
+#endif
     static int
 peekchr(void)
 {
+#if !TARGET_OS_IPHONE
     static int	after_slash = FALSE;
+#endif
 
     if (curchr == -1)
     {
@@ -1056,8 +1066,8 @@ static int	match_with_backref(linenr_T start_lnum, colnr_T start_col, linenr_T e
  * slow, we keep one allocated piece of memory and only re-allocate it when
  * it's too small.  It's freed in bt_regexec_both() when finished.
  */
-static char_u	*reg_tofree = NULL;
-static unsigned	reg_tofreelen;
+static __thread char_u	*reg_tofree = NULL;
+static __thread unsigned	reg_tofreelen;
 
 /*
  * Structure used to store the execution state of the regex engine.
@@ -1130,8 +1140,8 @@ typedef struct {
 #endif
 } regexec_T;
 
-static regexec_T	rex;
-static int		rex_in_use = FALSE;
+static __thread regexec_T	rex;
+static __thread int		rex_in_use = FALSE;
 
 /*
  * Return TRUE if character 'c' is included in 'iskeyword' option for
@@ -1160,10 +1170,10 @@ reg_getline(linenr_T lnum)
 }
 
 #ifdef FEAT_SYN_HL
-static char_u	*reg_startzp[NSUBEXP];	/* Workspace to mark beginning */
-static char_u	*reg_endzp[NSUBEXP];	/*   and end of \z(...\) matches */
-static lpos_T	reg_startzpos[NSUBEXP];	/* idem, beginning pos */
-static lpos_T	reg_endzpos[NSUBEXP];	/* idem, end pos */
+static __thread char_u	*reg_startzp[NSUBEXP];	/* Workspace to mark beginning */
+static __thread char_u	*reg_endzp[NSUBEXP];	/*   and end of \z(...\) matches */
+static __thread lpos_T	reg_startzpos[NSUBEXP];	/* idem, beginning pos */
+static __thread lpos_T	reg_endzpos[NSUBEXP];	/* idem, end pos */
 #endif
 
 /* TRUE if using multi-line regexp. */
@@ -1475,7 +1485,7 @@ typedef struct
 
 
 /* 0xfb20 - 0xfb4f */
-static decomp_T decomp_table[0xfb4f-0xfb20+1] =
+static __thread decomp_T decomp_table[0xfb4f-0xfb20+1] =
 {
     {0x5e2,0,0},		/* 0xfb20	alt ayin */
     {0x5d0,0,0},		/* 0xfb21	alt alef */
@@ -1765,7 +1775,7 @@ regtilde(char_u *source, int magic)
 }
 
 #ifdef FEAT_EVAL
-static int can_f_submatch = FALSE;	/* TRUE when submatch() can be used */
+static __thread int can_f_submatch = FALSE;	/* TRUE when submatch() can be used */
 
 /* These pointers are used for reg_submatch().  Needed for when the
  * substitution string is an expression that contains a call to substitute()
@@ -1778,7 +1788,7 @@ typedef struct {
     int		sm_line_lbr;
 } regsubmatch_T;
 
-static regsubmatch_T rsm;  /* can only be used when can_f_submatch is TRUE */
+static __thread regsubmatch_T rsm;  /* can only be used when can_f_submatch is TRUE */
 #endif
 
 #ifdef FEAT_EVAL
@@ -1912,6 +1922,11 @@ vim_regsub_multi(
     return result;
 }
 
+#ifdef FEAT_EVAL
+#if TARGET_OS_IPHONE
+static __thread char_u   *eval_result = NULL;
+#endif
+#endif
     static int
 vim_regsub_both(
     char_u	*source,
@@ -1932,7 +1947,9 @@ vim_regsub_both(
     linenr_T	clnum = 0;	/* init for GCC */
     int		len = 0;	/* init for GCC */
 #ifdef FEAT_EVAL
+#if !TARGET_OS_IPHONE
     static char_u   *eval_result = NULL;
+#endif
 #endif
 
     /* Be paranoid... */
@@ -2506,7 +2523,7 @@ reg_submatch_list(int no)
 
 #include "regexp_bt.c"
 
-static regengine_T bt_regengine =
+static __thread regengine_T bt_regengine =
 {
     bt_regcomp,
     bt_regfree,
@@ -2517,7 +2534,7 @@ static regengine_T bt_regengine =
 
 #include "regexp_nfa.c"
 
-static regengine_T nfa_regengine =
+static __thread regengine_T nfa_regengine =
 {
     nfa_regcomp,
     nfa_regfree,
@@ -2528,10 +2545,10 @@ static regengine_T nfa_regengine =
 
 /* Which regexp engine to use? Needed for vim_regcomp().
  * Must match with 'regexpengine'. */
-static int regexp_engine = 0;
+static __thread int regexp_engine = 0;
 
 #ifdef DEBUG
-static char_u regname[][30] = {
+static __thread char_u regname[][30] = {
 		    "AUTOMATIC Regexp Engine",
 		    "BACKTRACKING Regexp Engine",
 		    "NFA Regexp Engine"
@@ -2647,13 +2664,96 @@ vim_regfree(regprog_T *prog)
 }
 
 #if defined(EXITFREE) || defined(PROTO)
+#if TARGET_OS_IPHONE
+void nfa_free_regexp_stuff(void); 
+static int bt_regexec_nl(
+	regmatch_T	*rmp,
+	char_u	*line,	/* string to match against */
+	colnr_T	col,	/* column to start looking for match */
+	int		line_lbr);
+static long bt_regexec_multi(
+    regmmatch_T	*rmp,
+    win_T	*win,		/* window in which to search or NULL */
+    buf_T	*buf,		/* buffer in which to search */
+    linenr_T	lnum,		/* nr of line to start looking for match */
+    colnr_T	col,		/* column to start looking for match */
+    proftime_T	*tm,		/* timeout limit or NULL */
+    int		*timed_out);	/* flag set on timeout or NULL */
+static regprog_T * nfa_regcomp(char_u *expr, int re_flags);
+static void nfa_regfree(regprog_T *prog);
+static int nfa_regexec_nl(
+    regmatch_T	*rmp,
+    char_u	*line,	/* string to match against */
+    colnr_T	col,	/* column to start looking for match */
+    int		line_lbr);
+static long nfa_regexec_multi(
+    regmmatch_T	*rmp,
+    win_T	*win,		/* window in which to search or NULL */
+    buf_T	*buf,		/* buffer in which to search */
+    linenr_T	lnum,		/* nr of line to start looking for match */
+    colnr_T	col,		/* column to start looking for match */
+    proftime_T	*tm,		/* timeout limit or NULL */
+    int		*timed_out);	/* flag set on timeout or NULL */
+#endif
+
     void
 free_regexp_stuff(void)
 {
     ga_clear(&regstack);
     ga_clear(&backpos);
+#if TARGET_OS_IPHONE
+    // We need to reset memory as well as free it:
+    VIM_CLEAR(reg_tofree);
+    reg_tofreelen = 0;
+    VIM_CLEAR(reg_prev_sub);
+    // reset variables:
+    done = FALSE;
+    regparse = NULL;	/* Input-scan pointer. */
+    prevchr_len = 0;	/* byte length of previous char */
+    regnpar = 0;	/* () count. */
+    regnzpar = 0;	/* \z() count. */
+    re_has_z = 0;	/* \z item detected */
+    reg_toolong = 0;	/* TRUE when offset out of range */
+    regflags = 0;	/* RF_ flags for prog */
+#if defined(FEAT_SYN_HL) || defined(PROTO)
+    had_eol = 0;	/* TRUE when EOL found by vim_regcomp() */
+#endif
+    regexp_engine = 0;
+    reg_magic = 0;	/* magicness of the pattern: */
+    reg_string = 0;	/* matching with a string instead of a buffer
+			   line */
+    reg_strict = 0;	/* "[abc" is illegal */
+    curchr = 0;		/* currently parsed character */
+    prevchr = 0;
+    prevprevchr = 0;	/* previous-previous character */
+    nextchr = 0;	/* used for ungetchr() */
+    bt_regengine = (regengine_T) { bt_regcomp, bt_regfree, bt_regexec_nl, bt_regexec_multi, (char_u *)"" };
+    nfa_regengine = (regengine_T) { nfa_regcomp, nfa_regfree, nfa_regexec_nl, nfa_regexec_multi, (char_u *)"" };
+    reg_cpo_lit = 0; /* 'cpoptions' contains 'l' flag */
+    reg_cpo_bsl = 0; /* 'cpoptions' contains '\' flag */
+    at_start = 0;	// True when on the first character
+    prev_at_start = 0;  // True when on the second character
+    rex_in_use = FALSE;
+    regstack = (garray_T) {0, 0, 0, 0, NULL};
+    backpos = (garray_T) {0, 0, 0, 0, NULL};
+    can_f_submatch = FALSE;
+    VIM_CLEAR(eval_result);
+    after_slash = FALSE; 
+    // also reset regexp_nfa:
+    nfa_free_regexp_stuff();
+    // and regexp_bt:
+    num_complex_braces = 0; /* Complex \{...} count */
+    regcode = NULL;	/* Code-emit pointer, or JUST_CALC_SIZE */
+    regsize = 0;	/* Code size. */
+    reg_toolong = 0; 
+    one_exactly = FALSE;	/* only do one char for EXACTLY */
+#ifdef DEBUG
+    regnarrate = 0;
+#endif
+#else
     vim_free(reg_tofree);
     vim_free(reg_prev_sub);
+#endif
 }
 #endif
 

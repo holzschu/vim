@@ -1193,9 +1193,9 @@ EXTERN char	breakat_flags[256];	// which characters are in 'breakat'
 #endif
 
 // These are in version.c, call init_longVersion() before use.
-extern char *Version;
+extern __thread char *Version;
 #if defined(HAVE_DATE_TIME) && defined(VMS) && defined(VAXC)
-extern char longVersion[];
+extern __thread char longVersion[];
 #else
 EXTERN char *longVersion;
 #endif
@@ -1295,7 +1295,7 @@ EXTERN int bevalServers INIT(= 0);
 
 #ifdef CURSOR_SHAPE
 // the table is in misc2.c, because of initializations
-extern cursorentry_T shape_table[SHAPE_IDX_COUNT];
+extern __thread cursorentry_T shape_table[SHAPE_IDX_COUNT];
 #endif
 
 #ifdef FEAT_PRINTER

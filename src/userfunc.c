@@ -28,22 +28,22 @@
 /*
  * All user-defined functions are found in this hashtable.
  */
-static hashtab_T	func_hashtab;
+static __thread hashtab_T	func_hashtab;
 
 /* Used by get_func_tv() */
-static garray_T funcargs = GA_EMPTY;
+static __thread garray_T funcargs = GA_EMPTY;
 
 // pointer to funccal for currently active function
-static funccall_T *current_funccal = NULL;
+static __thread funccall_T *current_funccal = NULL;
 
 // Pointer to list of previously used funccal, still around because some
 // item in it is still being used.
-static funccall_T *previous_funccal = NULL;
+static __thread funccall_T *previous_funccal = NULL;
 
-static char *e_funcexts = N_("E122: Function %s already exists, add ! to replace it");
-static char *e_funcdict = N_("E717: Dictionary entry already exists");
-static char *e_funcref = N_("E718: Funcref required");
-static char *e_nofunc = N_("E130: Unknown function: %s");
+static __thread char *e_funcexts = N_("E122: Function %s already exists, add ! to replace it");
+static __thread char *e_funcdict = N_("E717: Dictionary entry already exists");
+static __thread char *e_funcref = N_("E718: Funcref required");
+static __thread char *e_nofunc = N_("E130: Unknown function: %s");
 
 static void funccal_unref(funccall_T *fc, ufunc_T *fp, int force);
 
@@ -1276,7 +1276,7 @@ func_name_refcount(char_u *name)
     return isdigit(*name) || *name == '<';
 }
 
-static funccal_entry_T *funccal_stack = NULL;
+static __thread funccal_entry_T *funccal_stack = NULL;
 
 /*
  * Save the current function call pointer, and set it to NULL.
@@ -1381,6 +1381,14 @@ free_all_functions(void)
     }
     if (skipped == 0)
 	hash_clear(&func_hashtab);
+
+#if TARGET_OS_IPHONE
+    // re-initialize variables
+    current_funccal = NULL;
+    previous_funccal = NULL;
+    funccal_stack = NULL; 
+    funcargs = (garray_T) GA_EMPTY;
+#endif
 }
 #endif
 

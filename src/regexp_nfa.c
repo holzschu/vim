@@ -248,18 +248,18 @@ static char_u e_misplaced[] = N_("E866: (NFA regexp) Misplaced %c");
 static char_u e_ill_char_class[] = N_("E877: (NFA regexp) Invalid character class: %d");
 
 // Variables only used in nfa_regcomp() and descendants.
-static int nfa_re_flags; // re_flags passed to nfa_regcomp()
-static int *post_start;  // holds the postfix form of r.e.
-static int *post_end;
-static int *post_ptr;
-static int nstate;	// Number of states in the NFA.
-static int istate;	// Index in the state vector, used in alloc_state()
+static __thread int nfa_re_flags; // re_flags passed to nfa_regcomp()
+static __thread int *post_start;  // holds the postfix form of r.e.
+static __thread int *post_end;
+static __thread int *post_ptr;
+static __thread int nstate;	// Number of states in the NFA.
+static __thread int istate;	// Index in the state vector, used in alloc_state()
 
 /* If not NULL match must end at this position */
-static save_se_T *nfa_endp = NULL;
+static __thread save_se_T *nfa_endp = NULL;
 
 /* 0 for first call to nfa_regmatch(), 1 for recursive call. */
-static int nfa_ll_index = 0;
+static __thread int nfa_ll_index = 0;
 
 static int realloc_post_list(void);
 static int nfa_reg(int paren);
@@ -2774,7 +2774,7 @@ re2post(void)
  * If c < 256, labeled arrow with character c to out.
  */
 
-static nfa_state_T	*state_ptr; /* points to nfa_prog->state */
+static __thread nfa_state_T	*state_ptr; /* points to nfa_prog->state */
 
 /*
  * Allocate and initialize nfa_state_T.
@@ -2886,7 +2886,7 @@ append(Ptrlist *l1, Ptrlist *l2)
 /*
  * Stack used for transforming postfix form into NFA.
  */
-static Frag_T empty;
+static __thread Frag_T empty;
 
     static void
 st_error(int *postfix UNUSED, int *end UNUSED, int *p UNUSED)
@@ -3902,11 +3902,11 @@ pim_info(nfa_pim_T *pim)
 #endif
 
 /* Used during execution: whether a match has been found. */
-static int	    nfa_match;
+static __thread int	    nfa_match;
 #ifdef FEAT_RELTIME
-static proftime_T  *nfa_time_limit;
-static int	   *nfa_timed_out;
-static int	    nfa_time_count;
+static __thread proftime_T  *nfa_time_limit;
+static __thread int	   *nfa_timed_out;
+static __thread int	    nfa_time_count;
 #endif
 
 static void copy_sub(regsub_T *to, regsub_T *from);
@@ -4288,6 +4288,10 @@ state_in_list(
  * Returns "subs_arg", possibly copied into temp_subs.
  * Returns NULL when recursiveness is too deep.
  */
+#if TARGET_OS_IPHONE
+static __thread regsubs_T temp_subs;
+static __thread int depth = 0;
+#endif
     static regsubs_T *
 addstate(
     nfa_list_T		*l,	    /* runtime state list */
@@ -4309,11 +4313,15 @@ addstate(
     int			i;
     regsub_T		*sub;
     regsubs_T		*subs = subs_arg;
+#if !TARGET_OS_IPHONE
     static regsubs_T	temp_subs;
+#endif
 #ifdef ENABLE_LOG
     int			did_print = FALSE;
 #endif
+#if !TARGET_OS_IPHONE
     static int		depth = 0;
+#endif
 
     // This function is called recursively.  When the depth is too much we run
     // out of stack and crash, limit recursiveness here.
@@ -7423,6 +7431,30 @@ nfa_regexec_multi(
 
     return nfa_regexec_both(NULL, col, tm, timed_out);
 }
+
+
+#if TARGET_OS_IPHONE
+    void
+nfa_free_regexp_stuff(void)
+{
+    // Also reset variables from nfa_regexp.c:
+    nfa_time_limit = NULL;
+    nfa_timed_out = 0;
+    nfa_time_count = 0;
+    nfa_re_flags = 0; 
+    post_start = NULL; 
+    post_end = NULL;
+    post_ptr = NULL;
+    nstate = 0;	// Number of states in the NFA.
+    istate = 0;	// Index in the state vector, used in alloc_state()
+    nfa_endp = NULL;
+    nfa_ll_index = 0;
+    state_ptr = 0; /* points to nfa_prog->state */
+    empty.start = NULL;
+    empty.out = NULL; 
+    nfa_match = 0;
+}
+#endif
 
 #ifdef DEBUG
 # undef ENABLE_LOG

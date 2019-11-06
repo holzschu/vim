@@ -168,14 +168,14 @@ struct terminal_S {
 /*
  * List of all active terminals.
  */
-static term_T *first_term = NULL;
+static __thread term_T *first_term = NULL;
 
 /* Terminal active in terminal_loop(). */
-static term_T *in_terminal_loop = NULL;
+static __thread term_T *in_terminal_loop = NULL;
 
 #ifdef MSWIN
-static BOOL has_winpty = FALSE;
-static BOOL has_conpty = FALSE;
+static __thread BOOL has_winpty = FALSE;
+static __thread BOOL has_conpty = FALSE;
 #endif
 
 #define MAX_ROW 999999	    /* used for tl_dirty_row_end to update all rows */
@@ -196,20 +196,20 @@ static void handle_postponed_scrollback(term_T *term);
 
 /* The character that we know (or assume) that the terminal expects for the
  * backspace key. */
-static int term_backspace_char = BS;
+static __thread int term_backspace_char = BS;
 
 /* "Terminal" highlight group colors. */
-static int term_default_cterm_fg = -1;
-static int term_default_cterm_bg = -1;
+static __thread int term_default_cterm_fg = -1;
+static __thread int term_default_cterm_bg = -1;
 
 /* Store the last set and the desired cursor properties, so that we only update
  * them when needed.  Doing it unnecessary may result in flicker. */
-static char_u	*last_set_cursor_color = NULL;
-static char_u	*desired_cursor_color = NULL;
-static int	last_set_cursor_shape = -1;
-static int	desired_cursor_shape = -1;
-static int	last_set_cursor_blink = -1;
-static int	desired_cursor_blink = -1;
+static __thread char_u	*last_set_cursor_color = NULL;
+static __thread char_u	*desired_cursor_color = NULL;
+static __thread int	last_set_cursor_shape = -1;
+static __thread int	desired_cursor_shape = -1;
+static __thread int	last_set_cursor_blink = -1;
+static __thread int	desired_cursor_blink = -1;
 
 
 /**************************************
@@ -1126,8 +1126,8 @@ term_send_mouse(VTerm *vterm, int button, int pressed)
     return TRUE;
 }
 
-static int enter_mouse_col = -1;
-static int enter_mouse_row = -1;
+static __thread int enter_mouse_col = -1;
+static __thread int enter_mouse_row = -1;
 
 /*
  * Handle a mouse click, drag or release.
@@ -1930,7 +1930,7 @@ term_vgetc()
     return c;
 }
 
-static int	mouse_was_outside = FALSE;
+static __thread int	mouse_was_outside = FALSE;
 
 /*
  * Send keys to terminal.
@@ -3044,7 +3044,7 @@ handle_postponed_scrollback(term_T *term)
     limit_scrollback(term, &term->tl_scrollback, TRUE);
 }
 
-static VTermScreenCallbacks screen_callbacks = {
+static __thread VTermScreenCallbacks screen_callbacks = {
   handle_damage,	/* damage */
   handle_moverect,	/* moverect */
   handle_movecursor,	/* movecursor */
@@ -3992,7 +3992,7 @@ parse_csi(
     return 1;
 }
 
-static VTermParserCallbacks parser_fallbacks = {
+static __thread VTermParserCallbacks parser_fallbacks = {
   NULL,		// text
   NULL,		// control
   NULL,		// escape
@@ -4017,7 +4017,7 @@ vterm_memfree(void *ptr, void *data UNUSED)
     vim_free(ptr);
 }
 
-static VTermAllocatorFunctions vterm_allocator = {
+static __thread VTermAllocatorFunctions vterm_allocator = {
   &vterm_malloc,
   &vterm_memfree
 };
@@ -6158,7 +6158,7 @@ HANDLE (*winpty_agent_process)(void*);
 
 #define WINPTY_DLL "winpty.dll"
 
-static HINSTANCE hWinPtyDLL = NULL;
+static __thread HINSTANCE hWinPtyDLL = NULL;
 #  endif
 
     static int

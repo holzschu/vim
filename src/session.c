@@ -15,7 +15,7 @@
 
 #if defined(FEAT_SESSION) || defined(PROTO)
 
-static int did_lcd;	// whether ":lcd" was produced for a session
+static __thread int did_lcd;	// whether ":lcd" was produced for a session
 
 /*
  * Write a file name to the session file.
@@ -1063,7 +1063,7 @@ write_session_file(char_u *filename)
 
 #if defined(FEAT_SESSION) && defined(USE_CRNL)
 # define MKSESSION_NL
-static int mksession_nl = FALSE;    // use NL only in put_eol()
+static __thread int mksession_nl = FALSE;    // use NL only in put_eol()
 #endif
 
 /*

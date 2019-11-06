@@ -392,8 +392,8 @@ bytes2offset(char_u **pp)
 #define SPS_FAST    2
 #define SPS_DOUBLE  4
 
-static int sps_flags = SPS_BEST;	// flags from 'spellsuggest'
-static int sps_limit = 9999;		// max nr of suggestions given
+static __thread int sps_flags = SPS_BEST;	// flags from 'spellsuggest'
+static __thread int sps_limit = 9999;		// max nr of suggestions given
 
 /*
  * Check the 'spellsuggest' option.  Return FAIL if it's wrong.
@@ -738,6 +738,9 @@ spell_suggest_list(
  * Note: does use info for the current window.
  * This is based on the mechanisms of Aspell, but completely reimplemented.
  */
+#if TARGET_OS_IPHONE
+static __thread int expr_busy = FALSE;
+#endif
     static void
 spell_find_suggest(
     char_u	*badptr,
@@ -754,7 +757,9 @@ spell_find_suggest(
     int		do_combine = FALSE;
     char_u	*sps_copy;
 #ifdef FEAT_EVAL
+#if !TARGET_OS_IPHONE
     static int	expr_busy = FALSE;
+#endif
 #endif
     int		c;
     int		i;
@@ -3032,7 +3037,7 @@ typedef struct
     char_u	sft_word[1];    // soundfolded word, actually longer
 } sftword_T;
 
-static sftword_T dumsft;
+static __thread sftword_T dumsft;
 #define HIKEY2SFT(p)  ((sftword_T *)(p - (dumsft.sft_word - (char_u *)&dumsft)))
 #define HI2SFT(hi)     HIKEY2SFT((hi)->hi_key)
 

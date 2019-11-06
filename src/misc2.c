@@ -11,8 +11,14 @@
  * misc2.c: Various functions.
  */
 #include "vim.h"
+#if TARGET_OS_IPHONE
+// special functions
+extern void getchar_reset();
+extern void map_reset();
+extern void reset_termstrings();
+#endif
 
-static char_u	*username = NULL; /* cached result of mch_get_user_name() */
+static __thread char_u	*username = NULL; /* cached result of mch_get_user_name() */
 
 static int coladvance2(pos_T *pos, int addspaces, int finetune, colnr_T wcol);
 
@@ -698,13 +704,13 @@ leftcol_changed(void)
 #if defined(MEM_PROFILE) || defined(PROTO)
 
 # define MEM_SIZES  8200
-static long_u mem_allocs[MEM_SIZES];
-static long_u mem_frees[MEM_SIZES];
-static long_u mem_allocated;
-static long_u mem_freed;
-static long_u mem_peak;
-static long_u num_alloc;
-static long_u num_freed;
+static __thread long_u mem_allocs[MEM_SIZES];
+static __thread long_u mem_frees[MEM_SIZES];
+static __thread long_u mem_allocated;
+static __thread long_u mem_freed;
+static __thread long_u mem_peak;
+static __thread long_u num_alloc;
+static __thread long_u num_freed;
 
     static void
 mem_pre_alloc_s(size_t *sizep)
@@ -1242,6 +1248,9 @@ free_all_mem(void)
 # endif
 
     free_termoptions();
+#if TARGET_OS_IPHONE
+    reset_termstrings(); // set all termstrings to NULL pointers
+#endif
 
     /* screenlines (can't display anything now!) */
     free_screenlines();
@@ -1262,6 +1271,30 @@ free_all_mem(void)
 # ifdef FEAT_QUICKFIX
     check_quickfix_busy();
 # endif
+
+#if TARGET_OS_IPHONE
+    // also reset all variables
+    username = NULL; /* cached result of mch_get_user_name() */
+# ifdef FEAT_CLIPBOARD
+    clip_exclude_prog = NULL;
+# endif
+    last_cmdline = NULL;
+# ifdef FEAT_CMDHIST
+    new_last_cmdline = NULL;
+# endif
+    IObuff = NULL; 
+    NameBuff = NULL; 
+#if defined(MEM_PROFILE) || defined(PROTO)
+    mem_allocated = 0;
+    mem_freed = 0;
+    mem_peak = 0;
+    num_alloc = 0;
+    num_freed = 0;
+#endif
+    // reset all variables for hashmaps in getchar.c and map.c
+    getchar_reset();
+    map_reset();
+#endif
 }
 #endif
 
@@ -2197,7 +2230,7 @@ append_ga_line(garray_T *gap)
  * Some useful tables.
  */
 
-static struct modmasktable
+static __thread struct modmasktable
 {
     short	mod_mask;	/* Bit-mask for particular key modifier */
     short	mod_flag;	/* Bit(s) for particular key modifier */
@@ -2226,7 +2259,7 @@ static struct modmasktable
  */
 #define MOD_KEYS_ENTRY_SIZE 5
 
-static char_u modifier_keys_table[] =
+static __thread char_u modifier_keys_table[] =
 {
 /*  mod mask	    with modifier		without modifier */
     MOD_MASK_SHIFT, '&', '9',			'@', '1',	/* begin */
@@ -2316,7 +2349,7 @@ static char_u modifier_keys_table[] =
     NUL
 };
 
-static struct key_name_entry
+static __thread struct key_name_entry
 {
     int	    key;	/* Special key code or ascii value */
     char_u  *name;	/* Name of key */
@@ -2575,10 +2608,15 @@ handle_x_keys(int key)
  * Return a string which contains the name of the given key when the given
  * modifiers are down.
  */
+#if TARGET_OS_IPHONE
+static __thread char_u string[MAX_KEY_NAME_LEN + 1];
+#endif
     char_u *
 get_special_key_name(int c, int modifiers)
 {
+#if !TARGET_OS_IPHONE
     static char_u string[MAX_KEY_NAME_LEN + 1];
+#endif
 
     int	    i, idx;
     int	    table_idx;
@@ -3353,7 +3391,7 @@ vim_stat(const char *name, stat_T *stp)
  * Handling of cursor and mouse pointer shapes in various modes.
  */
 
-cursorentry_T shape_table[SHAPE_IDX_COUNT] =
+__thread cursorentry_T shape_table[SHAPE_IDX_COUNT] =
 {
     /* The values will be filled in from the 'guicursor' and 'mouseshape'
      * defaults when Vim starts.
@@ -3382,7 +3420,7 @@ cursorentry_T shape_table[SHAPE_IDX_COUNT] =
  * Table with names for mouse shapes.  Keep in sync with all the tables for
  * mch_set_mouse_shape()!.
  */
-static char * mshape_names[] =
+static __thread char * mshape_names[] =
 {
     "arrow",	/* default, must be the first one */
     "blank",	/* hidden */
@@ -3705,7 +3743,7 @@ get_shape_idx(int mouse)
 #endif
 
 # if defined(FEAT_MOUSESHAPE) || defined(PROTO)
-static int old_mouse_shape = 0;
+static __thread int old_mouse_shape = 0;
 
 /*
  * Set the mouse shape:
@@ -3893,8 +3931,8 @@ sort_strings(
 
 #define EXTRASIZE 5		/* increment to add to env. size */
 
-static int  envsize = -1;	/* current size of environment */
-extern char **environ;		/* the global which is your env. */
+static __thread int  envsize = -1;	/* current size of environment */
+extern __thread char **environ;		/* the global which is your env. */
 
 static int  findenv(char *name); /* look for a name in the env. */
 static int  newenv(void);	/* copy env. from stack to heap */

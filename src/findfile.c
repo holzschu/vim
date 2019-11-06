@@ -1674,9 +1674,18 @@ static __thread void	*fdip_search_ctx = NULL;
     void
 free_findfile(void)
 {
+#if !TARGET_OS_IPHONE
     vim_free(ff_file_to_find);
+#else 
+    VIM_CLEAR(ff_file_to_find);
+#endif
     vim_findfile_cleanup(fdip_search_ctx);
+#if !TARGET_OS_IPHONE
     vim_free(ff_expand_buffer);
+#else
+    fdip_search_ctx = NULL;
+    VIM_CLEAR(ff_expand_buffer);
+#endif
 }
 # endif
 

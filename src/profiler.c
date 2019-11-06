@@ -74,10 +74,15 @@ profile_sub(proftime_T *tm, proftime_T *tm2)
  * Return a string that represents the time in "tm".
  * Uses a static buffer!
  */
+#if TARGET_OS_IPHONE
+static __thread char buf[50];
+#endif
     char *
 profile_msg(proftime_T *tm)
 {
+#if !TARGET_OS_IPHONE
     static char buf[50];
+#endif
 
 # ifdef MSWIN
     LARGE_INTEGER   fr;
@@ -204,7 +209,7 @@ profile_divide(proftime_T *tm, int count, proftime_T *tm2)
 /*
  * Functions for profiling.
  */
-static proftime_T prof_wait_time;
+static __thread proftime_T prof_wait_time;
 
 /*
  * Add the time "tm2" to "tm".
@@ -295,8 +300,8 @@ profile_cmp(const proftime_T *tm1, const proftime_T *tm2)
 # endif
 }
 
-static char_u	*profile_fname = NULL;
-static proftime_T pause_time;
+static __thread char_u	*profile_fname = NULL;
+static __thread proftime_T pause_time;
 
 /*
  * ":profile cmd args"
@@ -350,7 +355,7 @@ static enum
     PEXP_FUNC		// expand :profile func {funcname}
 } pexpand_what;
 
-static char *pexpand_cmds[] = {
+static __thread char *pexpand_cmds[] = {
 			"start",
 #define PROFCMD_START	0
 			"pause",
@@ -410,7 +415,7 @@ set_context_in_profile_cmd(expand_T *xp, char_u *arg)
     xp->xp_context = EXPAND_NOTHING;
 }
 
-static proftime_T inchar_time;
+static __thread proftime_T inchar_time;
 
 /*
  * Called when starting to wait for the user to type a character.

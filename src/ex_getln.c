@@ -3091,6 +3091,9 @@ static __thread char_u	*arshape_buf = NULL;
 free_arshape_buf(void)
 {
     vim_free(arshape_buf);
+#if TARGET_OS_IPHONE
+    arshape_buf = NULL; 
+#endif
 }
 # endif
 #endif

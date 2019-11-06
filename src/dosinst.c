@@ -33,15 +33,15 @@
 	} \
     } while (0)
 
-int	has_vim = 0;		/* installable vim.exe exists */
-int	has_gvim = 0;		/* installable gvim.exe exists */
+__thread int	has_vim = 0;		/* installable vim.exe exists */
+__thread int	has_gvim = 0;		/* installable gvim.exe exists */
 
-char	oldvimrc[BUFSIZE];	/* name of existing vimrc file */
-char	vimrc[BUFSIZE];		/* name of vimrc file to create */
+__thread char	oldvimrc[BUFSIZE];	/* name of existing vimrc file */
+__thread char	vimrc[BUFSIZE];		/* name of vimrc file to create */
 
-char	*default_bat_dir = NULL;  /* when not NULL, use this as the default
+__thread char	*default_bat_dir = NULL;  /* when not NULL, use this as the default
 				     directory to write .bat files in */
-char	*default_vim_dir = NULL;  /* when not NULL, use this as the default
+__thread char	*default_vim_dir = NULL;  /* when not NULL, use this as the default
 				     install dir for NSIS */
 
 /*
@@ -2179,7 +2179,7 @@ set_directories_text(int idx)
  *
  * This code is based on init_homedir() in misc1.c, keep in sync!
  */
-static char *homedir = NULL;
+static __thread char *homedir = NULL;
 
     void
 init_homedir(void)

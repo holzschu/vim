@@ -2140,11 +2140,16 @@ mch_can_restore_icon(void)
 /*
  * Set the window title and icon.
  */
+#if TARGET_OS_IPHONE
+static __thread int recursive = 0;
+#endif
     void
 mch_settitle(char_u *title, char_u *icon)
 {
     int		type = 0;
+#if !TARGET_OS_IPHONE
     static int	recursive = 0;
+#endif
 
     if (T_NAME == NULL)	    /* no terminal name (yet) */
 	return;
@@ -2494,6 +2499,7 @@ mch_FullName(
     int		l;
 #ifdef HAVE_FCHDIR
     int		fd = -1;
+    // iOS: this one will be the same for all threads. We can leave it here.
     static int	dont_fchdir = FALSE;	/* TRUE when fchdir() doesn't work */
 #endif
     char_u	olddir[MAXPATHL];
@@ -3454,17 +3460,33 @@ mch_tcgetattr(int fd, void *term)
     return retval;
 }
 
+#if TARGET_OS_IPHONE
+static __thread int first = TRUE;
+#ifdef NEW_TTY_SYSTEM
+# ifdef HAVE_TERMIOS_H
+static __thread struct termios told;
+# else
+static __thread struct termio told;
+# endif
+#endif
+#endif
     void
 mch_settmode(int tmode)
 {
+#if !TARGET_OS_IPHONE
     static int first = TRUE;
+#endif
 
 #ifdef NEW_TTY_SYSTEM
 # ifdef HAVE_TERMIOS_H
+#if !TARGET_OS_IPHONE
     static struct termios told;
+#endif
 	   struct termios tnew;
 # else
+#if !TARGET_OS_IPHONE
     static struct termio told;
+#endif
 	   struct termio tnew;
 # endif
 
@@ -3533,6 +3555,7 @@ mch_settmode(int tmode)
 # ifndef TIOCSETN
 #  define TIOCSETN TIOCSETP	/* for hpux 9.0 */
 # endif
+    // iOS: we don't go through that branch
     static struct sgttyb ttybold;
 	   struct sgttyb ttybnew;
 
@@ -3640,6 +3663,7 @@ static __thread int	mouse_ison = FALSE;
 mch_setmouse(int on)
 {
 #ifdef FEAT_BEVAL_TERM
+    // iOS: we don't go through that branch
     static int	bevalterm_ison = FALSE;
 #endif
     int		xterm_mouse_vers;
@@ -4190,6 +4214,7 @@ set_child_environment(
 # ifdef HAVE_SETENV
     char	envbuf[50];
 # else
+    // iOS: we don't go through this branch
     static char	envbuf_Term[30];
     static char	envbuf_Rows[20];
     static char	envbuf_Lines[20];
@@ -6305,6 +6330,7 @@ RealWaitForChar(int fd, long msec, int *check_for_gpm UNUSED, int *interrupted)
     int		ret;
     int		result;
 #if defined(FEAT_XCLIPBOARD) || defined(USE_XSMP) || defined(FEAT_MZSCHEME)
+    // iOS: we do not go through this branch
     static int	busy = FALSE;
 
     /* May retry getting characters after an event was handled. */
@@ -6679,6 +6705,9 @@ mch_expandpath(
 #endif
 
 #define SHELL_SPECIAL (char_u *)"\t \"&'$;<>()\\|"
+#if TARGET_OS_IPHONE
+static __thread int did_find_nul = FALSE;
+#endif
 
     int
 mch_expand_wildcards(
@@ -6710,7 +6739,9 @@ mch_expand_wildcards(
 				 * directly */
     int		shell_style = STYLE_ECHO;
     int		check_spaces;
+#if !TARGET_OS_IPHONE
     static int	did_find_nul = FALSE;
+#endif
     int		ampersand = FALSE;
 		/* vimglob() function to define for Posix shell */
     static char *sh_vimglob_func = "vimglob() { while [ $# -ge 1 ]; do echo \"$1\"; shift; done }; vimglob >";
@@ -7304,6 +7335,7 @@ mch_rename(const char *src, const char *dest)
     static int
 gpm_open(void)
 {
+    // iOS: we are not inside this branch
     static Gpm_Connect gpm_connect; /* Must it be kept till closing ? */
 
     if (!gpm_flag)
@@ -7491,6 +7523,7 @@ sig_sysmouse SIGDEFARG(sigarg)
     int			row, col;
     int			button;
     int			buttons;
+    // iOS: we are not inside this branch
     static int		oldbuttons = 0;
 
 #ifdef FEAT_GUI
@@ -7867,6 +7900,7 @@ do_xterm_trace(void)
     char_u		buf[50];
     char_u		*strp;
     long		got_hints;
+    // iOS: we are not going inside this branch
     static char_u	*mouse_code;
     static char_u	mouse_name[2] = {KS_MOUSE, KE_FILLER};
     static int		prev_row = 0, prev_col = 0;
@@ -8313,7 +8347,7 @@ xsmp_close(void)
 
 #ifdef EBCDIC
 /* Translate character to its CTRL- value */
-char CtrlTable[] =
+char __thread CtrlTable[] =
 {
 /* 00 - 5E */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -8400,7 +8434,7 @@ char CtrlTable[] =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
-char MetaCharTable[]=
+char __thread MetaCharTable[]=
 {/*   0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F */
       0,  0,  0,  0,'\\', 0,'F',  0,'W','M','N',  0,  0,  0,  0,  0,
       0,  0,  0,  0,']',  0,  0,'G',  0,  0,'R','O',  0,  0,  0,  0,
@@ -8410,7 +8444,7 @@ char MetaCharTable[]=
 
 
 /* TODO: Use characters NOT numbers!!! */
-char CtrlCharTable[]=
+char __thread CtrlCharTable[]=
 {/*   0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F */
     124,193,194,195,  0,201,  0,  0,  0,  0,  0,210,211,212,213,214,
     215,216,217,226,  0,209,200,  0,231,232,  0,  0,224,189, 95,109,

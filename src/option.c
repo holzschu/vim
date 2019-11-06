@@ -744,6 +744,14 @@ free_all_options(void)
 	    /* buffer-local option: free global value */
 	    free_string_option(*(char_u **)options[i].var);
     }
+#if TARGET_OS_IPHONE
+    // We need to reset the pointers:
+    // here, instead of in options_init. Why?
+    p_vsts = empty_option;
+    p_vts = empty_option;
+    // reset options now:
+#include "options_init.h"
+#endif
 }
 #endif
 
@@ -3905,12 +3913,17 @@ check_redraw(long_u flags)
  * Find index for option 'arg'.
  * Return -1 if not found.
  */
+#if TARGET_OS_IPHONE
+static __thread short    quick_tab[27] = {0, 0};	/* quick access table */
+#endif
     int
 findoption(char_u *arg)
 {
     int		    opt_idx;
     char	    *s, *p;
+#if !TARGET_OS_IPHONE
     static short    quick_tab[27] = {0, 0};	/* quick access table */
+#endif
     int		    is_term_opt;
 
     /*
@@ -5752,16 +5765,21 @@ clear_winopt(winopt_T *wop UNUSED)
 
 #ifdef FEAT_EVAL
 // Index into the options table for a buffer-local option enum.
-static int buf_opt_idx[BV_COUNT];
+static __thread int buf_opt_idx[BV_COUNT];
 # define COPY_OPT_SCTX(buf, bv) buf->b_p_script_ctx[bv] = options[buf_opt_idx[bv]].script_ctx
 
 /*
  * Initialize buf_opt_idx[] if not done already.
  */
+#if TARGET_OS_IPHONE
+static __thread int did_init_buf_opt_idx = FALSE;
+#endif
     static void
 init_buf_opt_idx(void)
 {
+#if !TARGET_OS_IPHONE
     static int did_init_buf_opt_idx = FALSE;
+#endif
     int i;
 
     if (did_init_buf_opt_idx)
@@ -6150,9 +6168,9 @@ set_imsearch_global(void)
     p_imsearch = curbuf->b_p_imsearch;
 }
 
-static int expand_option_idx = -1;
-static char_u expand_option_name[5] = {'t', '_', NUL, NUL, NUL};
-static int expand_option_flags = 0;
+static __thread int expand_option_idx = -1;
+static __thread char_u expand_option_name[5] = {'t', '_', NUL, NUL, NUL};
+static __thread int expand_option_flags = 0;
 
     void
 set_context_in_set_cmd(
@@ -6377,6 +6395,7 @@ ExpandSettings(
     int		loop;
     int		is_term_opt;
     char_u	name_buf[MAX_KEY_NAME_LEN];
+    // iOS: not edited, so no need to move outside of the function (?)
     static char *(names[]) = {"all", "termcap"};
     int		ic = regmatch->rm_ic;	/* remember the ignore-case flag */
 
@@ -6669,9 +6688,22 @@ shortmess(int x)
 /*
  * paste_option_changed() - Called after p_paste was set or reset.
  */
+#if TARGET_OS_IPHONE
+static __thread int	old_p_paste = FALSE;
+static __thread int	save_sm = 0;
+static __thread int	save_sta = 0;
+#ifdef FEAT_CMDL_INFO
+static __thread int	save_ru = 0;
+#endif
+#ifdef FEAT_RIGHTLEFT
+static __thread int	save_ri = 0;
+static __thread int	save_hkmap = 0;
+#endif
+#endif
     static void
 paste_option_changed(void)
 {
+#if !TARGET_OS_IPHONE
     static int	old_p_paste = FALSE;
     static int	save_sm = 0;
     static int	save_sta = 0;
@@ -6681,6 +6713,7 @@ paste_option_changed(void)
 #ifdef FEAT_RIGHTLEFT
     static int	save_ri = 0;
     static int	save_hkmap = 0;
+#endif
 #endif
     buf_T	*buf;
 
