@@ -6043,7 +6043,7 @@ mch_detect_ended_job(job_T *job_list)
     for (job = job_list; job != NULL; job = job->jv_next)
     {
         wait_pid = waitpid(job->jv_pid, &status, WNOHANG);
-        if (wait_pid == -1) {
+        if ((wait_pid == -1) || (wait_pid == job->jv_pid))  {
             // This job terminated
             if (WIFEXITED(status))
             /* LINTED avoid "bitwise operation on signed value" */
