@@ -2174,7 +2174,7 @@ typedef enum {
 
 // This must come after including proto.h.
 // For VMS this is defined in macros.h.
-#if !defined(MSWIN) && !defined(VMS)
+#if !defined(MSWIN) && !defined(VMS) && !defined(TARGET_OS_IPHONE)
 # define mch_open(n, m, p)	open((n), (m), (p))
 # define mch_fopen(n, p)	fopen((n), (p))
 #endif
@@ -2656,6 +2656,8 @@ long elapsed(DWORD start_tick);
 #define isatty ios_isatty
 #define fork   ios_fork
 #undef ECHILD // waitpid() does not set errno = ECHILD
+extern int mch_open(const char *path, int oflag, mode_t mode);
+extern FILE* mch_fopen(const char *path, const char *mode);
 #endif
 
 #endif // VIM__H

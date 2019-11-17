@@ -250,3 +250,133 @@ releasepool:
 # pragma clang diagnostic pop
 # pragma clang diagnostic pop
 #endif
+
+#if TARGET_OS_IPHONE
+/*
+ * open() replacement that asks for bookmarks stored at the application level
+ */
+
+    static BOOL 
+downloadRemoteFile(NSURL* fileURL) {
+    if ([NSFileManager.defaultManager fileExistsAtPath:fileURL.path])
+    	return true;
+
+    NSError *error;
+    [NSFileManager.defaultManager startDownloadingUbiquitousItemAtURL: fileURL error:&error];
+    // try downloading the file for 5s, then give up:
+    NSDate* limitTime = [[NSDate alloc] initWithTimeIntervalSinceNow:5];
+    while (![NSFileManager.defaultManager fileExistsAtPath:fileURL.path] && 
+			 ([limitTime timeIntervalSinceDate:[NSDate date]] < 0)) { }
+    if ([NSFileManager.defaultManager fileExistsAtPath:fileURL.path])
+    	return true;
+    return false;
+}
+
+    int
+mch_open(const char *path, int oflag, mode_t mode)
+{
+    int returnValue = open(path, oflag, mode);
+    if (returnValue >= 0) 
+	return returnValue;
+    // open() has failed. We assume it is for permission issues, and try to get permission:
+    // Get dictionary of all permission bookmarks
+    // Do not use bookmarks if path is inside $HOME or $APPDIR (vim calls mch_open *a lot*)
+    NSString *pathString = @(path); 
+    NSString* home = @(getenv("HOME"));
+    if ([pathString hasPrefix:home]) return -1;
+    NSString* appdir = @(getenv("APPDIR"));
+    if ([pathString hasPrefix:appdir]) return -1;
+    // 
+    NSDictionary *storedBookmarks = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"fileBookmarks"];
+    NSURL *fileURL = [NSURL fileURLWithPath:pathString];
+
+    while ([fileURL pathComponents].count > 7) {
+	// Missing: add "/private" at the beginning
+	// Access the dictionary:
+	pathString = fileURL.path; 
+	NSData *bookmark = storedBookmarks[pathString];
+	// if access fails, we try with the parent URL:
+	fileURL = [fileURL URLByDeletingLastPathComponent];
+	if (bookmark != nil) {
+	    BOOL isStale = false;
+	    NSError *error;
+	    NSURL* bookmarkedLocation = [NSURL URLByResolvingBookmarkData:bookmark 
+								  options:NSURLBookmarkResolutionWithoutUI
+							    relativeToURL:nil
+						      bookmarkDataIsStale:&isStale 
+								    error:&error];
+	    if (!isStale) {
+		//startAccessingSecurityScopedResource
+		BOOL isSecure = bookmarkedLocation.startAccessingSecurityScopedResource;
+		//downloadRemoteFile
+		BOOL downloaded = downloadRemoteFile(fileURL);
+		if (isSecure && !downloaded) {
+		    (void)bookmarkedLocation.stopAccessingSecurityScopedResource;
+		    return -1;
+		}
+		// access worked. Do we have access to the file now?
+		returnValue = open(path, oflag, mode);
+		if (returnValue >= 0) 
+		    return returnValue;
+	    }
+	}
+    }
+    return -1;
+}
+
+/*
+ * fopen() replacement that asks for bookmarks stored at the application level
+ */
+    FILE *
+mch_fopen(const char *path, const char * mode)
+{
+    FILE* returnValue = fopen(path, mode);
+    if (returnValue != NULL) 
+	return returnValue;
+    // fopen() has failed. We assume it is for permission issues, and try to get permission:
+    // Get dictionary of all permission bookmarks
+    // Do not use bookmarks if path is inside $HOME or $APPDIR 
+    NSString *pathString = @(path); 
+    NSString* home = @(getenv("HOME"));
+    if ([pathString hasPrefix:home]) return NULL;
+    NSString* appdir = @(getenv("APPDIR"));
+    if ([pathString hasPrefix:appdir]) return NULL;
+    // 
+    NSDictionary *storedBookmarks = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"fileBookmarks"];
+    NSURL *fileURL = [NSURL fileURLWithPath:pathString];
+
+    while ([fileURL pathComponents].count > 7) {
+	// Missing: add "/private" at the beginning
+	// Access the dictionary:
+	pathString = fileURL.path; 
+	NSData *bookmark = storedBookmarks[pathString];
+	// if access fails, we try with the parent URL:
+	fileURL = [fileURL URLByDeletingLastPathComponent];
+	if (bookmark != nil) {
+	    BOOL isStale = false;
+	    NSError *error;
+	    NSURL* bookmarkedLocation = [NSURL URLByResolvingBookmarkData:bookmark 
+								  options:NSURLBookmarkResolutionWithoutUI
+							    relativeToURL:nil
+						      bookmarkDataIsStale:&isStale 
+								    error:&error];
+	    if (!isStale) {
+		//startAccessingSecurityScopedResource
+		BOOL isSecure = bookmarkedLocation.startAccessingSecurityScopedResource;
+		//downloadRemoteFile
+		BOOL downloaded = downloadRemoteFile(fileURL);
+		if (isSecure && !downloaded) {
+		    (void)bookmarkedLocation.stopAccessingSecurityScopedResource;
+		    return NULL;
+		}
+		// access worked. Do we have access to the file now?
+		returnValue = fopen(path, mode);
+		if (returnValue != NULL) 
+		    return returnValue;
+	    }
+	}
+    }
+    return NULL;
+}
+
+#endif

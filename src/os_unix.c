@@ -4304,6 +4304,7 @@ static __thread char* stored_VIM_TERMINAL;
 #ifdef FEAT_CLIENTSERVER
 static __thread char* stored_VIM_SERVERNAME;
 #endif
+// Storing the environment before calls to fork(), to restore it afterwards.
     static void
 store_environment()
 {
@@ -5933,7 +5934,7 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 
 failed:
     channel_unref(channel);
-    // Should I close streams here? 
+    // NH: Should I close streams here? Apparently not.
     if (fd_in[0] >= 0)
 	close(fd_in[0]);
     if (fd_in[1] >= 0)
