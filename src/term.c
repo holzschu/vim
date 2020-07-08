@@ -894,8 +894,8 @@ static __thread struct builtin_term builtin_termcaps[] =
     {(int)KS_OP,	IF_EB("\033[0m", ESC_STR "[0m")},	// reset
     {(int)KS_CZH,	IF_EB("\033[3m", ESC_STR "[3m")}, 	/* italic mode on */
     {(int)KS_CZR,	IF_EB("\033[23m", ESC_STR "[23m")},	/* italic mode off */    
-    {(int)KS_SO,        IF_EB("\033|91m", ESC_STR "[91m")},     // standout: bright red text
-    {(int)KS_SE,        IF_EB("\033|39m", ESC_STR "[39m")},     // standout end 
+    {(int)KS_SO,        IF_EB("\033[91m", ESC_STR "[91m")},     // standout: bright red text
+    {(int)KS_SE,        IF_EB("\033[39m", ESC_STR "[39m")},     // standout end 
     {(int)KS_BC,	"\x08"},		/* backspace */
     {(int)K_BS,	        "\x7f"},		/* erase = ^? */
 //    // TODO: Needs debugging on colors bg/fg
