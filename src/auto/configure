@@ -5502,7 +5502,7 @@ $as_echo "no" >&6; }
       fi
     fi
     # specific for iOS:
-    LUA_LIBS="-F.. -framework lua_ios"
+    LUA_LIBS="-F../Frameworks -framework lua_ios"
     if test "$enable_luainterp" = "dynamic"; then
       lua_ok="yes"
     else
