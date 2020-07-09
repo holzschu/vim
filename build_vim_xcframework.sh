@@ -47,7 +47,7 @@ libraryFile=src/vim
 rm -rf Frameworks/$framework.framework
 mkdir -p Frameworks/$framework.framework
 cp $libraryFile Frameworks/$framework.framework/$framework
-cp basic_Info.plist Frameworks/$framework.framework/Info.plist
+cp basic_Info_Simulator.plist Frameworks/$framework.framework/Info.plist
 plutil -replace CFBundleExecutable -string $framework Frameworks/$framework.framework/Info.plist
 plutil -replace CFBundleName -string $framework Frameworks/$framework.framework/Info.plist
 # underscore is not allowed in CFBundleIdentifier:

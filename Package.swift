@@ -13,7 +13,7 @@ let package = Package(
         .binaryTarget(
             name: "vim",
             url: "https://github.com/holzschu/vim/releases/download/ios_1.0/vim.xcframework.zip",
-            checksum: "d3a49326ff78e05b9084cf881589734158e9059562f584f88d1de5704ab32add"
+            checksum: "89bb41ad751068c2479d120fa50512b5e461cce65600e3ebd62472132c483aff"
         )
     ]
 )
