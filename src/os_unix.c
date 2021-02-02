@@ -3113,7 +3113,7 @@ executable_file(char_u *name)
     return vms_executable;
 #else
 #if TARGET_OS_IPHONE
-    // access always returns -1 on iOS. 
+    // access for X_OK always returns -1 on iOS. 
     // the executable bit "x" cannot be relied on either
     return S_ISREG(st.st_mode) ; 
 #else
@@ -3197,12 +3197,14 @@ mch_can_exe(char_u *name, char_u **path, int use_path)
     }
 
     vim_free(buf);
+#if TARGET_OS_IPHONE
     // iOS: we've walked through the entire path, did not find an executable with that name
     // is that one of the "internal commands" from ios_system?
     if (!retval) {
         retval = ios_executable(name); 
         if (retval && (path != NULL)) *path = vim_strsave(name);
     }
+#endif
     
     return retval;
 }
