@@ -31,6 +31,7 @@ extern "C" {
 // these functions are defined differently in C++. The #define approach breaks things.
 #ifndef __cplusplus
   #define getwchar() fgetwc(thread_stdin)
+  #define putwchar(a) fputwc(a, thread_stdout)
   // iswprint depends on the given locale, and setlocale() fails on iOS:
   #define iswprint(a) 1
   #define write ios_write
@@ -61,6 +62,8 @@ extern __thread FILE* thread_stderr;
 #define execve ios_execve
 #define dup2 ios_dup2
 #define getenv ios_getenv
+#define setenv ios_setenv
+#define unsetenv ios_unsetenv
 
 extern int ios_executable(const char* cmd); // is this command part of the "shell" commands?
 extern int ios_system(const char* inputCmd); // execute this command (executable file or builtin command)
@@ -73,6 +76,9 @@ extern int ios_execv(const char *path, char* const argv[]);
 extern int ios_execve(const char *path, char* const argv[], char** envlist);
 extern int ios_dup2(int fd1, int fd2);
 extern char * ios_getenv(const char *name);
+extern int ios_setenv(const char* variableName, const char* value, int overwrite);
+int ios_unsetenv(const char* variableName);
+extern char** environmentVariables(pid_t pid);
 
 extern int ios_isatty(int fd);
 extern pthread_t ios_getLastThreadId(void);  // deprecated
@@ -95,6 +101,10 @@ extern    int ios_fputc(int c, FILE *stream);
 extern int ios_putw(int w, FILE *stream);
 extern int ios_fflush(FILE *stream);
 extern int ios_gettty(void);
+extern int ios_opentty(void);
+extern void ios_closetty(void);
+extern void ios_stopInteractive(void);
+extern void ios_startInteractive(void);
 
 #ifdef __cplusplus
 }

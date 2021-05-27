@@ -66,6 +66,9 @@
  * lose money and don't ask me.
  */
 
+// iOS/OSX architecture definitions
+#include <TargetConditionals.h>
+
 /* Visual Studio 2005 has 'deprecated' many of the standard CRT functions */
 #if _MSC_VER >= 1400
 # define _CRT_SECURE_NO_DEPRECATE
@@ -96,6 +99,15 @@
 # include <unix.h>	/* for fdopen() on MAC */
 #endif
 
+#if TARGET_OS_IPHONE 
+#include "../ios_error.h"
+#undef stderr
+#define stderr thread_stderr
+#undef stdout
+#define stdout thread_stdout
+#undef stdin
+#define stdin thread_stdin
+#endif
 
 /*  This corrects the problem of missing prototypes for certain functions
  *  in some GNU installations (e.g. SunOS 4.1.x).

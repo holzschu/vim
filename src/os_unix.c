@@ -5509,6 +5509,7 @@ finished:
 	     * Don't wait if wait_pid was already set above, indicating the
 	     * child already exited.
 	     */
+	    
 	    if (wait_pid != pid)
 		wait_pid = wait4pid(pid, &status);
 
