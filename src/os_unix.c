@@ -4397,7 +4397,7 @@ restore_environment()
 	setenv("VIM_TERMINAL", stored_VIM_TERMINAL, 1); 
 	free(stored_VIM_TERMINAL); 
 	stored_VIM_TERMINAL = NULL; 
-    } else 
+    } else 
     unsetenv("VIM_TERMINAL"); 
 #  endif
 #  ifdef FEAT_CLIENTSERVER
@@ -4405,7 +4405,7 @@ restore_environment()
 	setenv("VIM_SERVERNAME", stored_VIM_SERVERNAME, 1); 
 	free(stored_VIM_SERVERNAME); 
 	stored_VIM_SERVERNAME = NULL; 
-    } else 
+    } else 
     unsetenv("VIM_SERVERNAME"); 
 #  endif
     environmentRestored = true;

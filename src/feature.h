@@ -746,7 +746,7 @@
  *			be set to save the screen when starting Vim and
  *			restoring it when exiting.
  */
-/* #define FEAT_XTERM_SAVE */
+#define FEAT_XTERM_SAVE
 
 /*
  * DEBUG		Output a lot of debugging garbage.

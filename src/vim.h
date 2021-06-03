@@ -2658,6 +2658,12 @@ long elapsed(DWORD start_tick);
 #undef ECHILD // waitpid() does not set errno = ECHILD
 extern int mch_open(const char *path, int oflag, mode_t mode);
 extern FILE* mch_fopen(const char *path, const char *mode);
+#undef mch_errmsg
+# define mch_errmsg(str)	{ fprintf(thread_stderr, "%s", (str)) ; fflush(thread_stderr); }
+#undef display_errors
+# define display_errors()	{ fflush(thread_stderr); fflush(thread_stdout); }
+#undef mch_msg
+# define mch_msg(str)		fprintf(thread_stdout, "%s", (str))
 #endif
 
 #endif // VIM__H

@@ -1532,6 +1532,9 @@ make_filter_cmd(
 	len += (long_u)STRLEN(itmp) + 9;		/* " { < " + " } " */
     if (otmp != NULL)
 	len += (long_u)STRLEN(otmp) + (long_u)STRLEN(p_srr) + 2; /* "  " */
+#if TARGET_OS_IPHONE
+    len += 1; // extra space after input file
+#endif
     buf = alloc(len);
     if (buf == NULL)
 	return NULL;
@@ -1554,6 +1557,9 @@ make_filter_cmd(
     {
 	STRCAT(buf, " < ");
 	STRCAT(buf, itmp);
+#if TARGET_OS_IPHONE
+	STRCAT(buf, " "); // Extra space after input file
+#endif
     }
 #else
     // For shells that don't understand braces around commands, at least allow
