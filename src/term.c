@@ -988,10 +988,10 @@ static __thread struct builtin_term builtin_termcaps[] =
 #if TARGET_OS_IPHONE
     // iOS: up-down-left-right need a version without the * for hterm
     // By extension, I remove the * in all keycaps. Needs testing (with extended kb)
-    {K_UP,		IF_EB("\033[A", ESC_STR "[A")},
-    {K_DOWN,		IF_EB("\033[B", ESC_STR "[B")},
-    {K_RIGHT,		IF_EB("\033[C", ESC_STR "[C")},
-    {K_LEFT,		IF_EB("\033[D", ESC_STR "[D")},
+    {K_UP,		IF_EB("\033O*A", ESC_STR "O*A")},
+    {K_DOWN,		IF_EB("\033O*B", ESC_STR "O*B")},
+    {K_RIGHT,		IF_EB("\033O*C", ESC_STR "O*C")},
+    {K_LEFT,		IF_EB("\033O*D", ESC_STR "O*D")},
     /* An extra set of cursor keys for vt100 mode */
     {K_XUP,		IF_EB("\033[1;A", ESC_STR "[1;A")},
     {K_XDOWN,		IF_EB("\033[1;B", ESC_STR "[1;B")},

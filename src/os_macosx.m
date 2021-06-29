@@ -280,11 +280,11 @@ mch_open(const char *path, int oflag, mode_t mode)
 	return returnValue;
     // open() has failed. We assume it is for permission issues, and try to get permission:
     // Get dictionary of all permission bookmarks
-    // Do not use bookmarks if path is inside $HOME or $APPDIR (vim calls mch_open *a lot*)
+    // Do not use bookmarks if path is inside ~/Documents or $APPDIR (vim calls mch_open *a lot*)
     NSString *pathString = @(path); 
-    NSString* home = @(getenv("HOME"));
-    if ([pathString hasPrefix:home]) return -1;
-    NSString* appdir = @(getenv("APPDIR"));
+    NSString* docsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject]; // @(getenv("HOME"));
+    if ([pathString hasPrefix:docsPath]) return -1;
+    NSString* appdir = [[NSBundle mainBundle] resourcePath]; // @(getenv("APPDIR"));
     if ([pathString hasPrefix:appdir]) return -1;
     // 
     NSDictionary *storedBookmarks = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"fileBookmarks"];
