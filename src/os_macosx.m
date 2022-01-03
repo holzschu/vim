@@ -286,7 +286,6 @@ mch_open(const char *path, int oflag, mode_t mode)
     if ([pathString hasPrefix:docsPath]) return -1;
     NSString* appdir = [[NSBundle mainBundle] resourcePath]; // @(getenv("APPDIR"));
     if ([pathString hasPrefix:appdir]) return -1;
-    // 
     NSDictionary *storedBookmarks = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"fileBookmarks"];
     NSURL *fileURL = [NSURL fileURLWithPath:pathString];
 
@@ -294,6 +293,12 @@ mch_open(const char *path, int oflag, mode_t mode)
 	// Missing: add "/private" at the beginning
 	// Access the dictionary:
 	pathString = fileURL.path; 
+	while ([pathString hasSuffix:@"/"]) {
+	    // Something inserted "//" in a path. 
+	    // URLByDeletingLastPathComponent will react by adding "../", creating an infinite loop.
+	    pathString = [pathString substringToIndex:[pathString length]- 1];
+	    fileURL = [NSURL fileURLWithPath:pathString];
+	}
 	NSData *bookmark = storedBookmarks[pathString];
 	// if access fails, we try with the parent URL:
 	fileURL = [fileURL URLByDeletingLastPathComponent];
@@ -349,6 +354,12 @@ mch_fopen(const char *path, const char * mode)
 	// Missing: add "/private" at the beginning
 	// Access the dictionary:
 	pathString = fileURL.path; 
+	while ([pathString hasSuffix:@"/"]) {
+	    // Something inserted "//" in a path. 
+	    // URLByDeletingLastPathComponent will react by adding "../", creating an infinite loop.
+	    pathString = [pathString substringToIndex:[pathString length]- 1];
+	    fileURL = [NSURL fileURLWithPath:pathString];
+	}	
 	NSData *bookmark = storedBookmarks[pathString];
 	// if access fails, we try with the parent URL:
 	fileURL = [fileURL URLByDeletingLastPathComponent];

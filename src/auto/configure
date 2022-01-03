@@ -14788,7 +14788,7 @@ $as_echo "yes, we need CoreServices" >&6; }
 $as_echo "yes, we need AppKit/UIKit" >&6; }
       # iOS, TODO: make this automatic 
       # LIBS="$LIBS -framework AppKit"
-      LIBS="-F ../Frameworks -framework ios_system $LIBS -framework UIKit -lobjc -framework Foundation -framework lua_ios -framework Python3_ios "
+      LIBS="-F ../Frameworks -framework ios_system $LIBS -framework UIKit -lobjc -framework Foundation -framework lua_ios "
     fi
   else
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5

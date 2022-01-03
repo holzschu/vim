@@ -3318,7 +3318,13 @@ unix_expandpath(
 	    s = p + 1;
 	}
 	else if (path_end >= path + wildoff
+#if !TARGET_OS_IPHONE
 			 && (vim_strchr((char_u *)"*?[{~$", *path_end) != NULL
+#else
+			 // iOS: we remove ~ from the authorized patterns, as
+			 // it creates problems with paths like iCloud~AsheKube~app... 
+			 && (vim_strchr((char_u *)"*?[{$", *path_end) != NULL
+#endif
 			     || (!p_fic && (flags & EW_ICASE)
 					     && isalpha(PTR2CHAR(path_end)))))
 	    e = p;

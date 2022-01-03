@@ -6,6 +6,9 @@
  * Do ":help credits" in Vim to see a list of people who contributed.
  */
 
+// iOS/OSX architecture definitions
+#include <TargetConditionals.h>
+
 /*
  * NextStep has a problem with configure, undefine a few things:
  */

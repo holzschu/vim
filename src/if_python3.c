@@ -208,6 +208,7 @@ typedef PySliceObject PySliceObject_T;
 # define Py_BuildValue py3_Py_BuildValue
 # define Py_SetPythonHome py3_Py_SetPythonHome
 # define Py_Initialize py3_Py_Initialize
+# define Py_InitializeWithName py3_Py_InitializeWithName
 # define Py_Finalize py3_Py_Finalize
 # define Py_IsInitialized py3_Py_IsInitialized
 # define _Py_NoneStruct (*py3__Py_NoneStruct)
@@ -296,6 +297,7 @@ typedef PySliceObject PySliceObject_T;
 static int (*py3_PySys_SetArgv)(int, wchar_t **);
 static void (*py3_Py_SetPythonHome)(wchar_t *home);
 static void (*py3_Py_Initialize)(void);
+static void (*py3_Py_InitializeWithName)(char*);
 static PyObject* (*py3_PyList_New)(Py_ssize_t size);
 static PyGILState_STATE (*py3_PyGILState_Ensure)(void);
 static void (*py3_PyGILState_Release)(PyGILState_STATE);
@@ -433,6 +435,11 @@ static void(*py3_PyObject_GC_UnTrack)(void *);
 static int (*py3_PyType_IsSubtype)(PyTypeObject *, PyTypeObject *);
 
 static __thread HINSTANCE hinstPy3 = 0; /* Instance of python.dll */
+#if TARGET_OS_IPHONE
+static char* pythonLibraryName = NULL; /* name of the Python library to load (python3, pythonA, etc */
+extern char* ios_getPythonLibraryName();
+extern void ios_releasePythonLibraryName(char* name);
+#endif
 
 /* Imported exception objects */
 static __thread PyObject *p3imp_PyExc_AttributeError;
@@ -470,6 +477,7 @@ static __thread struct
     {"PySys_SetArgv", (PYTHON_PROC*)&py3_PySys_SetArgv},
     {"Py_SetPythonHome", (PYTHON_PROC*)&py3_Py_SetPythonHome},
     {"Py_Initialize", (PYTHON_PROC*)&py3_Py_Initialize},
+    {"Py_InitializeWithName", (PYTHON_PROC*)&py3_Py_InitializeWithName},
     {"_PyArg_ParseTuple_SizeT", (PYTHON_PROC*)&py3_PyArg_ParseTuple},
     {"_Py_BuildValue_SizeT", (PYTHON_PROC*)&py3_Py_BuildValue},
     {"PyMem_Free", (PYTHON_PROC*)&py3_PyMem_Free},
@@ -646,6 +654,8 @@ end_dynamic_python3(void)
     {
 	close_dll(hinstPy3);
 	hinstPy3 = 0;
+	ios_releasePythonLibraryName(pythonLibraryName);
+	pythonLibraryName = NULL;
     }
 }
 
@@ -677,7 +687,19 @@ py3_runtime_link_init(char *libname, int verbose)
 
     if (hinstPy3 != 0)
 	return OK;
+#if TARGET_OS_IPHONE
+    pythonLibraryName = ios_getPythonLibraryName();
+    if (pythonLibraryName == NULL) {
+	if (verbose)
+	    emsg("Too many python programs are already running. Python is disabled in this Vim.");
+	return FAIL;
+    }
+    char p_py3dllname[40]; 
+    sprintf(p_py3dllname, "%s.framework/%s", pythonLibraryName, pythonLibraryName); 
+    hinstPy3 = load_dll(p_py3dllname);
+#else
     hinstPy3 = load_dll(libname);
+#endif
 
     if (!hinstPy3)
     {
@@ -691,6 +713,7 @@ py3_runtime_link_init(char *libname, int verbose)
 	if ((*py3_funcname_table[i].ptr = symbol_from_dll(hinstPy3,
 			py3_funcname_table[i].name)) == NULL)
 	{
+	    void* pointer = dlsym(hinstPy3, py3_funcname_table[i].name); 
 	    close_dll(hinstPy3);
 	    hinstPy3 = 0;
 	    if (verbose)
@@ -901,6 +924,11 @@ static __thread wchar_t *py_home_buf = NULL;
     static int
 Python3_Init(void)
 {
+    // TODO: 
+    // - check that python3 is closed, reopened
+    // X add something to set orig_argv. Before Py_Initialize()?
+    // - add something to warn ios_system, get number of python interpreter
+    // X change name of library (p_py3dll)
     if (!py3initialised)
     {
 #ifdef DYNAMIC_PYTHON3
@@ -930,7 +958,11 @@ Python3_Init(void)
 
 	PyImport_AppendInittab("vim", Py3Init_vim);
 
+#if !TARGET_OS_IPHONE
 	Py_Initialize();
+#else
+	Py_InitializeWithName(pythonLibraryName);
+#endif
 
 	/* Initialise threads, and below save the state using
 	 * PyEval_SaveThread.  Without the call to PyEval_SaveThread, thread

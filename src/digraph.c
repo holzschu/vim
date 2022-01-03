@@ -1834,14 +1834,14 @@ static __thread digr_T digraphdefault[] =
 /*
  * handle digraphs after typing a character
  */
-#if TARGET_OS_IPONE
+#if TARGET_OS_IPHONE
 static __thread int	backspaced;	/* character before K_BS */
 static __thread int	lastchar;	/* last typed character */
 #endif
     int
 do_digraph(int c)
 {
-#if !TARGET_OS_IPONE
+#if !TARGET_OS_IPHONE
     static int	backspaced;	/* character before K_BS */
     static int	lastchar;	/* last typed character */
 #endif

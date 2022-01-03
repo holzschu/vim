@@ -50,6 +50,7 @@ static __thread int selinux_enabled = -1;
 // TODO: remove these 2 lines
 #undef mch_getenv
 #define mch_getenv(x) (char_u *)ios_getenv((char *)(x))
+extern int chdir_nolock(const char* path); // defined in ios_system.m
 #endif
 
 #ifdef __BEOS__
@@ -5739,7 +5740,7 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 # endif
 
 #if TARGET_OS_IPHONE
-	store_environment(); 
+	// store_environment(); 
 #endif
 # ifdef FEAT_TERMINAL
 	if (options->jo_term_rows > 0)
@@ -5856,6 +5857,9 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 
 	if (null_fd >= 0)
 	    close(null_fd);
+
+	if (options->jo_cwd != NULL && mch_chdir((char *)options->jo_cwd) != 0)
+	    _exit(EXEC_FAILED);
 #else // TARGET_OS_IPHONE
 	ios_dup2(fd_in[0], 0);
 	ios_dup2(fd_out[1], 1);
@@ -5867,9 +5871,11 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 	    ios_dup2(fd_out[1], 2);
 	else 
 	    ios_dup2(fd_err[1], 2);
-#endif // TARGET_OS_IPHONE
-	if (options->jo_cwd != NULL && mch_chdir((char *)options->jo_cwd) != 0)
+
+        // iOS: fork() has already mutex-locked, we need the chdir with no lock:
+	if (options->jo_cwd != NULL && chdir_nolock((char *)options->jo_cwd) != 0)
 	    _exit(EXEC_FAILED);
+#endif // TARGET_OS_IPHONE
 
 	/* See above for type of argv. */
 	execvp(argv[0], argv);
@@ -6034,7 +6040,7 @@ return_dead:
 	job->jv_status = JOB_ENDED;
 #if TARGET_OS_IPHONE
     // fprintf(stderr, "restore_environment in mch_job_status\n"); 
-    restore_environment(); 
+    // restore_environment(); 
 #endif
     return "dead";
 }
@@ -6079,7 +6085,7 @@ mch_detect_ended_job(job_T *job_list)
                 ch_log(job->jv_channel, "Job ended");
                 job->jv_status = JOB_ENDED;
                 // fprintf(stderr, "restore_environment in mch_detect_ended_job\n");
-                restore_environment();
+                // restore_environment();
             }
             return job;
         }
@@ -6127,7 +6133,7 @@ mch_signal_job(job_T *job, char_u *how)
 {
 #if TARGET_OS_IPHONE
     // fprintf(stderr, "restore_environment in mch_signal_job\n"); 
-    restore_environment(); 
+    // restore_environment(); 
 #endif
     int	    sig = -1;
 
