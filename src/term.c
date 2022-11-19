@@ -2575,12 +2575,18 @@ all_termrequests[0] =    &crv_status;
 all_termrequests[1] =    &u7_status;
 #  ifdef FEAT_TERMINAL
 all_termrequests[2] =    &rfg_status;
-#  endif
 all_termrequests[3] =    &rbg_status;
 all_termrequests[4] =    &rbm_status;
 all_termrequests[5] =    &rcs_status;
 all_termrequests[6] =    &winpos_status;
 all_termrequests[7] =    NULL;
+#  else
+all_termrequests[2] =    &rbg_status;
+all_termrequests[3] =    &rbm_status;
+all_termrequests[4] =    &rcs_status;
+all_termrequests[5] =    &winpos_status;
+all_termrequests[6] =    NULL;
+#  endif
 #endif
 
 #ifdef __BEOS__

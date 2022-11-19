@@ -4411,7 +4411,49 @@ restore_environment()
 #  endif
     environmentRestored = true;
 }
-#endif
+
+typedef struct _keyboardParameters {
+    FILE* stdin;
+    FILE* stdout;
+    FILE* stderr;
+    int toshell_fd;
+} keyboardParameters;
+
+static void* forwardKeyboard(void* parameters) {
+    // What do I need: curbuf, toshell_fd.
+    keyboardParameters* kp = (keyboardParameters*)parameters;
+    int toshell_fd = kp->toshell_fd;
+    thread_stdin  = kp->stdin;
+    thread_stdout = kp->stdout;
+    thread_stderr = kp->stderr;
+    
+    // Can't use getchar, because it blocks all file reading functions, including fileno!
+    // Must wait for something to happen on thread_stdin, but passively.
+#define BUFSIZE 1024 
+    char buffer[BUFSIZE]; 
+    int in = fileno(thread_stdin);
+    int out = fileno(thread_stdout);
+    int num = read(in, buffer, BUFSIZE);
+    int written = 0;
+
+    for (;;)
+    {
+	while (written < num) {
+	    written += write(out, buffer + written, num - written);
+	}
+	if (buffer[num - 1] == '\r') {
+	    buffer[num-1] = '\n';
+	    write(toshell_fd, buffer, num);
+	    num = 0;
+	    written = 0;
+	    buffer[0] = '\n';
+	    write(out, buffer, 1);
+	}
+	num += read(in, buffer + num, BUFSIZE - num);
+    }
+}
+
+#endif // TARGET_OS_IPHONE
 
 #endif
 
@@ -4491,6 +4533,14 @@ build_argv(
     char	**argv = NULL;
     int		argc;
 
+#if TARGET_OS_IPHONE
+    // Prevent the user from running ":term" or ":!sh"
+    if ((cmd == NULL) || (strcmp(cmd, "/bin/sh") == 0) || (strcmp(cmd, "sh") == 0)) {
+    	mch_msg("We cannot run sh from Vim. Try :VimShell for a terminal.");
+    	return FAIL; 
+    }
+#endif
+    
     *sh_tofree = vim_strsave(p_sh);
     if (*sh_tofree == NULL)		/* out of memory */
 	return FAIL;
@@ -4525,6 +4575,12 @@ build_argv(
 
 	argv[argc++] = (char *)cmd;
     }
+#if TARGET_OS_IPHONE
+    else {
+    	mch_msg("We cannot start an empty shell command in Vim. Try :VimShell to open a terminal.\r\n");
+    	return FAIL;
+    }
+#endif
     argv[argc] = NULL;
     return OK;
 }
@@ -4938,7 +4994,6 @@ mch_call_shell_fork(
 		    vim_ignored = dup(fd_toshell[0]);
 		    close(fd_toshell[0]);
 # else          
-		    // iOS:
 		    ios_dup2(fd_toshell[0], 0);
 # endif
 # if !TARGET_OS_IPHONE
@@ -4973,6 +5028,9 @@ mch_call_shell_fork(
 	     * to the X server (esp. with GTK, which uses atexit()).
 	     */
 #if TARGET_OS_IPHONE
+	// For taking keyboard input (if it works)
+        pipe(fd_toshell);
+        ios_dup2(fd_toshell[0], 0);
         ios_system(cmd); // We do not need argv and sh, but we still built them to minimize code changes.
 #else
         execvp(argv[0], argv);
@@ -4984,6 +5042,7 @@ mch_call_shell_fork(
 	else			/* parent */
 #endif
 	{
+	    // options == 4 (SHELL_COOKED). No SHELL_READ or SHELL_WRITE. Until I forced it in ex_cmds.
 	    /*
 	     * While child is running, ignore terminating signals.
 	     * Do catch CTRL-C, so that "got_int" is set.
@@ -4993,6 +5052,16 @@ mch_call_shell_fork(
 	    UNBLOCK_SIGNALS(&curset);
 #if TARGET_OS_IPHONE
 	    signal(SIGWINCH, (RETSIGTYPE (*)())sig_winch);
+	    // iOS: listen to tty, write to output
+	    keyboardParameters kp;
+	    kp.toshell_fd = fd_toshell[1];
+	    kp.stdin = thread_stdin;
+	    kp.stdout = thread_stdout;
+	    kp.stderr = thread_stderr;
+	    volatile pthread_t _tid = NULL;
+	    pthread_create(&_tid, NULL, forwardKeyboard, (void*)&kp);
+	    while (_tid == NULL) { }
+	    pthread_detach(_tid);
 #endif
 # ifdef FEAT_JOB_CHANNEL
 	    ++dont_check_job_ended;
@@ -5034,7 +5103,7 @@ mch_call_shell_fork(
 		else
 # endif
 		{
-# ifndef TARGET_OS_IPHONE
+# if !TARGET_OS_IPHONE
 		    close(fd_toshell[0]);
 		    close(fd_fromshell[1]);
 # endif
@@ -5513,6 +5582,8 @@ finished:
 	    
 	    if (wait_pid != pid)
 		wait_pid = wait4pid(pid, &status);
+	    if (_tid != NULL) pthread_cancel(_tid);
+	    
 
 # ifdef FEAT_GUI
 	    /* Close slave side of pty.  Only do this after the child has

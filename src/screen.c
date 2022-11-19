@@ -2283,10 +2283,17 @@ screen_fill(
 	if (c2 == ' '
 		&& end_col == Columns
 		&& can_clear(T_CE)
+		// iOS: we need to use T_CE if we want scribble to write with Vim
+		// If this causes issues, deactivate the test only when scribble is active
+#if !TARGET_OS_IPHONE
 		&& (attr == 0
 		    || (norm_term
 			&& attr <= HL_ALL
 			&& ((attr & ~(HL_BOLD | HL_ITALIC)) == 0))))
+#else
+	    )
+#endif
+	    
 	{
 	    /*
 	     * check if we really need to clear something
