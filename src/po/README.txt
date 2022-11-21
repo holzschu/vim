@@ -20,6 +20,9 @@ environment variables.  When you use the Makefile in this directory that will
 be done for you.  This does NOT work with gettext 0.10.36.  Don't use it, get
 0.10.37.
 
+Have a look at these helper scripts, they may be useful for you:
+https://github.com/adaext/vim-menutrans-helper
+
 
 ON MS-WINDOWS
 
@@ -78,7 +81,8 @@ language.
 
 (2) Translate
     See the gettext documentation on how to do this.  You can also find
-    examples in the other po files.
+    examples in the other po files.  You can use "gF" on the file name to see
+    the context of the message.
     Search the po file for items that require translation:
 
 	/fuzzy\|^msgstr ""\(\n"\)\@!
@@ -91,7 +95,7 @@ language.
 	msgstr "Berichten übersetzt bei: John Doe <john@doe.org>"
 
 (3) Remove unused messages (optional)
-    Remove messages that have been marked as obsolete. 
+    Remove messages that have been marked as obsolete.
     Such messages start with "#~".
 
     The cleanup script will also do that (see next step).
@@ -122,6 +126,13 @@ language.
 	make xx.mo
 
     Look out for syntax errors and fix them.
+
+(6) Local tryout:
+    Vim normally picks up the .mo files from:
+	    $VIMRUNTIME/lang/{lang}/LC_MESSAGES/vim.mo
+    To try out the messages with Vim use:
+	    make tryoutinstall
+    And run Vim with $VIMRUNTIME set to ../runtime
 
 
 USING GETTEXT WITHOUT ICONV

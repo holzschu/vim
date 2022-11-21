@@ -32,12 +32,12 @@ To build the installable .exe:
 
 5.  Get a "diff.exe" program.  If you skip this the built-in diff will always
     be used (which is fine for most users).  If you do have your own
-    "diff.exe" put it in the "../.." directory (above the "vim81" directory,
+    "diff.exe" put it in the "../.." directory (above the "vim82" directory,
     it's the same for all Vim versions).
     You can find one in previous Vim versions or in this archive:
 		http://www.mossbayeng.com/~ron/vim/diffutils.tar.gz
 
-6   Also put winpty32.dll and winpty-agent.exe in "../.." (above the "vim81"
+6   Also put winpty32.dll and winpty-agent.exe in "../.." (above the "vim82"
     directory).  This is required for the terminal window.
 
 7.  Do "make uganda.nsis.txt" in runtime/doc.  This requires sed, you may have
@@ -66,12 +66,15 @@ To build the installable .exe:
 
 Install NSIS if you didn't do that already.
 Also install UPX, if you want a compressed file.
+Download and include the ShellExecAsUser.dll Unicode version which can be
+sourced from: https://nsis.sourceforge.io/ShellExecAsUser_plug-in
+
 
 Unpack the images:
 	cd nsis
 	unzip icons.zip
 
-To build then, enter:
+Then build gvim.exe:
 
 	cd nsis
 	makensis gvim.nsi

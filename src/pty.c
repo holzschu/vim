@@ -15,41 +15,36 @@
  * The parts that are not used in Vim have been deleted.
  * See the "screen" sources for the complete stuff.
  *
- * This specific version is distibuted under the Vim license (attribution by
+ * This specific version is distributed under the Vim license (attribution by
  * Juergen Weigert), the GPL applies to the original version, see the
  * copyright notice below.
  */
 
-/* Copyright (c) 1993
- *	Juergen Weigert (jnweiger@immd4.informatik.uni-erlangen.de)
- *	Michael Schroeder (mlschroe@immd4.informatik.uni-erlangen.de)
- * Copyright (c) 1987 Oliver Laumann
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program (see the file COPYING); if not, write to the
- * Free Software Foundation, Inc.,
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
- */
+// Copyright (c) 1993
+//	Juergen Weigert (jnweiger@immd4.informatik.uni-erlangen.de)
+//	Michael Schroeder (mlschroe@immd4.informatik.uni-erlangen.de)
+// Copyright (c) 1987 Oliver Laumann
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2, or (at your option)
+// any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program (see the file COPYING); if not, write to the
+// Free Software Foundation, Inc.,
+// 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
 #include "vim.h"
 
 #if defined(FEAT_GUI) || defined(FEAT_JOB_CHANNEL)
 
 #include <signal.h>
-
-#ifdef __CYGWIN32__
-# include <sys/termios.h>
-#endif
 
 #ifdef HAVE_SYS_IOCTL_H
 # include <sys/ioctl.h>
@@ -124,7 +119,7 @@
 # define PTYRANGE1 "0123456789abcdef"
 #endif
 
-/* SVR4 pseudo ttys don't seem to work with SCO-5 */
+// SVR4 pseudo ttys don't seem to work with SCO-5
 #ifdef M_UNIX
 # undef HAVE_SVR4_PTYS
 #endif
@@ -193,7 +188,7 @@ mch_openpty(char **ttyn)
 {
     int		f;
     char	*m;
-    RETSIGTYPE (*sigcld) SIGPROTOARG;
+    void (*sigcld) SIGPROTOARG;
     static char TtyName[32];  // used for opening a new pty-pair
 
     if ((f = posix_openpt(O_RDWR | O_NOCTTY | O_EXTRA)) == -1)
@@ -240,7 +235,7 @@ mch_openpty(char **ttyn)
 {
     char	*m, *s;
     int		f;
-    /* used for opening a new pty-pair: */
+    // used for opening a new pty-pair:
     static char PtyName[32];
     static char TtyName[32];
 
@@ -264,7 +259,7 @@ mch_openpty(char **ttyn)
 {
     int f;
     char *name;
-    RETSIGTYPE (*sigcld) SIGPROTOARG;
+    void (*sigcld) SIGPROTOARG;
 
     /*
      * SIGCHLD set to SIG_DFL for _getpty() because it may fork() and
@@ -289,7 +284,7 @@ mch_openpty(char **ttyn)
 {
     int		f;
     stat_T	buf;
-    /* used for opening a new pty-pair: */
+    // used for opening a new pty-pair:
     static char TtyName[32];
 
     if ((f = open("/dev/ptc", O_RDWR | O_NOCTTY | O_NONBLOCK | O_EXTRA, 0)) < 0)
@@ -309,16 +304,16 @@ mch_openpty(char **ttyn)
 #if defined(HAVE_SVR4_PTYS) && !defined(PTY_DONE) && !defined(hpux) \
 	    && !(defined(MACOS_X) && !defined(MAC_OS_X_VERSION_10_6))
 
-/* NOTE: Even though HPUX can have /dev/ptmx, the code below doesn't work!
- * Same for Mac OS X Leopard (10.5). */
+// NOTE: Even though HPUX can have /dev/ptmx, the code below doesn't work!
+// Same for Mac OS X Leopard (10.5).
 #define PTY_DONE
     int
 mch_openpty(char **ttyn)
 {
     int		f;
     char	*m;
-    RETSIGTYPE (*sigcld) SIGPROTOARG;
-    /* used for opening a new pty-pair: */
+    void (*sigcld) SIGPROTOARG;
+    // used for opening a new pty-pair:
     static char TtyName[32];
 
     if ((f = open("/dev/ptmx", O_RDWR | O_NOCTTY | O_EXTRA, 0)) == -1)
@@ -354,10 +349,10 @@ static int aixhack = -1;
 mch_openpty(char **ttyn)
 {
     int		f;
-    /* used for opening a new pty-pair: */
+    // used for opening a new pty-pair:
     static char TtyName[32];
 
-    /* a dumb looking loop replaced by mycrofts code: */
+    // a dumb looking loop replaced by mycrofts code:
     if ((f = open("/dev/ptc", O_RDWR | O_NOCTTY | O_EXTRA)) < 0)
 	return -1;
     vim_strncpy((char_u *)TtyName, (char_u *)ttyname(f), sizeof(TtyName) - 1);
@@ -387,7 +382,7 @@ mch_openpty(char **ttyn)
 static char PtyProto[] = "/dev/ptym/ptyXY";
 static char TtyProto[] = "/dev/pty/ttyXY";
 # else
-#  ifdef __BEOS__
+#  ifdef(__HAIKU__)
 static char PtyProto[] = "/dev/pt/XY";
 static char TtyProto[] = "/dev/tt/XY";
 #  else
@@ -401,7 +396,7 @@ mch_openpty(char **ttyn)
 {
     char	*p, *q, *l, *d;
     int		f;
-    /* used for opening a new pty-pair: */
+    // used for opening a new pty-pair:
     static char PtyName[32];
     static char TtyName[32];
 
@@ -425,13 +420,12 @@ mch_openpty(char **ttyn)
 		continue;
 	    }
 #if defined(SUN_SYSTEM) && defined(TIOCGPGRP) && !defined(SUNOS3)
-	    /* Hack to ensure that the slave side of the pty is
-	     * unused. May not work in anything other than SunOS4.1
-	     */
+	    // Hack to ensure that the slave side of the pty is
+	    // unused. May not work in anything other than SunOS4.1
 	    {
 		int pgrp;
 
-		/* tcgetpgrp does not work (uses TIOCGETPGRP)! */
+		// tcgetpgrp does not work (uses TIOCGETPGRP)!
 		if (ioctl(f, TIOCGPGRP, (char *)&pgrp) != -1 || errno != EIO)
 		{
 		    close(f);
@@ -474,4 +468,4 @@ mch_isatty(int fd)
     return isatty(fd);
 }
 
-#endif /* FEAT_GUI || FEAT_JOB_CHANNEL */
+#endif // FEAT_GUI || FEAT_JOB_CHANNEL

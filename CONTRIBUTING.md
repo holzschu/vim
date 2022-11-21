@@ -57,13 +57,16 @@ If you find a problem with one of these files or have a suggestion for
 improvement, please first try to contact the maintainer directly.
 Look in the header of the file for the name and email address.
 
-The maintainer will take care of issues and send updates to Bram for 
+The maintainer will take care of issues and send updates to Bram for
 distribution with Vim.
 
 If the maintainer does not respond, contact the vim-dev maillist.
 
 
 # Translations
+
+Translations of this CONTRIBUTING file:
+[Korean](https://github.com/cjw1359/opensource/blob/master/Vim/CONTRIBUTING_ko.md)
 
 Translating messages and runtime files is very much appreciated!  These things
 can be translated:

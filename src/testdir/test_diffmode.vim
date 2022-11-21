@@ -1,4 +1,5 @@
 " Tests for diff mode
+
 source shared.vim
 source screendump.vim
 source check.vim
@@ -33,7 +34,8 @@ func Test_diff_fold_sync()
   call win_gotoid(winone)
   call assert_equal(23, getcurpos()[1])
 
-  call assert_equal(1, g:update_count)
+  " depending on how redraw is done DiffUpdated may be triggered once or twice
+  call assert_inrange(1, 2, g:update_count)
   au! DiffUpdated
 
   windo diffoff
@@ -242,6 +244,93 @@ func Test_diffput_two()
   bwipe! b
 endfunc
 
+" Test for :diffget/:diffput with a range that is inside a diff chunk
+func Test_diffget_diffput_range()
+  call setline(1, range(1, 10))
+  new
+  call setline(1, range(11, 20))
+  windo diffthis
+  3,5diffget
+  call assert_equal(['13', '14', '15'], getline(3, 5))
+  call setline(1, range(1, 10))
+  4,8diffput
+  wincmd p
+  call assert_equal(['13', '4', '5', '6', '7', '8', '19'], getline(3, 9))
+  %bw!
+endfunc
+
+" Test for :diffget/:diffput with an empty buffer and a non-empty buffer
+func Test_diffget_diffput_empty_buffer()
+  %d _
+  new
+  call setline(1, 'one')
+  windo diffthis
+  diffget
+  call assert_equal(['one'], getline(1, '$'))
+  %d _
+  diffput
+  wincmd p
+  call assert_equal([''], getline(1, '$'))
+  %bw!
+endfunc
+
+" :diffput and :diffget completes names of buffers which
+" are in diff mode and which are different than current buffer.
+" No completion when the current window is not in diff mode.
+func Test_diffget_diffput_completion()
+  e            Xdiff1 | diffthis
+  botright new Xdiff2
+  botright new Xdiff3 | split | diffthis
+  botright new Xdiff4 | diffthis
+
+  wincmd t
+  call assert_equal('Xdiff1', bufname('%'))
+  call feedkeys(":diffput \<C-A>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"diffput Xdiff3 Xdiff4', @:)
+  call feedkeys(":diffget \<C-A>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"diffget Xdiff3 Xdiff4', @:)
+  call assert_equal(['Xdiff3', 'Xdiff4'], getcompletion('', 'diff_buffer'))
+
+  " Xdiff2 is not in diff mode, so no completion for :diffput, :diffget
+  wincmd j
+  call assert_equal('Xdiff2', bufname('%'))
+  call feedkeys(":diffput \<C-A>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"diffput ', @:)
+  call feedkeys(":diffget \<C-A>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"diffget ', @:)
+  call assert_equal([], getcompletion('', 'diff_buffer'))
+
+  " Xdiff3 is split in 2 windows, only the top one is in diff mode.
+  " So completion of :diffput :diffget only happens in the top window.
+  wincmd j
+  call assert_equal('Xdiff3', bufname('%'))
+  call assert_equal(1, &diff)
+  call feedkeys(":diffput \<C-A>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"diffput Xdiff1 Xdiff4', @:)
+  call feedkeys(":diffget \<C-A>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"diffget Xdiff1 Xdiff4', @:)
+  call assert_equal(['Xdiff1', 'Xdiff4'], getcompletion('', 'diff_buffer'))
+
+  wincmd j
+  call assert_equal('Xdiff3', bufname('%'))
+  call assert_equal(0, &diff)
+  call feedkeys(":diffput \<C-A>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"diffput ', @:)
+  call feedkeys(":diffget \<C-A>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"diffget ', @:)
+  call assert_equal([], getcompletion('', 'diff_buffer'))
+
+  wincmd j
+  call assert_equal('Xdiff4', bufname('%'))
+  call feedkeys(":diffput \<C-A>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"diffput Xdiff1 Xdiff3', @:)
+  call feedkeys(":diffget \<C-A>\<C-B>\"\<CR>", 'tx')
+  call assert_equal('"diffget Xdiff1 Xdiff3', @:)
+  call assert_equal(['Xdiff1', 'Xdiff3'], getcompletion('', 'diff_buffer'))
+
+  %bwipe
+endfunc
+
 func Test_dp_do_buffer()
   e! one
   let bn1=bufnr('%')
@@ -271,7 +360,7 @@ func Test_dp_do_buffer()
   call assert_equal('10', getline('.'))
   21
   call assert_equal('two', getline('.'))
-  diffget one
+  diffget one 
   call assert_equal('20', getline('.'))
 
   31
@@ -563,12 +652,10 @@ func Test_diff_move_to()
 endfunc
 
 func Test_diffexpr()
-  if !executable('diff')
-    return
-  endif
+  CheckExecutable diff
 
   func DiffExpr()
-    " Prepent some text to check diff type detection
+    " Prepend some text to check diff type detection
     call writefile(['warning', '  message'], v:fname_out)
     silent exe '!diff ' . v:fname_in . ' ' . v:fname_new . '>>' . v:fname_out
   endfunc
@@ -589,17 +676,31 @@ func Test_diffexpr()
   call assert_equal(normattr, screenattr(1, 1))
   call assert_equal(normattr, screenattr(2, 1))
   call assert_notequal(normattr, screenattr(3, 1))
-
   diffoff!
+
+  " Try using a non-existing function for 'diffexpr'.
+  set diffexpr=NewDiffFunc()
+  call assert_fails('windo diffthis', ['E117:', 'E97:'])
+  diffoff!
+
+  " Using a script-local function
+  func s:NewDiffExpr()
+  endfunc
+  set diffexpr=s:NewDiffExpr()
+  call assert_equal(expand('<SID>') .. 'NewDiffExpr()', &diffexpr)
+  set diffexpr=<SID>NewDiffExpr()
+  call assert_equal(expand('<SID>') .. 'NewDiffExpr()', &diffexpr)
+
   %bwipe!
   set diffexpr& diffopt&
+  delfunc DiffExpr
+  delfunc s:NewDiffExpr
 endfunc
 
 func Test_diffpatch()
   " The patch program on MS-Windows may fail or hang.
-  if !executable('patch') || !has('unix')
-    return
-  endif
+  CheckExecutable patch
+  CheckUnix
   new
   insert
 ***************
@@ -734,9 +835,16 @@ func VerifyBoth(buf, dumpfile, extra)
   for cmd in [":set diffopt=filler" . a:extra . "\<CR>:", ":set diffopt+=internal\<CR>:"]
     call term_sendkeys(a:buf, cmd)
     if VerifyScreenDump(a:buf, a:dumpfile, {}, cmd =~ 'internal' ? 'internal' : 'external')
-      break " don't let the next iteration overwrite the "failed" file.
+      " don't let the next iteration overwrite the "failed" file.
+      return
     endif
   endfor
+
+  " also test unified diff
+  call term_sendkeys(a:buf, ":call SetupUnified()\<CR>:")
+  call term_sendkeys(a:buf, ":redraw!\<CR>:")
+  call VerifyScreenDump(a:buf, a:dumpfile, {}, 'unified')
+  call term_sendkeys(a:buf, ":call StopUnified()\<CR>:")
 endfunc
 
 " Verify a screendump with the internal diff only.
@@ -744,13 +852,29 @@ func VerifyInternal(buf, dumpfile, extra)
   call term_sendkeys(a:buf, ":diffupdate!\<CR>")
   " trailing : for leaving the cursor on the command line
   call term_sendkeys(a:buf, ":set diffopt=internal,filler" . a:extra . "\<CR>:")
-  call term_wait(a:buf)
   call VerifyScreenDump(a:buf, a:dumpfile, {})
 endfunc
 
 func Test_diff_screen()
+  let g:test_is_flaky = 1
   CheckScreendump
   CheckFeature menu
+
+  let lines =<< trim END
+      func UnifiedDiffExpr()
+        " Prepend some text to check diff type detection
+        call writefile(['warning', '  message'], v:fname_out)
+        silent exe '!diff -U0 ' .. v:fname_in .. ' ' .. v:fname_new .. '>>' .. v:fname_out
+      endfunc
+      func SetupUnified()
+        set diffexpr=UnifiedDiffExpr()
+        diffupdate
+      endfunc
+      func StopUnified()
+        set diffexpr=
+      endfunc
+  END
+  call writefile(lines, 'XdiffSetup')
 
   " clean up already existing swap files, just in case
   call delete('.Xfile1.swp')
@@ -758,7 +882,7 @@ func Test_diff_screen()
 
   " Test 1: Add a line in beginning of file 2
   call WriteDiffFiles(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-  let buf = RunVimInTerminal('-d Xfile1 Xfile2', {})
+  let buf = RunVimInTerminal('-d -S XdiffSetup Xfile1 Xfile2', {})
   " Set autoread mode, so that Vim won't complain once we re-write the test
   " files
   call term_sendkeys(buf, ":set autoread\<CR>\<c-w>w:set autoread\<CR>\<c-w>w")
@@ -878,6 +1002,34 @@ func Test_diff_screen()
   call StopVimInTerminal(buf)
   call delete('Xfile1')
   call delete('Xfile2')
+  call delete('XdiffSetup')
+endfunc
+
+func Test_diff_with_scroll_and_change()
+  CheckScreendump
+
+  let lines =<< trim END
+	call setline(1, range(1, 15))
+	vnew
+	call setline(1, range(9, 15))
+	windo diffthis
+	wincmd h
+	exe "normal Gl5\<C-E>"
+  END
+  call writefile(lines, 'Xtest_scroll_change')
+  let buf = RunVimInTerminal('-S Xtest_scroll_change', {})
+
+  call VerifyScreenDump(buf, 'Test_diff_scroll_change_01', {})
+
+  call term_sendkeys(buf, "ax\<Esc>")
+  call VerifyScreenDump(buf, 'Test_diff_scroll_change_02', {})
+
+  call term_sendkeys(buf, "\<C-W>lay\<Esc>")
+  call VerifyScreenDump(buf, 'Test_diff_scroll_change_03', {})
+
+  " clean up
+  call StopVimInTerminal(buf)
+  call delete('Xtest_scroll_change')
 endfunc
 
 func Test_diff_with_cursorline()
@@ -903,6 +1055,63 @@ func Test_diff_with_cursorline()
   " clean up
   call StopVimInTerminal(buf)
   call delete('Xtest_diff_cursorline')
+endfunc
+
+func Test_diff_with_cursorline_number()
+  CheckScreendump
+
+  let lines =<< trim END
+      hi CursorLine ctermbg=red ctermfg=white
+      hi CursorLineNr ctermbg=white ctermfg=black cterm=underline
+      set cursorline number
+      call setline(1, ["baz", "foo", "foo", "bar"])
+      2
+      vnew
+      call setline(1, ["foo", "foo", "bar"])
+      windo diffthis
+      1wincmd w
+  END
+  call writefile(lines, 'Xtest_diff_cursorline_number')
+  let buf = RunVimInTerminal('-S Xtest_diff_cursorline_number', {})
+
+  call VerifyScreenDump(buf, 'Test_diff_with_cursorline_number_01', {})
+  call term_sendkeys(buf, ":set cursorlineopt=number\r")
+  call VerifyScreenDump(buf, 'Test_diff_with_cursorline_number_02', {})
+
+  " clean up
+  call StopVimInTerminal(buf)
+  call delete('Xtest_diff_cursorline_number')
+endfunc
+
+func Test_diff_with_cursorline_breakindent()
+  CheckScreendump
+
+  call writefile([
+	\ 'hi CursorLine ctermbg=red ctermfg=white',
+	\ 'set noequalalways wrap diffopt=followwrap cursorline breakindent',
+	\ '50vnew',
+	\ 'call setline(1, ["  ","  ","  ","  "])',
+	\ 'exe "norm 20Afoo\<Esc>j20Afoo\<Esc>j20Afoo\<Esc>j20Abar\<Esc>"',
+	\ 'vnew',
+	\ 'call setline(1, ["  ","  ","  ","  "])',
+	\ 'exe "norm 20Abee\<Esc>j20Afoo\<Esc>j20Afoo\<Esc>j20Abaz\<Esc>"',
+	\ 'windo diffthis',
+	\ '2wincmd w',
+	\ ], 'Xtest_diff_cursorline_breakindent')
+  let buf = RunVimInTerminal('-S Xtest_diff_cursorline_breakindent', {})
+
+  call term_sendkeys(buf, "gg0")
+  call VerifyScreenDump(buf, 'Test_diff_with_cul_bri_01', {})
+  call term_sendkeys(buf, "j")
+  call VerifyScreenDump(buf, 'Test_diff_with_cul_bri_02', {})
+  call term_sendkeys(buf, "j")
+  call VerifyScreenDump(buf, 'Test_diff_with_cul_bri_03', {})
+  call term_sendkeys(buf, "j")
+  call VerifyScreenDump(buf, 'Test_diff_with_cul_bri_04', {})
+
+  " clean up
+  call StopVimInTerminal(buf)
+  call delete('Xtest_diff_cursorline_breakindent')
 endfunc
 
 func Test_diff_with_syntax()
@@ -964,3 +1173,460 @@ func Test_diff_of_diff()
   call StopVimInTerminal(buf)
   call delete('Xtest_diff_diff')
 endfunc
+
+func CloseoffSetup()
+  enew
+  call setline(1, ['one', 'two', 'three'])
+  diffthis
+  new
+  call setline(1, ['one', 'tow', 'three'])
+  diffthis
+  call assert_equal(1, &diff)
+  only!
+endfunc
+
+func Test_diff_closeoff()
+  " "closeoff" included by default: last diff win gets 'diff' reset'
+  call CloseoffSetup()
+  call assert_equal(0, &diff)
+  enew!
+
+  " "closeoff" excluded: last diff win keeps 'diff' set'
+  set diffopt-=closeoff
+  call CloseoffSetup()
+  call assert_equal(1, &diff)
+  diffoff!
+  enew!
+endfunc
+
+func Test_diff_followwrap()
+  new
+  set diffopt+=followwrap
+  set wrap
+  diffthis
+  call assert_equal(1, &wrap)
+  diffoff
+  set nowrap
+  diffthis
+  call assert_equal(0, &wrap)
+  diffoff
+  set diffopt&
+  bwipe!
+endfunc
+
+func Test_diff_maintains_change_mark()
+  func DiffMaintainsChangeMark()
+    enew!
+    call setline(1, ['a', 'b', 'c', 'd'])
+    diffthis
+    new
+    call setline(1, ['a', 'b', 'c', 'e'])
+    " Set '[ and '] marks
+    2,3yank
+    call assert_equal([2, 3], [line("'["), line("']")])
+    " Verify they aren't affected by the implicit diff
+    diffthis
+    call assert_equal([2, 3], [line("'["), line("']")])
+    " Verify they aren't affected by an explicit diff
+    diffupdate
+    call assert_equal([2, 3], [line("'["), line("']")])
+    bwipe!
+    bwipe!
+  endfunc
+
+  set diffopt-=internal
+  call DiffMaintainsChangeMark()
+  set diffopt+=internal
+  call DiffMaintainsChangeMark()
+
+  set diffopt&
+  delfunc DiffMaintainsChangeMark
+endfunc
+
+" Test for 'patchexpr'
+func Test_patchexpr()
+  let g:patch_args = []
+  func TPatch()
+    call add(g:patch_args, readfile(v:fname_in))
+    call add(g:patch_args, readfile(v:fname_diff))
+    call writefile(['output file'], v:fname_out)
+  endfunc
+  set patchexpr=TPatch()
+
+  call writefile(['input file'], 'Xinput')
+  call writefile(['diff file'], 'Xdiff')
+  %bwipe!
+  edit Xinput
+  diffpatch Xdiff
+  call assert_equal('output file', getline(1))
+  call assert_equal('Xinput.new', bufname())
+  call assert_equal(2, winnr('$'))
+  call assert_true(&diff)
+
+  " Using a script-local function
+  func s:NewPatchExpr()
+  endfunc
+  set patchexpr=s:NewPatchExpr()
+  call assert_equal(expand('<SID>') .. 'NewPatchExpr()', &patchexpr)
+  set patchexpr=<SID>NewPatchExpr()
+  call assert_equal(expand('<SID>') .. 'NewPatchExpr()', &patchexpr)
+
+  call delete('Xinput')
+  call delete('Xdiff')
+  set patchexpr&
+  delfunc TPatch
+  delfunc s:NewPatchExpr
+  %bwipe!
+endfunc
+
+func Test_diff_rnu()
+  CheckScreendump
+
+  let content =<< trim END
+    call setline(1, ['a', 'a', 'a', 'y', 'b', 'b', 'b', 'b', 'b'])
+    vnew
+    call setline(1, ['a', 'a', 'a', 'x', 'x', 'x', 'b', 'b', 'b', 'b', 'b'])
+    windo diffthis
+    setlocal number rnu foldcolumn=0
+  END
+  call writefile(content, 'Xtest_diff_rnu')
+  let buf = RunVimInTerminal('-S Xtest_diff_rnu', {})
+
+  call VerifyScreenDump(buf, 'Test_diff_rnu_01', {})
+
+  call term_sendkeys(buf, "j")
+  call VerifyScreenDump(buf, 'Test_diff_rnu_02', {})
+  call term_sendkeys(buf, "j")
+  call VerifyScreenDump(buf, 'Test_diff_rnu_03', {})
+
+  " clean up
+  call StopVimInTerminal(buf)
+  call delete('Xtest_diff_rnu')
+endfunc
+
+func Test_diff_multilineconceal()
+  new
+  diffthis
+
+  new
+  call matchadd('Conceal', 'a\nb', 9, -1, {'conceal': 'Y'})
+  set cole=2 cocu=n
+  call setline(1, ["a", "b"])
+  diffthis
+  redraw
+endfunc
+
+func Test_diff_and_scroll()
+  " this was causing an ml_get error
+  set ls=2
+  for i in range(winheight(0) * 2) 
+    call setline(i, i < winheight(0) - 10 ? i : i + 10) 
+  endfor
+  vnew
+  for i in range(winheight(0)*2 + 10) 
+    call setline(i, i < winheight(0) - 10 ? 0 : i) 
+  endfor
+  diffthis
+  wincmd p
+  diffthis
+  execute 'normal ' . winheight(0) . "\<C-d>"
+
+  bwipe!
+  bwipe!
+  set ls&
+endfunc
+
+func Test_diff_filler_cursorcolumn()
+  CheckScreendump
+
+  let content =<< trim END
+    call setline(1, ['aa', 'bb', 'cc'])
+    vnew
+    call setline(1, ['aa', 'cc'])
+    windo diffthis
+    wincmd p
+    setlocal cursorcolumn foldcolumn=0
+    norm! gg0
+    redraw!
+  END
+  call writefile(content, 'Xtest_diff_cuc')
+  let buf = RunVimInTerminal('-S Xtest_diff_cuc', {})
+
+  call VerifyScreenDump(buf, 'Test_diff_cuc_01', {})
+
+  call term_sendkeys(buf, "l")
+  call term_sendkeys(buf, "\<C-l>")
+  call VerifyScreenDump(buf, 'Test_diff_cuc_02', {})
+  call term_sendkeys(buf, "0j")
+  call term_sendkeys(buf, "\<C-l>")
+  call VerifyScreenDump(buf, 'Test_diff_cuc_03', {})
+  call term_sendkeys(buf, "l")
+  call term_sendkeys(buf, "\<C-l>")
+  call VerifyScreenDump(buf, 'Test_diff_cuc_04', {})
+
+  " clean up
+  call StopVimInTerminal(buf)
+  call delete('Xtest_diff_cuc')
+endfunc
+
+" Test for adding/removing lines inside diff chunks, between diff chunks
+" and before diff chunks
+func Test_diff_modify_chunks()
+  enew!
+  let w2_id = win_getid()
+  call setline(1, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'])
+  new
+  let w1_id = win_getid()
+  call setline(1, ['a', '2', '3', 'd', 'e', 'f', '7', '8', 'i'])
+  windo diffthis
+
+  " remove a line between two diff chunks and create a new diff chunk
+  call win_gotoid(w2_id)
+  5d
+  call win_gotoid(w1_id)
+  call diff_hlID(5, 1)->synIDattr('name')->assert_equal('DiffAdd')
+
+  " add a line between two diff chunks
+  call win_gotoid(w2_id)
+  normal! 4Goe
+  call win_gotoid(w1_id)
+  call diff_hlID(4, 1)->synIDattr('name')->assert_equal('')
+  call diff_hlID(5, 1)->synIDattr('name')->assert_equal('')
+
+  " remove all the lines in a diff chunk.
+  call win_gotoid(w2_id)
+  7,8d
+  call win_gotoid(w1_id)
+  let hl = range(1, 9)->map({_, lnum -> diff_hlID(lnum, 1)->synIDattr('name')})
+  call assert_equal(['', 'DiffText', 'DiffText', '', '', '', 'DiffAdd',
+        \ 'DiffAdd', ''], hl)
+
+  " remove lines from one diff chunk to just before the next diff chunk
+  call win_gotoid(w2_id)
+  call setline(1, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'])
+  2,6d
+  call win_gotoid(w1_id)
+  let hl = range(1, 9)->map({_, lnum -> diff_hlID(lnum, 1)->synIDattr('name')})
+  call assert_equal(['', 'DiffText', 'DiffText', 'DiffAdd', 'DiffAdd',
+        \ 'DiffAdd', 'DiffAdd', 'DiffAdd', ''], hl)
+
+  " remove lines just before the top of a diff chunk
+  call win_gotoid(w2_id)
+  call setline(1, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'])
+  5,6d
+  call win_gotoid(w1_id)
+  let hl = range(1, 9)->map({_, lnum -> diff_hlID(lnum, 1)->synIDattr('name')})
+  call assert_equal(['', 'DiffText', 'DiffText', '', 'DiffText', 'DiffText',
+        \ 'DiffAdd', 'DiffAdd', ''], hl)
+
+  " remove line after the end of a diff chunk
+  call win_gotoid(w2_id)
+  call setline(1, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'])
+  4d
+  call win_gotoid(w1_id)
+  let hl = range(1, 9)->map({_, lnum -> diff_hlID(lnum, 1)->synIDattr('name')})
+  call assert_equal(['', 'DiffText', 'DiffText', 'DiffAdd', '', '', 'DiffText',
+        \ 'DiffText', ''], hl)
+
+  " remove lines starting from the end of one diff chunk and ending inside
+  " another diff chunk
+  call win_gotoid(w2_id)
+  call setline(1, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'])
+  4,7d
+  call win_gotoid(w1_id)
+  let hl = range(1, 9)->map({_, lnum -> diff_hlID(lnum, 1)->synIDattr('name')})
+  call assert_equal(['', 'DiffText', 'DiffText', 'DiffText', 'DiffAdd',
+        \ 'DiffAdd', 'DiffAdd', 'DiffAdd', ''], hl)
+
+  " removing the only remaining diff chunk should make the files equal
+  call win_gotoid(w2_id)
+  call setline(1, ['a', '2', '3', 'x', 'd', 'e', 'f', 'x', '7', '8', 'i'])
+  8d
+  let hl = range(1, 10)->map({_, lnum -> diff_hlID(lnum, 1)->synIDattr('name')})
+  call assert_equal(['', '', '', 'DiffAdd', '', '', '', '', '', ''], hl)
+  call win_gotoid(w2_id)
+  4d
+  call win_gotoid(w1_id)
+  let hl = range(1, 9)->map({_, lnum -> diff_hlID(lnum, 1)->synIDattr('name')})
+  call assert_equal(['', '', '', '', '', '', '', '', ''], hl)
+
+  %bw!
+endfunc
+
+func Test_diff_binary()
+  CheckScreendump
+
+  let content =<< trim END
+    call setline(1, ['a', 'b', "c\n", 'd', 'e', 'f', 'g'])
+    vnew
+    call setline(1, ['A', 'b', 'c', 'd', 'E', 'f', 'g'])
+    windo diffthis
+    wincmd p
+    norm! gg0
+    redraw!
+  END
+  call writefile(content, 'Xtest_diff_bin')
+  let buf = RunVimInTerminal('-S Xtest_diff_bin', {})
+
+  " Test using internal diff
+  call VerifyScreenDump(buf, 'Test_diff_bin_01', {})
+
+  " Test using internal diff and case folding
+  call term_sendkeys(buf, ":set diffopt+=icase\<cr>")
+  call term_sendkeys(buf, "\<C-l>")
+  call VerifyScreenDump(buf, 'Test_diff_bin_02', {})
+  " Test using external diff
+  call term_sendkeys(buf, ":set diffopt=filler\<cr>")
+  call term_sendkeys(buf, "\<C-l>")
+  call VerifyScreenDump(buf, 'Test_diff_bin_03', {})
+  " Test using external diff and case folding
+  call term_sendkeys(buf, ":set diffopt=filler,icase\<cr>")
+  call term_sendkeys(buf, "\<C-l>")
+  call VerifyScreenDump(buf, 'Test_diff_bin_04', {})
+
+  " clean up
+  call StopVimInTerminal(buf)
+  call delete('Xtest_diff_bin')
+  set diffopt&vim
+endfunc
+
+" Test for using the 'zi' command to invert 'foldenable' in diff windows (test
+" for the issue fixed by patch 6.2.317)
+func Test_diff_foldinvert()
+  %bw!
+  edit Xfile1
+  new Xfile2
+  new Xfile3
+  windo diffthis
+  " open a non-diff window
+  botright new
+  1wincmd w
+  call assert_true(getwinvar(1, '&foldenable'))
+  call assert_true(getwinvar(2, '&foldenable'))
+  call assert_true(getwinvar(3, '&foldenable'))
+  normal zi
+  call assert_false(getwinvar(1, '&foldenable'))
+  call assert_false(getwinvar(2, '&foldenable'))
+  call assert_false(getwinvar(3, '&foldenable'))
+  normal zi
+  call assert_true(getwinvar(1, '&foldenable'))
+  call assert_true(getwinvar(2, '&foldenable'))
+  call assert_true(getwinvar(3, '&foldenable'))
+
+  " If the current window has 'noscrollbind', then 'zi' should not change
+  " 'foldenable' in other windows.
+  1wincmd w
+  set noscrollbind
+  normal zi
+  call assert_false(getwinvar(1, '&foldenable'))
+  call assert_true(getwinvar(2, '&foldenable'))
+  call assert_true(getwinvar(3, '&foldenable'))
+
+  " 'zi' should not change the 'foldenable' for windows with 'noscrollbind'
+  1wincmd w
+  set scrollbind
+  normal zi
+  call setwinvar(2, '&scrollbind', v:false)
+  normal zi
+  call assert_false(getwinvar(1, '&foldenable'))
+  call assert_true(getwinvar(2, '&foldenable'))
+  call assert_false(getwinvar(3, '&foldenable'))
+
+  %bw!
+  set scrollbind&
+endfunc
+
+" This was scrolling for 'cursorbind' but 'scrollbind' is more important
+func Test_diff_scroll()
+  CheckScreendump
+
+  let left =<< trim END
+      line 1
+      line 2
+      line 3
+      line 4
+
+      // Common block
+      // one
+      // containing
+      // four lines
+
+      // Common block
+      // two
+      // containing
+      // four lines
+  END
+  call writefile(left, 'Xleft')
+  let right =<< trim END
+      line 1
+      line 2
+      line 3
+      line 4
+
+      Lorem
+      ipsum
+      dolor
+      sit
+      amet,
+      consectetur
+      adipiscing
+      elit.
+      Etiam
+      luctus
+      lectus
+      sodales,
+      dictum
+
+      // Common block
+      // one
+      // containing
+      // four lines
+
+      Vestibulum
+      tincidunt
+      aliquet
+      nulla.
+
+      // Common block
+      // two
+      // containing
+      // four lines
+  END
+  call writefile(right, 'Xright')
+  let buf = RunVimInTerminal('-d Xleft Xright', {'rows': 12})
+  call term_sendkeys(buf, "\<C-W>\<C-W>jjjj")
+  call VerifyScreenDump(buf, 'Test_diff_scroll_1', {})
+  call term_sendkeys(buf, "j")
+  call VerifyScreenDump(buf, 'Test_diff_scroll_2', {})
+
+  call StopVimInTerminal(buf)
+  call delete('Xleft')
+  call delete('Xright')
+endfunc
+
+" This was trying to update diffs for a buffer being closed
+func Test_diff_only()
+  silent! lfile
+  set diff
+  lopen
+  norm o
+  silent! norm o
+
+  set nodiff
+  %bwipe!
+endfunc
+
+" This was causing invalid diff block values
+" FIXME: somehow this causes a valgrind error when run directly but not when
+" run as a test.
+func Test_diff_manipulations()
+  set diff
+  split 0
+  sil! norm RdoobdeuRdoobdeuRdoobdeu
+
+  set nodiff
+  %bwipe!
+endfunc
+
+
+" vim: shiftwidth=2 sts=2 expandtab

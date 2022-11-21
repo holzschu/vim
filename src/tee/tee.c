@@ -32,6 +32,8 @@
 #endif
 #include <malloc.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <fcntl.h>
 
 #ifdef _WIN32
@@ -76,12 +78,11 @@ myfread(char *buf, int elsize /*ignored*/, int max, FILE *fp)
 }
 
 
-void
+int
 main(int argc, char *argv[])
 {
 	int	append = 0;
-	int	numfiles;
-	int	opt;
+	size_t	numfiles;
 	int	maxfiles;
 	FILE	**filepointers;
 	int	i;
@@ -120,7 +121,8 @@ main(int argc, char *argv[])
 	filepointers = calloc(numfiles, sizeof(FILE *));
 	if (filepointers == NULL)
 	{
-		fprintf(stderr, "Error allocating memory for %d files\n", numfiles);
+		fprintf(stderr, "Error allocating memory for %ld files\n",
+															   (long)numfiles);
 		exit(1);
 	}
 	for (i = 0; i < numfiles; i++)
@@ -132,9 +134,11 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 	}
+#ifdef _WIN32
 	setmode(fileno(stdin),  O_BINARY);
 	fflush(stdout);	/* needed for _fsetmode(stdout) */
 	setmode(fileno(stdout),  O_BINARY);
+#endif
 
 	while ((n = myfread(buf, sizeof(char), sizeof(buf), stdin)) > 0)
 	{

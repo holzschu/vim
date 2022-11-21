@@ -1,6 +1,9 @@
 " test execute()
 
 source view_util.vim
+source check.vim
+import './vim9.vim' as v9
+source term_util.vim
 
 func NestedEval()
   let nested = execute('echo "nested\nlines"')
@@ -29,16 +32,17 @@ func Test_execute_string()
   call assert_equal("\nthat", evaled)
 
   call assert_fails('call execute("doesnotexist")', 'E492:')
-  call assert_fails('call execute(3.4)', 'E806:')
   call assert_fails('call execute("call NestedRedir()")', 'E930:')
 
   call assert_equal("\nsomething", execute('echo "something"', ''))
   call assert_equal("\nsomething", execute('echo "something"', 'silent'))
   call assert_equal("\nsomething", execute('echo "something"', 'silent!'))
   call assert_equal("", execute('burp', 'silent!'))
-  call assert_fails('call execute("echo \"x\"", 3.4)', 'E806:')
-
-  call assert_equal("", execute(test_null_string()))
+  if has('float')
+    call assert_fails('call execute(3.4)', 'E492:')
+    call assert_equal("\nx", execute("echo \"x\"", 3.4))
+    call v9.CheckDefExecAndScriptFailure(['execute("echo \"x\"", 3.4)'], ['E1013: Argument 2: type mismatch, expected string but got float', 'E1174:'])
+  endif
 endfunc
 
 func Test_execute_list()
@@ -49,7 +53,6 @@ func Test_execute_list()
   call assert_equal("\n0\n1\n2\n3", execute(l))
 
   call assert_equal("", execute([]))
-  call assert_equal("", execute(test_null_list()))
 endfunc
 
 func Test_execute_does_not_change_col()
@@ -89,8 +92,10 @@ func Test_win_execute()
   call win_gotoid(thiswin)
   let line = win_execute(otherwin, 'echo getline(1)')
   call assert_match('the new window', line)
+  let line = win_execute(134343, 'echo getline(1)')
+  call assert_equal('', line)
 
-  if has('textprop')
+  if has('popupwin')
     let popupwin = popup_create('the popup win', {'line': 2, 'col': 3})
     redraw
     let line = 'echo getline(1)'->win_execute(popupwin)
@@ -101,9 +106,23 @@ func Test_win_execute()
 
   call win_gotoid(otherwin)
   bwipe!
+
+  " check :lcd in another window does not change directory
+  let curid = win_getid()
+  let curdir = getcwd()
+  split Xother
+  lcd ..
+  " Use :pwd to get the actual current directory
+  let otherdir = execute('pwd')
+  call win_execute(curid, 'lcd testdir')
+  call assert_equal(otherdir, execute('pwd'))
+  bwipe!
+  execute 'cd ' .. curdir
 endfunc
 
 func Test_win_execute_update_ruler()
+  CheckFeature quickfix
+
   enew
   call setline(1, range(500))
   20
@@ -129,3 +148,63 @@ func Test_win_execute_other_tab()
   tabclose
   unlet xyz
 endfunc
+
+func Test_win_execute_visual_redraw()
+  call setline(1, ['a', 'b', 'c'])
+  new
+  wincmd p
+  " start Visual in current window, redraw in other window with fewer lines
+  call feedkeys("G\<C-V>", 'txn')
+  call win_execute(winnr('#')->win_getid(), 'redraw')
+  call feedkeys("\<Esc>", 'txn')
+  bwipe!
+  bwipe!
+
+  enew
+  new
+  call setline(1, ['a', 'b', 'c'])
+  let winid = win_getid()
+  wincmd p
+  " start Visual in current window, extend it in other window with more lines
+  call feedkeys("\<C-V>", 'txn')
+  call win_execute(winid, 'call feedkeys("G\<C-V>", ''txn'')')
+  redraw
+
+  bwipe!
+  bwipe!
+endfunc
+
+func Test_win_execute_on_startup()
+  CheckRunVimInTerminal
+
+  let lines =<< trim END
+      vim9script
+      [repeat('x', &columns)]->writefile('Xfile1')
+      silent tabedit Xfile2
+      var id = win_getid()
+      silent tabedit Xfile3
+      autocmd VimEnter * win_execute(id, 'close')
+  END
+  call writefile(lines, 'XwinExecute')
+  let buf = RunVimInTerminal('-p Xfile1 -Nu XwinExecute', {})
+
+  " this was crashing on exit with EXITFREE defined
+  call StopVimInTerminal(buf)
+
+  call delete('XwinExecute')
+  call delete('Xfile1')
+endfunc
+
+func Test_execute_func_with_null()
+  call assert_equal("", execute(test_null_string()))
+  call assert_equal("", execute(test_null_list()))
+  call assert_fails('call execute(test_null_dict())', 'E731:')
+  call assert_fails('call execute(test_null_blob())', 'E976:')
+  call assert_fails('call execute(test_null_partial())','E729:')
+  if has('job')
+    call assert_fails('call execute(test_null_job())', 'E908:')
+    call assert_fails('call execute(test_null_channel())', 'E908:')
+  endif
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

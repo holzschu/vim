@@ -39,7 +39,7 @@ Unicode true
 # Uncomment the next line if you want to include VisVim extension:
 #!define HAVE_VIS_VIM
 
-# Comment the following line to create a multilanguage installer:
+# Comment the following line to create an English-only installer:
 !define HAVE_MULTI_LANG
 
 # Uncomment the next line if you want to create a 64-bit installer.
@@ -119,17 +119,18 @@ RequestExecutionLevel highest
 
 !define MUI_COMPONENTSPAGE_SMALLDESC
 !define MUI_LICENSEPAGE_CHECKBOX
-!define MUI_FINISHPAGE_RUN                 "$0\gvim.exe"
+!define MUI_FINISHPAGE_RUN
+!define MUI_FINISHPAGE_RUN_FUNCTION        LaunchApplication
 !define MUI_FINISHPAGE_RUN_TEXT            $(str_show_readme)
-!define MUI_FINISHPAGE_RUN_PARAMETERS      "-R $\"$0\README.txt$\""
 
 # This adds '\Vim' to the user choice automagically.  The actual value is
 # obtained below with CheckOldVim.
 !ifdef WIN64
-InstallDir "$PROGRAMFILES64\Vim"
+  !define DEFAULT_INSTDIR "$PROGRAMFILES64\Vim"
 !else
-InstallDir "$PROGRAMFILES\Vim"
+  !define DEFAULT_INSTDIR "$PROGRAMFILES\Vim"
 !endif
+InstallDir ${DEFAULT_INSTDIR}
 
 # Types of installs we can perform:
 InstType $(str_type_typical)
@@ -174,8 +175,10 @@ Page custom SetCustom ValidateCustom
     !include "lang\german.nsi"
     !include "lang\italian.nsi"
     !include "lang\japanese.nsi"
+    !include "lang\russian.nsi"
     !include "lang\simpchinese.nsi"
     !include "lang\tradchinese.nsi"
+    !include "lang\turkish.nsi"
 !endif
 
 ##########################################################
@@ -298,6 +301,11 @@ Function CheckOldVim
   Exch $0  # put $0 on top of stack, restore $0 to original value
 FunctionEnd
 
+Function LaunchApplication
+   SetOutPath $0
+   ShellExecAsUser::ShellExecAsUser "" "$0\gvim.exe" '-R "$0\README.txt"'
+FunctionEnd
+
 ##########################################################
 Section "$(str_section_old_ver)" id_section_old_ver
 	SectionIn 1 2 3 RO
@@ -340,6 +348,9 @@ Section "$(str_section_exe)" id_section_exe
 !if /FileExists "${VIMSRC}\vim${BIT}.dll"
 	File ${VIMSRC}\vim${BIT}.dll
 !endif
+!if /FileExists "${VIMRT}\libsodium.dll"
+	File ${VIMRT}\libsodium.dll
+!endif
 	File /oname=install.exe ${VIMSRC}\installw32.exe
 	File /oname=uninstall.exe ${VIMSRC}\uninstallw32.exe
 	File ${VIMSRC}\vimrun.exe
@@ -349,7 +360,6 @@ Section "$(str_section_exe)" id_section_exe
 	File ..\README.txt
 	File ..\uninstall.txt
 	File ${VIMRT}\*.vim
-	File ${VIMRT}\rgb.txt
 
 	File ${VIMTOOLS}\diff.exe
 	File ${VIMTOOLS}\winpty${BIT}.dll
@@ -357,6 +367,10 @@ Section "$(str_section_exe)" id_section_exe
 
 	SetOutPath $0\colors
 	File ${VIMRT}\colors\*.*
+	SetOutPath $0\colors\tools
+	File ${VIMRT}\colors\tools\*.*
+	SetOutPath $0\colors\lists
+	File ${VIMRT}\colors\lists\*.*
 
 	SetOutPath $0\compiler
 	File ${VIMRT}\compiler\*.*
@@ -388,6 +402,12 @@ Section "$(str_section_exe)" id_section_exe
 
 	SetOutPath $0\autoload\xml
 	File ${VIMRT}\autoload\xml\*.*
+
+	SetOutPath $0\import\dist
+	File ${VIMRT}\import\dist\*.*
+
+	SetOutPath $0\bitmaps
+	File ${VIMSRC}\vim.ico
 
 	SetOutPath $0\syntax
 	File ${VIMRT}\syntax\*.*
@@ -686,14 +706,28 @@ SectionEnd
 	${EndIf}
 !macroend
 
+!macro LoadDefaultVimrc out_var reg_value default_value
+	ClearErrors
+	ReadRegStr ${out_var} HKLM "${UNINST_REG_KEY_VIM}" ${reg_value}
+	${If} ${Errors}
+	${OrIf} ${out_var} == ""
+	  StrCpy ${out_var} ${default_value}
+	${EndIf}
+!macroend
+
 Function .onInit
 !ifdef HAVE_MULTI_LANG
   # Select a language (or read from the registry).
   !insertmacro MUI_LANGDLL_DISPLAY
 !endif
 
-  # Check $VIM
-  ReadEnvStr $INSTDIR "VIM"
+  ${If} $INSTDIR == ${DEFAULT_INSTDIR}
+    # Check $VIM
+    ReadEnvStr $3 "VIM"
+    ${If} $3 != ""
+      StrCpy $INSTDIR $3
+    ${EndIf}
+  ${EndIf}
 
   call CheckOldVim
   Pop $3
@@ -703,24 +737,15 @@ Function .onInit
     SectionSetInstTypes ${id_section_old_ver} 0
     SectionSetText ${id_section_old_ver} ""
   ${Else}
-    ${If} $INSTDIR == ""
+    ${If} $INSTDIR == ${DEFAULT_INSTDIR}
       StrCpy $INSTDIR $3
     ${EndIf}
   ${EndIf}
 
-  # If did not find a path: use the default dir.
-  ${If} $INSTDIR == ""
-!ifdef WIN64
-    StrCpy $INSTDIR "$PROGRAMFILES64\Vim"
-!else
-    StrCpy $INSTDIR "$PROGRAMFILES\Vim"
-!endif
-  ${EndIf}
-
-# Load the selections from the registry (if any).
   ${If} ${RunningX64}
     SetRegView 64
   ${EndIf}
+  # Load the selections from the registry (if any).
   !insertmacro LoadSectionSelection ${id_section_console}    "select_console"
   !insertmacro LoadSectionSelection ${id_section_batch}      "select_batch"
   !insertmacro LoadSectionSelection ${id_section_desktop}    "select_desktop"
@@ -735,6 +760,10 @@ Function .onInit
 !ifdef HAVE_NLS
   !insertmacro LoadSectionSelection ${id_section_nls}        "select_nls"
 !endif
+  # Load the default _vimrc settings from the registry (if any).
+  !insertmacro LoadDefaultVimrc $vim_compat_stat "vim_compat" "all"
+  !insertmacro LoadDefaultVimrc $vim_keymap_stat "vim_keyremap" "default"
+  !insertmacro LoadDefaultVimrc $vim_mouse_stat "vim_mouse" "default"
   ${If} ${RunningX64}
     SetRegView lastused
   ${EndIf}
@@ -798,17 +827,11 @@ Function SetCustom
 	${NSD_CB_AddString} $vim_nsd_compat $(str_msg_compat_defaults)
 	${NSD_CB_AddString} $vim_nsd_compat $(str_msg_compat_all)
 
-	# Default selection
-	${If} $vim_compat_stat == ""
-	  ReadRegStr $3 HKLM "${UNINST_REG_KEY_VIM}" "vim_compat"
-	${Else}
-	  StrCpy $3 $vim_compat_stat
-	${EndIf}
-	${If} $3 == "defaults"
+	${If} $vim_compat_stat == "defaults"
 	  StrCpy $4 2
-	${ElseIf} $3 == "vim"
+	${ElseIf} $vim_compat_stat == "vim"
 	  StrCpy $4 1
-	${ElseIf} $3 == "vi"
+	${ElseIf} $vim_compat_stat == "vi"
 	  StrCpy $4 0
 	${Else} # default
 	  StrCpy $4 3
@@ -827,13 +850,7 @@ Function SetCustom
 	${NSD_CB_AddString} $vim_nsd_keymap $(str_msg_keymap_default)
 	${NSD_CB_AddString} $vim_nsd_keymap $(str_msg_keymap_windows)
 
-	# Default selection
-	${If} $vim_keymap_stat == ""
-	  ReadRegStr $3 HKLM "${UNINST_REG_KEY_VIM}" "vim_keyremap"
-	${Else}
-	  StrCpy $3 $vim_keymap_stat
-	${EndIf}
-	${If} $3 == "windows"
+	${If} $vim_keymap_stat == "windows"
 	  StrCpy $4 1
 	${Else} # default
 	  StrCpy $4 0
@@ -853,15 +870,9 @@ Function SetCustom
 	${NSD_CB_AddString} $vim_nsd_mouse $(str_msg_mouse_windows)
 	${NSD_CB_AddString} $vim_nsd_mouse $(str_msg_mouse_unix)
 
-	# Default selection
-	${If} $vim_mouse_stat == ""
-	  ReadRegStr $3 HKLM "${UNINST_REG_KEY_VIM}" "vim_mouse"
-	${Else}
-	  StrCpy $3 $vim_mouse_stat
-	${EndIf}
-	${If} $3 == "xterm"
+	${If} $vim_mouse_stat == "xterm"
 	  StrCpy $4 2
-	${ElseIf} $3 == "windows"
+	${ElseIf} $vim_mouse_stat == "windows"
 	  StrCpy $4 1
 	${Else} # default
 	  StrCpy $4 0
@@ -1036,6 +1047,7 @@ Section "un.$(str_unsection_exe)" id_unsection_exe
 	RMDir /r $0\compiler
 	RMDir /r $0\doc
 	RMDir /r $0\ftplugin
+	RMDir /r $0\import
 	RMDir /r $0\indent
 	RMDir /r $0\macros
 	RMDir /r $0\pack

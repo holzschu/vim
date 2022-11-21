@@ -14,6 +14,41 @@
 #include "vim.h"
 
 /*
+ * Horiziontal and vertical steps used when scrolling.
+ * When negative scroll by a whole page.
+ */
+static __thread long mouse_hor_step = 6;
+static __thread long mouse_vert_step = 3;
+
+    void
+mouse_set_vert_scroll_step(long step)
+{
+    mouse_vert_step = step;
+}
+
+    void
+mouse_set_hor_scroll_step(long step)
+{
+    mouse_hor_step = step;
+}
+
+#ifdef CHECK_DOUBLE_CLICK
+/*
+ * Return the duration from t1 to t2 in milliseconds.
+ */
+    static long
+time_diff_ms(struct timeval *t1, struct timeval *t2)
+{
+    // This handles wrapping of tv_usec correctly without any special case.
+    // Example of 2 pairs (tv_sec, tv_usec) with a duration of 5 ms:
+    //	   t1 = (1, 998000) t2 = (2, 3000) gives:
+    //	   (2 - 1) * 1000 + (3000 - 998000) / 1000 -> 5 ms.
+    return (t2->tv_sec - t1->tv_sec) * 1000
+	 + (t2->tv_usec - t1->tv_usec) / 1000;
+}
+#endif
+
+/*
  * Get class of a character for selection: same class means same word.
  * 0: blank
  * 1: punctuation groups
@@ -99,8 +134,8 @@ find_end_of_word(pos_T *pos)
 }
 
 #if defined(FEAT_GUI_MOTIF) || defined(FEAT_GUI_GTK) \
-	    || defined(FEAT_GUI_ATHENA) || defined(FEAT_GUI_MSWIN) \
-	    || defined(FEAT_GUI_MAC) || defined(FEAT_GUI_PHOTON) \
+	    || defined(FEAT_GUI_MSWIN) \
+	    || defined(FEAT_GUI_PHOTON) \
 	    || defined(FEAT_TERM_POPUP_MENU)
 # define USE_POPUP_SETPOS
 # define NEED_VCOL2COL
@@ -248,7 +283,7 @@ do_mouse(
 		if (!mouse_has(MOUSE_VISUAL))
 		    return FALSE;
 	    }
-	    else if (State == NORMAL && !mouse_has(MOUSE_NORMAL))
+	    else if (State == MODE_NORMAL && !mouse_has(MOUSE_NORMAL))
 		return FALSE;
 	}
 
@@ -259,7 +294,10 @@ do_mouse(
 	{
 	    // If the next character is the same mouse event then use that
 	    // one. Speeds up dragging the status line.
-	    if (vpeekc() != NUL)
+	    // Note: Since characters added to the stuff buffer in the code
+	    // below need to come before the next character, do not do this
+	    // when the current character was stuffed.
+	    if (!KeyStuffed && vpeekc() != NUL)
 	    {
 		int nc;
 		int save_mouse_row = mouse_row;
@@ -289,7 +327,7 @@ do_mouse(
 	    bevalexpr_due_set = TRUE;
 	}
 #endif
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
 	popup_handle_mouse_moved();
 #endif
 	return FALSE;
@@ -331,7 +369,7 @@ do_mouse(
     // CTRL right mouse button does CTRL-T
     if (is_click && (mod_mask & MOD_MASK_CTRL) && which_button == MOUSE_RIGHT)
     {
-	if (State & INSERT)
+	if (State & MODE_INSERT)
 	    stuffcharReadbuff(Ctrl_O);
 	if (count > 1)
 	    stuffnumReadbuff(count);
@@ -375,7 +413,7 @@ do_mouse(
     // Middle mouse button does a 'put' of the selected text
     if (which_button == MOUSE_MIDDLE)
     {
-	if (State == NORMAL)
+	if (State == MODE_NORMAL)
 	{
 	    // If an operator was pending, we don't know what the user wanted
 	    // to do. Go back to normal mode: Clear the operator and beep().
@@ -406,7 +444,7 @@ do_mouse(
 	    // The rest is below jump_to_mouse()
 	}
 
-	else if ((State & INSERT) == 0)
+	else if ((State & MODE_INSERT) == 0)
 	    return FALSE;
 
 	// Middle click in insert mode doesn't move the mouse, just insert the
@@ -414,7 +452,7 @@ do_mouse(
 	// with do_put().
 	// Also paste at the cursor if the current mode isn't in 'mouse' (only
 	// happens for the GUI).
-	if ((State & INSERT) || !mouse_has(MOUSE_NORMAL))
+	if ((State & MODE_INSERT) || !mouse_has(MOUSE_NORMAL))
 	{
 	    if (regname == '.')
 		insert_reg(regname, TRUE);
@@ -428,7 +466,8 @@ do_mouse(
 		    insert_reg(regname, TRUE);
 		else
 		{
-		    do_put(regname, BACKWARD, 1L, fixindent | PUT_CURSEND);
+		    do_put(regname, NULL, BACKWARD, 1L,
+						      fixindent | PUT_CURSEND);
 
 		    // Repeat it with CTRL-R CTRL-O r or CTRL-R CTRL-P r
 		    AppendCharToRedobuff(Ctrl_R);
@@ -474,7 +513,7 @@ do_mouse(
 		if ((mod_mask & MOD_MASK_MULTI_CLICK) == MOD_MASK_2CLICK)
 		{
 		    // double click opens new page
-		    end_visual_mode();
+		    end_visual_mode_keep_button();
 		    tabpage_new();
 		    tabpage_move(c1 == 0 ? 9999 : c1 - 1);
 		}
@@ -486,7 +525,7 @@ do_mouse(
 
 		    // It's like clicking on the status line of a window.
 		    if (curwin != old_curwin)
-			end_visual_mode();
+			end_visual_mode_keep_button();
 		}
 	    }
 	    else
@@ -530,13 +569,13 @@ do_mouse(
 	    if (gui.in_use)
 	    {
 #  if defined(FEAT_GUI_MOTIF) || defined(FEAT_GUI_GTK) \
-			  || defined(FEAT_GUI_PHOTON) || defined(FEAT_GUI_MAC)
+			  || defined(FEAT_GUI_PHOTON)
 		if (!is_click)
 		    // Ignore right button release events, only shows the popup
 		    // menu on the button down event.
 		    return FALSE;
 #  endif
-#  if defined(FEAT_GUI_ATHENA) || defined(FEAT_GUI_MSWIN)
+#  if defined(FEAT_GUI_MSWIN) || defined(FEAT_GUI_HAIKU)
 		if (is_click || is_drag)
 		    // Ignore right button down and drag mouse events.  Windows
 		    // only shows the popup menu on the button up event.
@@ -620,7 +659,7 @@ do_mouse(
 	}
     }
 
-    if ((State & (NORMAL | INSERT))
+    if ((State & (MODE_NORMAL | MODE_INSERT))
 			    && !(mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL)))
     {
 	if (which_button == MOUSE_LEFT)
@@ -813,7 +852,7 @@ do_mouse(
 	}
     }
     // If Visual mode started in insert mode, execute "CTRL-O"
-    else if ((State & INSERT) && VIsual_active)
+    else if ((State & MODE_INSERT) && VIsual_active)
 	stuffcharReadbuff(Ctrl_O);
 
     // Middle mouse click: Put text before cursor.
@@ -847,7 +886,7 @@ do_mouse(
 	// to this position
 	if (restart_edit != 0)
 	    where_paste_started = curwin->w_cursor;
-	do_put(regname, dir, count, fixindent | PUT_CURSEND);
+	do_put(regname, NULL, dir, count, fixindent | PUT_CURSEND);
     }
 
 #if defined(FEAT_QUICKFIX)
@@ -870,7 +909,7 @@ do_mouse(
     else if ((mod_mask & MOD_MASK_CTRL) || (curbuf->b_help
 		     && (mod_mask & MOD_MASK_MULTI_CLICK) == MOD_MASK_2CLICK))
     {
-	if (State & INSERT)
+	if (State & MODE_INSERT)
 	    stuffcharReadbuff(Ctrl_O);
 	stuffcharReadbuff(Ctrl_RSB);
 	got_click = FALSE;		// ignore drag&release now
@@ -880,7 +919,7 @@ do_mouse(
     // the mouse pointer
     else if ((mod_mask & MOD_MASK_SHIFT))
     {
-	if ((State & INSERT) || (VIsual_active && VIsual_select))
+	if ((State & MODE_INSERT) || (VIsual_active && VIsual_select))
 	    stuffcharReadbuff(Ctrl_O);
 	if (which_button == MOUSE_LEFT)
 	    stuffcharReadbuff('*');
@@ -909,7 +948,8 @@ do_mouse(
 	}
 #endif
     }
-    else if ((mod_mask & MOD_MASK_MULTI_CLICK) && (State & (NORMAL | INSERT))
+    else if ((mod_mask & MOD_MASK_MULTI_CLICK)
+				       && (State & (MODE_NORMAL | MODE_INSERT))
 	     && mouse_has(MOUSE_VISUAL))
     {
 	if (is_click || !VIsual_active)
@@ -1057,9 +1097,7 @@ ins_mouse(int c)
 	    curwin = new_curwin;
 	    curbuf = curwin->w_buffer;
 	}
-# ifdef FEAT_CINDENT
 	set_can_cindent(TRUE);
-# endif
     }
 
     // redraw status lines (in case another window became active)
@@ -1095,14 +1133,17 @@ ins_mousescroll(int dir)
     // Don't scroll the window in which completion is being done.
     if (!pum_visible() || curwin != old_curwin)
     {
+	long step;
+
 	if (dir == MSCR_DOWN || dir == MSCR_UP)
 	{
-	    if (mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
-		scroll_redraw(dir,
-			(long)(curwin->w_botline - curwin->w_topline));
+	    if (mouse_vert_step < 0
+		    || mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
+		step = (long)(curwin->w_botline - curwin->w_topline);
 	    else
-		scroll_redraw(dir, 3L);
-# ifdef FEAT_TEXT_PROP
+		step = mouse_vert_step;
+	    scroll_redraw(dir, step);
+# ifdef FEAT_PROP_POPUP
 	if (WIN_IS_POPUP(curwin))
 	    popup_set_firstline(curwin);
 # endif
@@ -1110,10 +1151,13 @@ ins_mousescroll(int dir)
 #ifdef FEAT_GUI
 	else
 	{
-	    int val, step = 6;
+	    int val;
 
-	    if (mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
+	    if (mouse_hor_step < 0
+		    || mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
 		step = curwin->w_width;
+	    else
+		step = mouse_hor_step;
 	    val = curwin->w_leftcol + (dir == MSCR_RIGHT ? -step : step);
 	    if (val < 0)
 		val = 0;
@@ -1121,6 +1165,7 @@ ins_mousescroll(int dir)
 	}
 #endif
 	did_scroll = TRUE;
+	may_trigger_winscrolled();
     }
 
     curwin->w_redr_status = TRUE;
@@ -1140,9 +1185,7 @@ ins_mousescroll(int dir)
     if (!EQUAL_POS(curwin->w_cursor, tpos))
     {
 	start_arrow(&tpos);
-# ifdef FEAT_CINDENT
 	set_can_cindent(TRUE);
-# endif
     }
 }
 
@@ -1409,13 +1452,14 @@ setmouse(void)
 
     if (VIsual_active)
 	checkfor = MOUSE_VISUAL;
-    else if (State == HITRETURN || State == ASKMORE || State == SETWSIZE)
+    else if (State == MODE_HITRETURN || State == MODE_ASKMORE
+						     || State == MODE_SETWSIZE)
 	checkfor = MOUSE_RETURN;
-    else if (State & INSERT)
+    else if (State & MODE_INSERT)
 	checkfor = MOUSE_INSERT;
-    else if (State & CMDLINE)
+    else if (State & MODE_CMDLINE)
 	checkfor = MOUSE_COMMAND;
-    else if (State == CONFIRM || State == EXTERNCMD)
+    else if (State == MODE_CONFIRM || State == MODE_EXTERNCMD)
 	checkfor = ' '; // don't use mouse for ":confirm" or ":!cmd"
     else
 	checkfor = MOUSE_NORMAL;    // assume normal mode
@@ -1514,7 +1558,7 @@ jump_to_mouse(
 #ifdef FEAT_MENU
     static int  in_winbar = FALSE;
 #endif
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
     static int   in_popup_win = FALSE;
     static win_T *click_in_popup_win = NULL;
 #endif
@@ -1545,7 +1589,7 @@ jump_to_mouse(
 	    flags &= ~(MOUSE_FOCUS | MOUSE_DID_MOVE);
 	dragwin = NULL;
 	did_drag = FALSE;
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
 	if (click_in_popup_win != NULL && popup_dragwin == NULL)
 	    popup_close_for_mouse_click(click_in_popup_win);
 
@@ -1582,7 +1626,7 @@ retnomove:
 #endif
 	if (flags & MOUSE_MAY_STOP_VIS)
 	{
-	    end_visual_mode();
+	    end_visual_mode_keep_button();
 	    redraw_curbuf_later(INVERTED);	// delete the inversion
 	}
 #if defined(FEAT_CMDWIN) && defined(FEAT_CLIPBOARD)
@@ -1590,7 +1634,7 @@ retnomove:
 	if (cmdwin_type != 0 && row < curwin->w_winrow)
 	    return IN_OTHER_WIN;
 #endif
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
 	// Continue a modeless selection in a popup window or dragging it.
 	if (in_popup_win)
 	{
@@ -1638,19 +1682,21 @@ retnomove:
 	    return IN_UNKNOWN;
 	dragwin = NULL;
 
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
 	// Click in a popup window may start dragging or modeless selection,
 	// but not much else.
 	if (WIN_IS_POPUP(wp))
 	{
 	    on_sep_line = 0;
+	    on_status_line = 0;
 	    in_popup_win = TRUE;
 	    if (which_button == MOUSE_LEFT && popup_close_if_on_X(wp, row, col))
 	    {
 		return IN_UNKNOWN;
 	    }
-	    else if ((wp->w_popup_flags & (POPF_DRAG | POPF_RESIZE))
+	    else if (((wp->w_popup_flags & (POPF_DRAG | POPF_RESIZE))
 					      && popup_on_border(wp, row, col))
+				       || (wp->w_popup_flags & POPF_DRAGALL))
 	    {
 		popup_dragwin = wp;
 		popup_start_drag(wp, row, col);
@@ -1731,7 +1777,7 @@ retnomove:
 #endif
 			&& (flags & MOUSE_MAY_STOP_VIS))))
 	{
-	    end_visual_mode();
+	    end_visual_mode_keep_button();
 	    redraw_curbuf_later(INVERTED);	// delete the inversion
 	}
 #ifdef FEAT_CMDWIN
@@ -1750,6 +1796,11 @@ retnomove:
 	    wp = curwin;
 # endif
 	}
+#endif
+#if defined(FEAT_PROP_POPUP) && defined(FEAT_TERMINAL)
+	if (popup_is_popup(curwin) && curbuf->b_term != NULL)
+	    // terminal in popup window: don't jump to another window
+	    return IN_OTHER_WIN;
 #endif
 	// Only change window focus when not clicking on or dragging the
 	// status line.  Do change focus when releasing the mouse button
@@ -1799,7 +1850,7 @@ retnomove:
 	if (dragwin != NULL)
 	{
 	    // Drag the status line
-	    count = row - dragwin->w_winrow - dragwin->w_height + 1
+	    count = row - W_WINROW(dragwin) - dragwin->w_height + 1
 							     - on_status_line;
 	    win_drag_status_line(dragwin, count);
 	    did_drag |= count;
@@ -1830,7 +1881,7 @@ retnomove:
 	// before moving the cursor for a left click, stop Visual mode
 	if (flags & MOUSE_MAY_STOP_VIS)
 	{
-	    end_visual_mode();
+	    end_visual_mode_keep_button();
 	    redraw_curbuf_later(INVERTED);	// delete the inversion
 	}
 
@@ -1839,7 +1890,7 @@ retnomove:
 	if (cmdwin_type != 0 && row < curwin->w_winrow)
 	    return IN_OTHER_WIN;
 #endif
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
 	if (in_popup_win)
 	{
 	    if (popup_dragwin != NULL)
@@ -1998,7 +2049,7 @@ retnomove:
 	count |= CURSOR_MOVED;		// Cursor has moved
 
 # ifdef FEAT_FOLDING
-    if (mouse_char == '+')
+    if (mouse_char == fill_foldclosed)
 	count |= MOUSE_FOLD_OPEN;
     else if (mouse_char != ' ')
 	count |= MOUSE_FOLD_CLOSE;
@@ -2008,8 +2059,9 @@ retnomove:
 }
 
 /*
- * Mouse scroll wheel: Default action is to scroll three lines, or one page
- * when Shift or Ctrl is used.
+ * Mouse scroll wheel: Default action is to scroll mouse_vert_step lines (or
+ * mouse_hor_step, depending on the scroll direction), or one page when Shift or
+ * Ctrl is used.
  * K_MOUSEUP (cap->arg == 1) or K_MOUSEDOWN (cap->arg == 0) or
  * K_MOUSELEFT (cap->arg == -1) or K_MOUSERIGHT (cap->arg == -2)
  */
@@ -2029,42 +2081,41 @@ nv_mousescroll(cmdarg_T *cap)
 	wp = mouse_find_win(&row, &col, FIND_POPUP);
 	if (wp == NULL)
 	    return;
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
 	if (WIN_IS_POPUP(wp) && !wp->w_has_scrollbar)
 	    return;
 #endif
 	curwin = wp;
 	curbuf = curwin->w_buffer;
     }
-
     if (cap->arg == MSCR_UP || cap->arg == MSCR_DOWN)
     {
 # ifdef FEAT_TERMINAL
 	if (term_use_loop())
 	    // This window is a terminal window, send the mouse event there.
 	    // Set "typed" to FALSE to avoid an endless loop.
-	    send_keys_to_term(curbuf->b_term, cap->cmdchar, FALSE);
+	    send_keys_to_term(curbuf->b_term, cap->cmdchar, mod_mask, FALSE);
 	else
 # endif
-	if (mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
+	if (mouse_vert_step < 0 || mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
 	{
 	    (void)onepage(cap->arg ? FORWARD : BACKWARD, 1L);
 	}
 	else
 	{
 	    // Don't scroll more than half the window height.
-	    if (curwin->w_height < 6)
+	    if (curwin->w_height < mouse_vert_step * 2)
 	    {
 		cap->count1 = curwin->w_height / 2;
 		if (cap->count1 == 0)
 		    cap->count1 = 1;
 	    }
 	    else
-		cap->count1 = 3;
+		cap->count1 = mouse_vert_step;
 	    cap->count0 = cap->count1;
 	    nv_scroll_line(cap);
 	}
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
 	if (WIN_IS_POPUP(curwin))
 	    popup_set_firstline(curwin);
 #endif
@@ -2075,10 +2126,13 @@ nv_mousescroll(cmdarg_T *cap)
 	// Horizontal scroll - only allowed when 'wrap' is disabled
 	if (!curwin->w_p_wrap)
 	{
-	    int val, step = 6;
+	    int val, step;
 
-	    if (mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
+	    if (mouse_hor_step < 0
+		    || mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
 		step = curwin->w_width;
+	    else
+		step = mouse_hor_step;
 	    val = curwin->w_leftcol + (cap->arg == MSCR_RIGHT ? -step : +step);
 	    if (val < 0)
 		val = 0;
@@ -2091,6 +2145,7 @@ nv_mousescroll(cmdarg_T *cap)
     if (curwin != old_curwin && curwin->w_p_cul)
 	redraw_for_cursorline(curwin);
 # endif
+    may_trigger_winscrolled();
 
     curwin->w_redr_status = TRUE;
 
@@ -2107,12 +2162,19 @@ nv_mouse(cmdarg_T *cap)
     (void)do_mouse(cap->oap, cap->cmdchar, BACKWARD, cap->count1, 0);
 }
 
+static __thread int	held_button = MOUSE_RELEASE;
+
+    void
+reset_held_button()
+{
+    held_button = MOUSE_RELEASE;
+}
+
 /*
  * Check if typebuf 'tp' contains a terminal mouse code and returns the
  * modifiers found in typebuf in 'modifiers'.
  */
 #if TARGET_OS_IPHONE
-static __thread int	held_button = MOUSE_RELEASE;
 static __thread int	orig_num_clicks = 1;
 static __thread int	orig_mouse_code = 0x0;
 # ifdef CHECK_DOUBLE_CLICK
@@ -2139,10 +2201,10 @@ check_termcode_mouse(
 # endif
     int		mouse_code = 0;	    // init for GCC
     int		is_click, is_drag;
+    int		is_release, release_is_ambiguous;
     int		wheel_code = 0;
     int		current_button;
 #if !TARGET_OS_IPHONE
-    static int	held_button = MOUSE_RELEASE;
     static int	orig_num_clicks = 1;
     static int	orig_mouse_code = 0x0;
 # ifdef CHECK_DOUBLE_CLICK
@@ -2157,7 +2219,7 @@ check_termcode_mouse(
     long	timediff;		// elapsed time in msec
 # endif
 
-    is_click = is_drag = FALSE;
+    is_click = is_drag = is_release = release_is_ambiguous = FALSE;
 
 # if !defined(UNIX) || defined(FEAT_MOUSE_XTERM) || defined(FEAT_GUI) \
     || defined(FEAT_MOUSE_GPM) || defined(FEAT_SYSMOUSE)
@@ -2168,8 +2230,7 @@ check_termcode_mouse(
        )
     {
 	/*
-	 * For xterm we get "<t_mouse>scr", where
-	 *  s == encoded button state:
+	 * For xterm we get "<t_mouse>scr", where s == encoded button state:
 	 *	   0x20 = left button down
 	 *	   0x21 = middle button down
 	 *	   0x22 = right button down
@@ -2185,9 +2246,9 @@ check_termcode_mouse(
 	 *  c == column + ' ' + 1 == column + 33
 	 *  r == row + ' ' + 1 == row + 33
 	 *
-	 * The coordinates are passed on through global variables.
-	 * Ugly, but this avoids trouble with mouse clicks at an
-	 * unexpected moment and allows for mapping them.
+	 * The coordinates are passed on through global variables.  Ugly, but
+	 * this avoids trouble with mouse clicks at an unexpected moment and
+	 * allows for mapping them.
 	 */
 	for (;;)
 	{
@@ -2216,9 +2277,9 @@ check_termcode_mouse(
 	    }
 	    *slen += num_bytes;
 
-	    // If the following bytes is also a mouse code and it has
-	    // the same code, dump this one and get the next.  This
-	    // makes dragging a whole lot faster.
+	    // If the following bytes is also a mouse code and it has the same
+	    // code, dump this one and get the next.  This makes dragging a
+	    // whole lot faster.
 #  ifdef FEAT_GUI
 	    if (gui.in_use)
 		j = 3;
@@ -2246,8 +2307,8 @@ check_termcode_mouse(
 	    || key_name[0] == KS_SGR_MOUSE_RELEASE)
     {
 	// URXVT 1015 mouse reporting mode:
-	// Almost identical to xterm mouse mode, except the values
-	// are decimal instead of bytes.
+	// Almost identical to xterm mouse mode, except the values are decimal
+	// instead of bytes.
 	//
 	// \033[%d;%d;%dM
 	//	       ^-- row
@@ -2255,15 +2316,15 @@ check_termcode_mouse(
 	//	 ^-------- code
 	//
 	// SGR 1006 mouse reporting mode:
-	// Almost identical to xterm mouse mode, except the values
-	// are decimal instead of bytes.
+	// Almost identical to xterm mouse mode, except the values are decimal
+	// instead of bytes.
 	//
 	// \033[<%d;%d;%dM
 	//	       ^-- row
 	//	    ^----- column
 	//	 ^-------- code
 	//
-	// \033[<%d;%d;%dm        : mouse release event
+	// \033[<%d;%d;%dm	  : mouse release event
 	//	       ^-- row
 	//	    ^----- column
 	//	 ^-------- code
@@ -2280,18 +2341,32 @@ check_termcode_mouse(
 		|| key_name[0] == KS_SGR_MOUSE_RELEASE)
 	    mouse_code += 32;
 
-	if (key_name[0] == KS_SGR_MOUSE_RELEASE)
-	    mouse_code |= MOUSE_RELEASE;
-
 	mouse_col = getdigits(&p) - 1;
 	if (*p++ != ';')
 	    return -1;
 
 	mouse_row = getdigits(&p) - 1;
 
-	// The modifiers were the mouse coordinates, not the
-	// modifier keys (alt/shift/ctrl/meta) state.
+	// The modifiers were the mouse coordinates, not the modifier keys
+	// (alt/shift/ctrl/meta) state.
 	*modifiers = 0;
+    }
+
+    if (key_name[0] == KS_SGR_MOUSE
+	    || key_name[0] == KS_SGR_MOUSE_RELEASE)
+    {
+	if (key_name[0] == KS_SGR_MOUSE_RELEASE)
+	{
+	    is_release = TRUE;
+	    // This is used below to set held_button.
+	    mouse_code |= MOUSE_RELEASE;
+	}
+    }
+    else
+    {
+	release_is_ambiguous = TRUE;
+	if ((mouse_code & MOUSE_RELEASE) == MOUSE_RELEASE)
+	    is_release = TRUE;
     }
 
     if (key_name[0] == KS_MOUSE
@@ -2306,7 +2381,7 @@ check_termcode_mouse(
     {
 #  if !defined(MSWIN)
 	/*
-	 * Handle mouse events.
+	 * Handle old style mouse events.
 	 * Recognize the xterm mouse wheel, but not in the GUI, the
 	 * Linux console with GPM and the MS-DOS or Win32 console
 	 * (multi-clicks use >= 0x60).
@@ -2355,7 +2430,7 @@ check_termcode_mouse(
 #   ifdef FEAT_XCLIPBOARD
 	else if (!(mouse_code & MOUSE_DRAG & ~MOUSE_CLICK_MASK))
 	{
-	    if ((mouse_code & MOUSE_RELEASE) == MOUSE_RELEASE)
+	    if (is_release)
 		stop_xterm_trace();
 	    else
 		start_xterm_trace(mouse_code);
@@ -2397,8 +2472,8 @@ check_termcode_mouse(
 	 * (L-x)  Left button pressed - not pressed x not reporting
 	 * (M-x)  Middle button pressed - not pressed x not reporting
 	 * (R-x)  Right button pressed - not pressed x not reporting
-	 * (SDmdu)  Single , Double click, m mouse move d button down
-	 *						   u button up
+	 * (SDmdu)  Single , Double click, m: mouse move, d: button down,
+		      *						   u: button up
 	 *  ###   X cursor position padded to 3 digits
 	 *  ###   Y cursor position padded to 3 digits
 	 * (s-x)  SHIFT key pressed - not pressed x not reporting
@@ -2493,12 +2568,13 @@ check_termcode_mouse(
 		if (button & 16) mouse_code |= MOUSE_CTRL;
 		break;
 	    case 'u': // Button Up
+		is_release = TRUE;
 		if (button & 1)
-		    mouse_code |= MOUSE_LEFT | MOUSE_RELEASE;
+		    mouse_code |= MOUSE_LEFT;
 		if (button & 2)
-		    mouse_code |= MOUSE_MIDDLE | MOUSE_RELEASE;
+		    mouse_code |= MOUSE_MIDDLE;
 		if (button & 4)
-		    mouse_code |= MOUSE_RIGHT | MOUSE_RELEASE;
+		    mouse_code |= MOUSE_RIGHT;
 		if (button & 8)
 		    mouse_code |= MOUSE_SHIFT;
 		if (button & 16)
@@ -2528,10 +2604,10 @@ check_termcode_mouse(
 	 * Pp is the third coordinate (page number)
 	 * Pe, the event code indicates what event caused this report
 	 *    The following event codes are defined:
-	 *    0 - request, the terminal received an explicit request
-	 *	 for a locator report, but the locator is unavailable
-	 *    1 - request, the terminal received an explicit request
-	 *	 for a locator report
+	 *    0 - request, the terminal received an explicit request for a
+	 *	  locator report, but the locator is unavailable
+	 *    1 - request, the terminal received an explicit request for a
+	 *	  locator report
 	 *    2 - left button down
 	 *    3 - left button up
 	 *    4 - middle button down
@@ -2541,28 +2617,24 @@ check_termcode_mouse(
 	 *    8 - fourth button down
 	 *    9 - fourth button up
 	 *    10 - locator outside filter rectangle
-	 * Pb, the button code, ASCII decimal 0-15 indicating which
-	 *   buttons are down if any. The state of the four buttons
-	 *   on the locator correspond to the low four bits of the
-	 *   decimal value,
-	 *   "1" means button depressed
+	 * Pb, the button code, ASCII decimal 0-15 indicating which buttons are
+	 *   down if any. The state of the four buttons on the locator
+	 *   correspond to the low four bits of the decimal value, "1" means
+	 *   button depressed
 	 *   0 - no buttons down,
 	 *   1 - right,
 	 *   2 - middle,
 	 *   4 - left,
 	 *   8 - fourth
 	 * Pr is the row coordinate of the locator position in the page,
-	 *   encoded as an ASCII decimal value.
-	 *   If Pr is omitted, the locator position is undefined
-	 *   (outside the terminal window for example).
-	 * Pc is the column coordinate of the locator position in the
-	 *   page, encoded as an ASCII decimal value.
-	 *   If Pc is omitted, the locator position is undefined
-	 *   (outside the terminal window for example).
-	 * Pp is the page coordinate of the locator position
-	 *   encoded as an ASCII decimal value.
-	 *   The page coordinate may be omitted if the locator is on
-	 *   page one (the default).  We ignore it anyway.
+	 *   encoded as an ASCII decimal value.  If Pr is omitted, the locator
+	 *   position is undefined (outside the terminal window for example).
+	 * Pc is the column coordinate of the locator position in the page,
+	 *   encoded as an ASCII decimal value.  If Pc is omitted, the locator
+	 *   position is undefined (outside the terminal window for example).
+	 * Pp is the page coordinate of the locator position encoded as an
+	 *   ASCII decimal value.  The page coordinate may be omitted if the
+	 *   locator is on page one (the default).  We ignore it anyway.
 	 */
 	int Pe, Pb, Pr, Pc;
 
@@ -2622,17 +2694,20 @@ check_termcode_mouse(
 	    case  2: mouse_code = MOUSE_LEFT;
 		     WantQueryMouse = TRUE;
 		     break;
-	    case  3: mouse_code = MOUSE_RELEASE | MOUSE_LEFT;
+	    case  3: mouse_code = MOUSE_LEFT;
+		     is_release = TRUE;
 		     break;
 	    case  4: mouse_code = MOUSE_MIDDLE;
 		     WantQueryMouse = TRUE;
 		     break;
-	    case  5: mouse_code = MOUSE_RELEASE | MOUSE_MIDDLE;
+	    case  5: mouse_code = MOUSE_MIDDLE;
+		     is_release = TRUE;
 		     break;
 	    case  6: mouse_code = MOUSE_RIGHT;
 		     WantQueryMouse = TRUE;
 		     break;
-	    case  7: mouse_code = MOUSE_RELEASE | MOUSE_RIGHT;
+	    case  7: mouse_code = MOUSE_RIGHT;
+		     is_release = TRUE;
 		     break;
 	    case  8: return -1; // fourth button down
 	    case  9: return -1; // fourth button up
@@ -2685,7 +2760,7 @@ check_termcode_mouse(
 		break;
 
 	    case 32: // Release
-		mouse_code |= MOUSE_RELEASE;
+		is_release = TRUE;
 		break;
 
 	    case 33: // Drag
@@ -2706,6 +2781,9 @@ check_termcode_mouse(
 
     // Interpret the mouse code
     current_button = (mouse_code & MOUSE_CLICK_MASK);
+    if (is_release)
+	current_button |= MOUSE_RELEASE;
+
     if (current_button == MOUSE_RELEASE
 # ifdef FEAT_MOUSE_XTERM
 	    && wheel_code == 0
@@ -2713,12 +2791,11 @@ check_termcode_mouse(
        )
     {
 	/*
-	 * If we get a mouse drag or release event when
-	 * there is no mouse button held down (held_button ==
-	 * MOUSE_RELEASE), produce a K_IGNORE below.
-	 * (can happen when you hold down two buttons
-	 * and then let them go, or click in the menu bar, but not
-	 * on a menu, and drag into the text).
+	 * If we get a mouse drag or release event when there is no mouse
+	 * button held down (held_button == MOUSE_RELEASE), produce a K_IGNORE
+	 * below.
+	 * (can happen when you hold down two buttons and then let them go, or
+	 * click in the menu bar, but not on a menu, and drag into the text).
 	 */
 	if ((mouse_code & MOUSE_DRAG) == MOUSE_DRAG)
 	    is_drag = TRUE;
@@ -2729,8 +2806,8 @@ check_termcode_mouse(
 # ifdef CHECK_DOUBLE_CLICK
 #  ifdef FEAT_MOUSE_GPM
 	/*
-	 * Only for Unix, when GUI not active, we handle
-	 * multi-clicks here, but not for GPM mouse events.
+	 * Only for Unix, when GUI not active, we handle multi-clicks here, but
+	 * not for GPM mouse events.
 	 */
 #   ifdef FEAT_GUI
 	if (key_name[0] != KS_GPM_MOUSE && !gui.in_use)
@@ -2758,14 +2835,7 @@ check_termcode_mouse(
 			timediff = p_mouset;
 		    }
 		    else
-		    {
-			timediff = (mouse_time.tv_usec
-				- orig_mouse_time.tv_usec) / 1000;
-			if (timediff < 0)
-			    --orig_mouse_time.tv_sec;
-			timediff += (mouse_time.tv_sec
-				- orig_mouse_time.tv_sec) * 1000;
-		    }
+			timediff = time_diff_ms(&orig_mouse_time, &mouse_time);
 		    orig_mouse_time = mouse_time;
 		    if (mouse_code == orig_mouse_code
 			    && timediff < p_mouset
@@ -2814,26 +2884,33 @@ check_termcode_mouse(
     else if (orig_num_clicks == 4)
 	*modifiers |= MOD_MASK_4CLICK;
 
-    // Work out our pseudo mouse event. Note that MOUSE_RELEASE gets
-    // added, then it's not mouse up/down.
+    // Work out our pseudo mouse event. Note that MOUSE_RELEASE gets added,
+    // then it's not mouse up/down.
     key_name[0] = KS_EXTRA;
-    if (wheel_code != 0
-	    && (wheel_code & MOUSE_RELEASE) != MOUSE_RELEASE)
+    if (wheel_code != 0 && (!is_release || release_is_ambiguous))
     {
 	if (wheel_code & MOUSE_CTRL)
 	    *modifiers |= MOD_MASK_CTRL;
 	if (wheel_code & MOUSE_ALT)
 	    *modifiers |= MOD_MASK_ALT;
-	key_name[1] = (wheel_code & 1)
-	    ? (int)KE_MOUSEUP : (int)KE_MOUSEDOWN;
+
+	if (wheel_code & 1 && wheel_code & 2)
+	    key_name[1] = (int)KE_MOUSELEFT;
+	else if (wheel_code & 2)
+	    key_name[1] = (int)KE_MOUSERIGHT;
+	else if (wheel_code & 1)
+	    key_name[1] = (int)KE_MOUSEUP;
+	else
+	    key_name[1] = (int)KE_MOUSEDOWN;
+
 	held_button = MOUSE_RELEASE;
     }
     else
-	key_name[1] = get_pseudo_mouse_code(current_button,
-		is_click, is_drag);
+	key_name[1] = get_pseudo_mouse_code(current_button, is_click, is_drag);
 
-    // Make sure the mouse position is valid.  Some terminals may
-    // return weird values.
+
+    // Make sure the mouse position is valid.  Some terminals may return weird
+    // values.
     if (mouse_col >= Columns)
 	mouse_col = Columns - 1;
     if (mouse_row >= Rows)
@@ -2847,10 +2924,10 @@ check_termcode_mouse(
 /*
  * Compute the buffer line position from the screen position "rowp" / "colp" in
  * window "win".
- * "plines_cache" can be NULL (no cache) or an array with "win->w_height"
- * entries that caches the plines_win() result from a previous call.  Entry is
- * zero if not computed yet.  There must be no text or setting changes since
- * the entry is put in the cache.
+ * "plines_cache" can be NULL (no cache) or an array with "Rows" entries that
+ * caches the plines_win() result from a previous call.  Entry is zero if not
+ * computed yet.  There must be no text or setting changes since the entry is
+ * put in the cache.
  * Returns TRUE if the position is below the last line.
  */
     int
@@ -2879,7 +2956,10 @@ mouse_comp_pos(
     {
 	int cache_idx = lnum - win->w_topline;
 
-	if (plines_cache != NULL && plines_cache[cache_idx] > 0)
+	// Only "Rows" lines are cached, with folding we'll run out of entries
+	// and use the slow way.
+	if (plines_cache != NULL && cache_idx < Rows
+						&& plines_cache[cache_idx] > 0)
 	    count = plines_cache[cache_idx];
 	else
 	{
@@ -2900,7 +2980,7 @@ mouse_comp_pos(
 	    else
 #endif
 		count = plines_win(win, lnum, TRUE);
-	    if (plines_cache != NULL)
+	    if (plines_cache != NULL && cache_idx < Rows)
 		plines_cache[cache_idx] = count;
 	}
 	if (count > row)
@@ -2933,10 +3013,12 @@ mouse_comp_pos(
 
     // skip line number and fold column in front of the line
     col -= win_col_off(win);
-    if (col < 0)
+    if (col <= 0)
     {
 #ifdef FEAT_NETBEANS_INTG
-	netbeans_gutter_click(lnum);
+	// if mouse is clicked on the gutter, then inform the netbeans server
+	if (*colp < win_col_off(win))
+	    netbeans_gutter_click(lnum);
 #endif
 	col = 0;
     }
@@ -2961,13 +3043,13 @@ mouse_find_win(int *rowp, int *colp, mouse_find_T popup UNUSED)
     frame_T	*fp;
     win_T	*wp;
 
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
     win_T	*pwp = NULL;
 
     if (popup != IGNORE_POPUP)
     {
-	popup_reset_handled();
-	while ((wp = find_next_popup(TRUE)) != NULL)
+	popup_reset_handled(POPUP_HANDLED_1);
+	while ((wp = find_next_popup(TRUE, POPUP_HANDLED_1)) != NULL)
 	{
 	    if (*rowp >= wp->w_winrow && *rowp < wp->w_winrow + popup_height(wp)
 		    && *colp >= wp->w_wincol
@@ -3023,8 +3105,8 @@ mouse_find_win(int *rowp, int *colp, mouse_find_T popup UNUSED)
     return NULL;
 }
 
-#if defined(NEED_VCOL2COL) || defined(FEAT_BEVAL) || defined(FEAT_TEXT_PROP) \
-	|| defined(PROTO)
+#if defined(NEED_VCOL2COL) || defined(FEAT_BEVAL) || defined(FEAT_PROP_POPUP) \
+	|| defined(FEAT_EVAL) || defined(PROTO)
 /*
  * Convert a virtual (screen) column to a character column.
  * The first column is one.
@@ -3044,5 +3126,64 @@ vcol2col(win_T *wp, linenr_T lnum, int vcol)
 	MB_PTR_ADV(ptr);
     }
     return (int)(ptr - line);
+}
+#endif
+
+#if defined(FEAT_EVAL) || defined(PROTO)
+    void
+f_getmousepos(typval_T *argvars UNUSED, typval_T *rettv)
+{
+    dict_T	*d;
+    win_T	*wp;
+    int		row = mouse_row;
+    int		col = mouse_col;
+    varnumber_T winid = 0;
+    varnumber_T winrow = 0;
+    varnumber_T wincol = 0;
+    linenr_T	lnum = 0;
+    varnumber_T column = 0;
+
+    if (rettv_dict_alloc(rettv) == FAIL)
+	return;
+    d = rettv->vval.v_dict;
+
+    dict_add_number(d, "screenrow", (varnumber_T)mouse_row + 1);
+    dict_add_number(d, "screencol", (varnumber_T)mouse_col + 1);
+
+    wp = mouse_find_win(&row, &col, FIND_POPUP);
+    if (wp != NULL)
+    {
+	int	top_off = 0;
+	int	left_off = 0;
+	int	height = wp->w_height + wp->w_status_height;
+
+#ifdef FEAT_PROP_POPUP
+	if (WIN_IS_POPUP(wp))
+	{
+	    top_off = popup_top_extra(wp);
+	    left_off = popup_left_extra(wp);
+	    height = popup_height(wp);
+	}
+#endif
+	if (row < height)
+	{
+	    winid = wp->w_id;
+	    winrow = row + 1;
+	    wincol = col + 1;
+	    row -= top_off;
+	    col -= left_off;
+	    if (row >= 0 && row < wp->w_height && col >= 0 && col < wp->w_width)
+	    {
+		(void)mouse_comp_pos(wp, &row, &col, &lnum, NULL);
+		col = vcol2col(wp, lnum, col);
+		column = col + 1;
+	    }
+	}
+    }
+    dict_add_number(d, "winid", winid);
+    dict_add_number(d, "winrow", winrow);
+    dict_add_number(d, "wincol", wincol);
+    dict_add_number(d, "line", (varnumber_T)lnum);
+    dict_add_number(d, "column", column);
 }
 #endif

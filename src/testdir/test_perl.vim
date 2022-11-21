@@ -1,6 +1,7 @@
 " Tests for Perl interface
 
 source check.vim
+source shared.vim
 CheckFeature perl
 
 " FIXME: RunTest don't see any error when Perl abort...
@@ -52,6 +53,11 @@ func Test_buffer_Append()
   perl @l = ('5' ..'7')
   perl $curbuf->Append(0, @l)
   call assert_equal(['5', '6', '7', '', '1', '2', '3', '4'], getline(1, '$'))
+
+  perl $curbuf->Append(0)
+  call assert_match('^Usage: VIBUF::Append(vimbuf, lnum, @lines) at .* line 1\.$',
+        \           GetMessages()[-1])
+
   bwipe!
 endfunc
 
@@ -61,6 +67,11 @@ func Test_buffer_Set()
   perl $curbuf->Set(2, 'a', 'b', 'c')
   perl $curbuf->Set(4, 'A', 'B', 'C')
   call assert_equal(['1', 'a', 'b', 'A', 'B'], getline(1, '$'))
+
+  perl $curbuf->Set(0)
+  call assert_match('^Usage: VIBUF::Set(vimbuf, lnum, @lines) at .* line 1\.$',
+        \           GetMessages()[-1])
+
   bwipe!
 endfunc
 
@@ -182,9 +193,21 @@ func Test_perleval()
 
   call assert_equal('*VIM', perleval('"*VIM"'))
   call assert_true(perleval('\\0') =~ 'SCALAR(0x\x\+)')
+
+  " typeglob
+  call assert_equal('*main::STDOUT', perleval('*STDOUT'))
+'
+  call perleval("++-$foo")
+  let messages = split(execute('message'), "\n")
+  call assert_match("Can't modify negation", messages[-1])
 endfunc
 
 func Test_perldo()
+  new
+  " :perldo in empty buffer does nothing.
+  perldo ++$counter
+  call assert_equal(0, perleval("$counter"))
+
   sp __TEST__
   exe 'read ' g:testname
   perldo s/perl/vieux_chameau/g
@@ -198,14 +221,20 @@ func Test_perldo()
   perldo VIM::DoCommand("%d_")
   bwipe!
 
+  " Check a Perl expression which gives an error.
+  new
+  call setline(1, 'one')
+  perldo 1/0
+  call assert_match('^Illegal division by zero at .* line 1\.$', GetMessages()[-1])
+  bwipe!
+
   " Check switching to another buffer does not trigger ml_get error.
   new
   let wincount = winnr('$')
   call setline(1, ['one', 'two', 'three'])
   perldo VIM::DoCommand("new")
   call assert_equal(wincount + 1, winnr('$'))
-  bwipe!
-  bwipe!
+  %bwipe!
 endfunc
 
 func Test_VIM_package()
@@ -219,13 +248,14 @@ endfunc
 
 func Test_stdio()
   redir =>l:out
-  perl <<EOF
-    VIM::Msg("&VIM::Msg");
+  perl << trim EOF
+    VIM::Msg("VIM::Msg");
+    VIM::Msg("VIM::Msg Error", "Error");
     print "STDOUT";
     print STDERR "STDERR";
-EOF
+  EOF
   redir END
-  call assert_equal(['&VIM::Msg', 'STDOUT', 'STDERR'], split(l:out, "\n"))
+  call assert_equal(['VIM::Msg', 'VIM::Msg Error', 'STDOUT', 'STDERR'], split(l:out, "\n"))
 endfunc
 
 " Run first to get a clean namespace
@@ -278,6 +308,16 @@ func Test_000_SvREFCNT()
   %bw!
 endfunc
 
+" This caused a memory error before issue #10386 was fixed
+func Test_stack_usage_fix()
+   let script =<< CODE
+     " This will grow Perl's stack in first invocation
+     eval [0, 0]->map({ -> perleval("push@_,0..4096;0") })
+     q!
+CODE
+   call RunVim([], script, '')
+endfunc
+
 func Test_set_cursor()
   " Check that setting the cursor position works.
   new
@@ -290,3 +330,31 @@ func Test_set_cursor()
   normal j
   call assert_equal([2, 6], [line('.'), col('.')])
 endfunc
+
+" Test for various heredoc syntax
+func Test_perl_heredoc()
+  perl << END
+VIM::DoCommand('let s = "A"')
+END
+  perl <<
+VIM::DoCommand('let s ..= "B"')
+.
+  perl << trim END
+    VIM::DoCommand('let s ..= "C"')
+  END
+  perl << trim
+    VIM::DoCommand('let s ..= "D"')
+  .
+  perl << trim eof
+    VIM::DoCommand('let s ..= "E"')
+  eof
+  call assert_equal('ABCDE', s)
+endfunc
+
+func Test_perl_in_sandbox()
+  sandbox perl print 'test'
+  let messages = split(execute('message'), "\n")
+  call assert_match("'print' trapped by operation mask", messages[-1])
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

@@ -23,8 +23,6 @@
 
 #if defined(FEAT_CRYPT) || defined(PROTO)
 
-#define ARRAY_LENGTH(A)      (sizeof(A)/sizeof(A[0]))
-
 #define BF_BLOCK    8
 #define BF_BLOCK_MASK 7
 #define BF_MAX_CFB_LEN  (8 * BF_BLOCK)
@@ -35,28 +33,27 @@ typedef union {
 } block8;
 
 #if defined(MSWIN)
-  /* MS-Windows is always little endian */
+  // MS-Windows is always little endian
 #else
 # ifdef HAVE_CONFIG_H
-   /* in configure.ac AC_C_BIGENDIAN() defines WORDS_BIGENDIAN when needed */
+   // in configure.ac AC_C_BIGENDIAN() defines WORDS_BIGENDIAN when needed
 # else
-   error!
-   Please change this code to define WORDS_BIGENDIAN for big-endian machines.
+#  error Please change this code to define WORDS_BIGENDIAN for big-endian machines.
 # endif
 #endif
 
-/* The state of encryption, referenced by cryptstate_T. */
+// The state of encryption, referenced by cryptstate_T.
 typedef struct {
-    UINT32_T	pax[18];	    /* P-array */
-    UINT32_T	sbx[4][256];	    /* S-boxes */
+    UINT32_T	pax[18];	    // P-array
+    UINT32_T	sbx[4][256];	    // S-boxes
     int		randbyte_offset;
     int		update_offset;
-    char_u	cfb_buffer[BF_MAX_CFB_LEN]; /* up to 64 bytes used */
-    int		cfb_len;	    /* size of cfb_buffer actually used */
+    char_u	cfb_buffer[BF_MAX_CFB_LEN]; // up to 64 bytes used
+    int		cfb_len;	    // size of cfb_buffer actually used
 } bf_state_T;
 
 
-/* Blowfish code */
+// Blowfish code
 static __thread UINT32_T pax_init[18] = {
     0x243f6a88u, 0x85a308d3u, 0x13198a2eu,
     0x03707344u, 0xa4093822u, 0x299f31d0u,
@@ -409,17 +406,17 @@ bf_key_init(
     char_u   *key;
     int      keylen;
 
-    /* Process the key 1001 times.
-     * See http://en.wikipedia.org/wiki/Key_strengthening. */
+    // Process the key 1001 times.
+    // See http://en.wikipedia.org/wiki/Key_strengthening.
     key = sha256_key(password, salt, salt_len);
     for (i = 0; i < 1000; i++)
 	key = sha256_key(key, salt, salt_len);
 
-    /* Convert the key from 64 hex chars to 32 binary chars. */
+    // Convert the key from 64 hex chars to 32 binary chars.
     keylen = (int)STRLEN(key) / 2;
     if (keylen == 0)
     {
-	iemsg(_("E831: bf_key_init() called with empty password"));
+	iemsg(_(e_bf_key_init_called_with_empty_password));
 	return;
     }
     for (i = 0; i < keylen; i++)
@@ -428,8 +425,8 @@ bf_key_init(
 	key[i] = u;
     }
 
-    /* Use "key" to initialize the P-array ("pax") and S-boxes ("sbx") of
-     * Blowfish. */
+    // Use "key" to initialize the P-array ("pax") and S-boxes ("sbx") of
+    // Blowfish.
     mch_memmove(bfs->sbx, sbx_init, 4 * 4 * 256);
 
     for (i = 0; i < 18; ++i)
@@ -484,7 +481,7 @@ typedef struct {
     char_u   salt[9];
     char_u   plaintxt[9];
     char_u   cryptxt[9];
-    char_u   badcryptxt[9]; /* cryptxt when big/little endian is wrong */
+    char_u   badcryptxt[9]; // cryptxt when big/little endian is wrong
     UINT32_T keysum;
 } struct_bf_test_data;
 
@@ -497,9 +494,9 @@ static __thread struct_bf_test_data bf_test_data[] = {
       "password",
       "salt",
       "plaintxt",
-      "\xad\x3d\xfa\x7f\xe8\xea\x40\xf6", /* cryptxt */
-      "\x72\x50\x3b\x38\x10\x60\x22\xa7", /* badcryptxt */
-      0x56701b5du /* keysum */
+      "\xad\x3d\xfa\x7f\xe8\xea\x40\xf6", // cryptxt
+      "\x72\x50\x3b\x38\x10\x60\x22\xa7", // badcryptxt
+      0x56701b5du // keysum
   },
 };
 
@@ -515,14 +512,14 @@ bf_self_test(void)
     UINT32_T ui = 0xffffffffUL;
     bf_state_T state;
 
-    vim_memset(&state, 0, sizeof(bf_state_T));
+    CLEAR_FIELD(state);
     state.cfb_len = BF_MAX_CFB_LEN;
 
-    /* We can't simply use sizeof(UINT32_T), it would generate a compiler
-     * warning. */
+    // We can't simply use sizeof(UINT32_T), it would generate a compiler
+    // warning.
     if (ui != 0xffffffffUL || ui + 1 != 0) {
 	err++;
-	emsg(_("E820: sizeof(uint32_t) != 4"));
+	emsg(_(e_sizeof_uint32_isnot_four));
     }
 
     if (!bf_check_tables(pax_init, sbx_init, 0x6ffa520a))
@@ -537,13 +534,13 @@ bf_self_test(void)
 	if (!bf_check_tables(state.pax, state.sbx, bf_test_data[i].keysum))
 	    err++;
 
-	/* Don't modify bf_test_data[i].plaintxt, self test is idempotent. */
+	// Don't modify bf_test_data[i].plaintxt, self test is idempotent.
 	memcpy(bk.uc, bf_test_data[i].plaintxt, 8);
 	bf_e_cblock(&state, bk.uc);
 	if (memcmp(bk.uc, bf_test_data[i].cryptxt, 8) != 0)
 	{
 	    if (err == 0 && memcmp(bk.uc, bf_test_data[i].badcryptxt, 8) == 0)
-		emsg(_("E817: Blowfish big/little endian use wrong"));
+		emsg(_(e_blowfish_big_little_endian_use_wrong));
 	    err++;
 	}
     }
@@ -599,7 +596,8 @@ crypt_blowfish_encode(
     cryptstate_T *state,
     char_u	*from,
     size_t	len,
-    char_u	*to)
+    char_u	*to,
+    int		last UNUSED)
 {
     bf_state_T *bfs = state->method_state;
     size_t	i;
@@ -622,7 +620,8 @@ crypt_blowfish_decode(
     cryptstate_T *state,
     char_u	*from,
     size_t	len,
-    char_u	*to)
+    char_u	*to,
+    int		last UNUSED)
 {
     bf_state_T *bfs = state->method_state;
     size_t	i;
@@ -651,8 +650,8 @@ crypt_blowfish_init(
 	return FAIL;
     state->method_state = bfs;
 
-    /* "blowfish" uses a 64 byte buffer, causing it to repeat 8 byte groups 8
-     * times.  "blowfish2" uses a 8 byte buffer to avoid repeating. */
+    // "blowfish" uses a 64 byte buffer, causing it to repeat 8 byte groups 8
+    // times.  "blowfish2" uses an 8 byte buffer to avoid repeating.
     bfs->cfb_len = state->method_nr == CRYPT_M_BF ? BF_MAX_CFB_LEN : BF_BLOCK;
 
     if (blowfish_self_test() == FAIL)
@@ -673,15 +672,14 @@ blowfish_self_test(void)
 {
     if (sha256_self_test() == FAIL)
     {
-	emsg(_("E818: sha256 test failed"));
+	emsg(_(e_sha256_test_failed));
 	return FAIL;
     }
     if (bf_self_test() == FAIL)
     {
-	emsg(_("E819: Blowfish test failed"));
+	emsg(_(e_blowfish_test_failed));
 	return FAIL;
     }
     return OK;
 }
-
-#endif /* FEAT_CRYPT */
+#endif // FEAT_CRYPT

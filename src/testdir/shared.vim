@@ -15,12 +15,20 @@ func PythonProg()
   if has('unix')
     " We also need the job feature or the pkill command to make sure the server
     " can be stopped.
-    if !(executable('python') && (has('job') || executable('pkill')))
+    if !(has('job') || executable('pkill'))
       return ''
     endif
-    let s:python = 'python'
+    if executable('python')
+      let s:python = 'python'
+    elseif executable('python3')
+      let s:python = 'python3'
+    else
+      return ''
+    end
   elseif has('win32')
     " Use Python Launcher for Windows (py.exe) if available.
+    " NOTE: if you get a "Python was not found" error, disable the Python
+    " shortcuts in "Windows menu / Settings / Manage App Execution Aliases".
     if executable('py.exe')
       let s:python = 'py.exe'
     elseif executable('python.exe')
@@ -36,6 +44,9 @@ endfunc
 
 " Run "cmd".  Returns the job if using a job.
 func RunCommand(cmd)
+  " Running an external command can occasionally be slow or fail.
+  let g:test_is_flaky = 1
+
   let job = 0
   if has('job')
     let job = job_start(a:cmd, {"stoponexit": "hup"})
@@ -156,7 +167,7 @@ endfunc
 func s:WaitForCommon(expr, assert, timeout)
   " using reltime() is more accurate, but not always available
   let slept = 0
-  if has('reltime')
+  if exists('*reltimefloat')
     let start = reltime()
   endif
 
@@ -181,7 +192,7 @@ func s:WaitForCommon(expr, assert, timeout)
     endif
 
     sleep 10m
-    if has('reltime')
+    if exists('*reltimefloat')
       let slept = float2nr(reltimefloat(reltime(start)) * 1000)
     else
       let slept += 10
@@ -197,7 +208,7 @@ endfunc
 " feeds key-input and resumes process. Return time waited in milliseconds.
 " Without +timers it uses simply :sleep.
 func Standby(msec)
-  if has('timers')
+  if has('timers') && exists('*reltimefloat')
     let start = reltime()
     let g:_standby_timer = timer_start(a:msec, function('s:feedkeys'))
     call getchar()
@@ -220,7 +231,7 @@ func s:feedkeys(timer)
   call feedkeys('x', 'nt')
 endfunc
 
-" Get $VIMPROG to run Vim executable.
+" Get $VIMPROG to run the Vim executable.
 " The Makefile writes it as the first line in the "vimcmd" file.
 func GetVimProg()
   if !filereadable('vimcmd')
@@ -237,7 +248,11 @@ let g:valgrind_cnt = 1
 func GetVimCommand(...)
   if !filereadable('vimcmd')
     echo 'Cannot read the "vimcmd" file, falling back to ../vim.'
-    let lines = ['../vim']
+    if !has("win32")
+      let lines = ['../vim']
+    else
+      let lines = ['..\vim.exe']
+    endif
   else
     let lines = readfile('vimcmd')
   endif
@@ -261,15 +276,22 @@ func GetVimCommand(...)
     let cmd = cmd . ' -u ' . name
   endif
   let cmd .= ' --not-a-term'
+  let cmd .= ' --gui-dialog-file guidialogfile'
   let cmd = substitute(cmd, 'VIMRUNTIME=\S\+', '', '')
 
   " If using valgrind, make sure every run uses a different log file.
   if cmd =~ 'valgrind.*--log-file='
-    let cmd = substitute(cmd, '--log-file=\(^\s*\)', '--log-file=\1.' . g:valgrind_cnt, '')
+    let cmd = substitute(cmd, '--log-file=\(\S*\)', '--log-file=\1.' . g:valgrind_cnt, '')
     let g:valgrind_cnt += 1
   endif
 
   return cmd
+endfunc
+
+" Return one when it looks like the tests are run with valgrind, which means
+" that everything is much slower.
+func RunningWithValgrind()
+  return GetVimCommand() =~ '\<valgrind\>'
 endfunc
 
 " Get the command to run Vim, with --clean instead of "-u NONE".
@@ -315,6 +337,9 @@ func RunVimPiped(before, after, arguments, pipecmd)
     let args .= ' -S Xafter.vim'
   endif
 
+  " Optionally run Vim under valgrind
+  " let cmd = 'valgrind --tool=memcheck --leak-check=yes --num-callers=25 --log-file=valgrind ' . cmd
+
   exe "silent !" . a:pipecmd . cmd . args . ' ' . a:arguments
 
   if len(a:before) > 0
@@ -334,3 +359,32 @@ func IsRoot()
   endif
   return v:false
 endfunc
+
+" Get all messages but drop the maintainer entry.
+func GetMessages()
+  redir => result
+  redraw | messages
+  redir END
+  let msg_list = split(result, "\n")
+  if msg_list->len() > 0 && msg_list[0] =~ 'Messages maintainer:'
+    return msg_list[1:]
+  endif
+  return msg_list
+endfunc
+
+" Run the list of commands in 'cmds' and look for 'errstr' in exception.
+" Note that assert_fails() cannot be used in some places and this function
+" can be used.
+func AssertException(cmds, errstr)
+  let save_exception = ''
+  try
+    for cmd in a:cmds
+      exe cmd
+    endfor
+  catch
+    let save_exception = v:exception
+  endtry
+  call assert_match(a:errstr, save_exception)
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

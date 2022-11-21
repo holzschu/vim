@@ -1,5 +1,7 @@
 " Test for v:hlsearch
 
+source check.vim
+
 func Test_hlsearch()
   new
   call setline(1, repeat(['aaa'], 10))
@@ -26,15 +28,22 @@ func Test_hlsearch()
   set nohls
   exe "normal! /\<CR>" | redraw
   call assert_notequal(r1, screenattr(1,1))
-  call assert_fails('let v:hlsearch=[]', 'E745')
+  call assert_fails('let v:hlsearch=[]', 'E745:')
   call garbagecollect(1)
   call getchar(1)
   enew!
 endfunc
 
 func Test_hlsearch_hangs()
-  if !has('reltime') || !has('float')
-    return
+  CheckFunction reltimefloat
+
+  " So, it turns out that Windows 7 implements TimerQueue timers differently
+  " and they can expire *before* the requested time has elapsed. So allow for
+  " the timeout occurring after 80 ms (5 * 16 (the typical clock tick)).
+  if has("win32")
+    let min_timeout = 0.08
+  else
+    let min_timeout = 0.1
   endif
 
   " This pattern takes a long time to match, it should timeout.
@@ -45,8 +54,7 @@ func Test_hlsearch_hangs()
   let @/ = '\%#=1a*.*X\@<=b*'
   redraw
   let elapsed = reltimefloat(reltime(start))
-  call assert_true(elapsed > 0.1)
-  call assert_true(elapsed < 1.0)
+  call assert_inrange(min_timeout, 1.0, elapsed)
   set nohlsearch redrawtime&
   bwipe!
 endfunc
@@ -63,3 +71,5 @@ func Test_hlsearch_eol_highlight()
   set nohlsearch
   bwipe!
 endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

@@ -52,13 +52,12 @@
 
 #include "gui_xmebwp.h"
 
-/* Provide some missing wrappers, which are missed from the LessTif
- * implementation.  Also missing in Motif 1.2 and earlier.
- *
- * We neither use XmeGetPixmapData or _XmGetPixmapData, since with LessTif the
- * pixmap will not appear in its caches properly. We cache the interesting
- * values in XmEnhancedButtonPart instead ourself.
- */
+// Provide some missing wrappers, which are missed from the LessTif
+// implementation.  Also missing in Motif 1.2 and earlier.
+//
+// We neither use XmeGetPixmapData or _XmGetPixmapData, since with LessTif the
+// pixmap will not appear in its caches properly. We cache the interesting
+// values in XmEnhancedButtonPart instead ourself.
 #if defined(LESSTIF_VERSION) || (XmVersion <= 1002)
 # ifndef Lab_IsMenupane
 #  define Lab_IsMenupane(w) (Lab_MenuType(w) == (int)XmMENU_POPUP || \
@@ -70,11 +69,25 @@
     _XmDrawHighlight(a, b, c, d, e, f, g, h, LineSolid)
 #endif
 
+// Older VMS systems do not have xos_r.h and cannot haldle XtProcessLocking
+#if defined(VMS)
+# if defined(HAVE_XOS_R_H)
+#  define XTPROCESS_LOCK XtProcessLock()
+#  define XTPROCESS_UNLOCK XtProcessUnlock()
+# else
+#  define XTPROCESS_LOCK
+#  define XTPROCESS_UNLOCK
+# endif
+#else
+# define XTPROCESS_LOCK XtProcessLock()
+# define XTPROCESS_UNLOCK XtProcessUnlock()
+#endif
+
 /*
  * Motif internals we have to cheat around with.
  */
 
-/* Hopefully this will never change... */
+// Hopefully this will never change...
 #ifndef XmFOCUS_IGNORE
 # define XmFOCUS_IGNORE       1<<1
 #endif
@@ -144,8 +157,8 @@ static XtResource resources[] =
     }
 };
 
-/* This is needed to work around a bug in Lesstif 2, leaving the extension
- * NULL somehow results in getting it set to an invalid pointer. */
+// This is needed to work around a bug in Lesstif 2, leaving the extension
+// NULL somehow results in getting it set to an invalid pointer.
 XmPrimitiveClassExtRec xmEnhancedButtonPrimClassExtRec =
 {
     /* next_extension      */ NULL,
@@ -160,7 +173,7 @@ XmPrimitiveClassExtRec xmEnhancedButtonPrimClassExtRec =
 XmEnhancedButtonClassRec xmEnhancedButtonClassRec =
 {
     {
-	/* core_class fields */
+	// core_class fields
 	/* superclass		 */ (WidgetClass) & xmPushButtonClassRec,
 	/* class_name		 */ "XmEnhancedButton",
 	/* widget_size		 */ sizeof(XmEnhancedButtonRec),
@@ -195,7 +208,7 @@ XmEnhancedButtonClassRec xmEnhancedButtonClassRec =
 	/* extension		 */ NULL
     },
 
-    /* primitive_class fields */
+    // primitive_class fields
     {
 	/* border highlight	 */ BorderHighlight,
 	/* border_unhighlight	 */ BorderUnhighlight,
@@ -206,7 +219,7 @@ XmEnhancedButtonClassRec xmEnhancedButtonClassRec =
 	/* extension		 */ (XtPointer)&xmEnhancedButtonPrimClassExtRec,
     },
 
-    /* label_class fields */
+    // label_class fields
     {
 	/* setOverrideCallback	 */ XmInheritSetOverrideCallback,
 	/* menuProcs		 */ XmInheritMenuProc,
@@ -214,12 +227,12 @@ XmEnhancedButtonClassRec xmEnhancedButtonClassRec =
 	/* extension		 */ NULL,
     },
 
-    /* pushbutton_class record */
+    // pushbutton_class record
     {
 	/* extension		 */ (XtPointer) NULL,
     },
 
-    /* enhancedbutton_class fields */
+    // enhancedbutton_class fields
     {
 	/* stipple_bitmap	 */ None
     }
@@ -262,17 +275,17 @@ alloc_color(Display	*display,
     return status != 0 ? 1 : 0;
 }
 
-/* XPM */
+// XPM
 static char * blank_xpm[] =
 {
-/* width height ncolors cpp [x_hot y_hot] */
+// width height ncolors cpp [x_hot y_hot]
 "12 12 4 1 0 0",
-/* colors */
+// colors
 " 	s iconColor1	m black	c #000000",
 ".	s none	m none	c none",
 "X	s topShadowColor	m none	c #DCDEE5",
 "o	s bottomShadowColor	m black	c #5D6069",
-/* pixels */
+// pixels
 "          ..",
 " XXXXXXXX ..",
 " X....... o.",
@@ -292,8 +305,8 @@ static char * blank_xpm[] =
     static void
 set_pixmap(XmEnhancedButtonWidget eb)
 {
-    /* Configure defines XPMATTRIBUTES_TYPE as XpmAttributes or as
-     * XpmAttributes_21, depending on what is in Xm/XpmP.h. */
+    // Configure defines XPMATTRIBUTES_TYPE as XpmAttributes or as
+    // XpmAttributes_21, depending on what is in Xm/XpmP.h.
     XPMATTRIBUTES_TYPE   attr;
     Pixmap	    sen_pix;
     Window	    root;
@@ -323,8 +336,7 @@ set_pixmap(XmEnhancedButtonWidget eb)
     int		    shift;
     GC		    gc;
 
-    /* Make sure there is a default value for the pixmap.
-     */
+    // Make sure there is a default value for the pixmap.
     if (!data)
 	return;
 
@@ -343,7 +355,7 @@ set_pixmap(XmEnhancedButtonWidget eb)
     eb->enhancedbutton.highlight_pixmap = None;
     eb->enhancedbutton.insensitive_pixmap = None;
 
-    /* We use dynamic colors, get them now. */
+    // We use dynamic colors, get them now.
     motif_get_toolbar_colors(
 	    &eb->core.background_pixel,
 	    &eb->primitive.foreground,
@@ -351,7 +363,7 @@ set_pixmap(XmEnhancedButtonWidget eb)
 	    &eb->primitive.top_shadow_color,
 	    &eb->primitive.highlight_color);
 
-    /* Setup color substitution table. */
+    // Setup color substitution table.
     color[0].pixel = eb->core.background_pixel;
     color[1].pixel = eb->core.background_pixel;
     color[2].pixel = eb->core.background_pixel;
@@ -361,9 +373,9 @@ set_pixmap(XmEnhancedButtonWidget eb)
     color[6].pixel = eb->primitive.highlight_color;
     color[7].pixel = eb->pushbutton.arm_color;
 
-    /* Create the "sensitive" pixmap. */
+    // Create the "sensitive" pixmap.
     attr.valuemask = XpmColorSymbols | XpmCloseness;
-    attr.closeness = 65535;	/* accuracy isn't crucial */
+    attr.closeness = 65535;	// accuracy isn't crucial
     attr.colorsymbols = color;
     attr.numsymbols = XtNumber(color);
 
@@ -372,7 +384,7 @@ set_pixmap(XmEnhancedButtonWidget eb)
     if (!fname || status != XpmSuccess)
 	status = XpmCreatePixmapFromData(dpy, root, data, &pix, &mask, &attr);
 
-    /* If something failed, we will fill in the default pixmap. */
+    // If something failed, we will fill in the default pixmap.
     if (status != XpmSuccess)
 	status = XpmCreatePixmapFromData(dpy, root, blank_xpm, &pix,
 								&mask, &attr);
@@ -381,7 +393,7 @@ set_pixmap(XmEnhancedButtonWidget eb)
 
     XGetGeometry(dpy, pix, &root, &x, &y, &width, &height, &border, &depth);
 
-    /* TODO: does the shift depend on label_location somehow? */
+    // TODO: does the shift depend on label_location somehow?
     shift = eb->primitive.shadow_thickness / 2;
 
     if (shift < 1)
@@ -395,15 +407,15 @@ set_pixmap(XmEnhancedButtonWidget eb)
     XSetClipOrigin(dpy, gc, shift, shift);
     XCopyArea(dpy, pix, sen_pix, gc, 0, 0, width, height, shift, shift);
 
-    /* Create the "highlight" pixmap. */
+    // Create the "highlight" pixmap.
     color[4].pixel = eb->primitive.bottom_shadow_color;
-#ifdef XpmAllocColor /* SGI doesn't have it */
+#ifdef XpmAllocColor // SGI doesn't have it
     attr.valuemask = XpmColorSymbols | XpmCloseness | XpmAllocColor;
     attr.alloc_color = alloc_color;
 #else
     attr.valuemask = XpmColorSymbols | XpmCloseness;
 #endif
-    attr.closeness = 65535;	/* accuracy isn't crucial */
+    attr.closeness = 65535;	// accuracy isn't crucial
     attr.colorsymbols = color;
     attr.numsymbols = XtNumber(color);
 
@@ -439,15 +451,15 @@ set_pixmap(XmEnhancedButtonWidget eb)
     XFreePixmap(dpy, pix);
     XFreePixmap(dpy, mask);
 
-    /* Create the "insensitive" pixmap. */
+    // Create the "insensitive" pixmap.
     attr.valuemask = XpmColorSymbols | XpmCloseness | XpmColorKey;
-    attr.closeness = 65535;	/* accuracy isn't crucial */
+    attr.closeness = 65535;	// accuracy isn't crucial
     attr.colorsymbols = color;
-    attr.numsymbols = sizeof(color) / sizeof(color[0]);
+    attr.numsymbols = ARRAY_LENGTH(color);
     attr.color_key = XPM_MONO;
     status = XpmCreatePixmapFromData(dpy, root, data, &pix, &mask, &attr);
 
-    /* Need to create new Pixmaps with the mask applied. */
+    // Need to create new Pixmaps with the mask applied.
 
     ins_pix = XCreatePixmap(dpy, root, width + shift, height + shift, depth);
 
@@ -566,13 +578,13 @@ draw_unhighlight(XmEnhancedButtonWidget eb)
 			    XtClass(eb->core.parent), XmQTspecifyUnhighlight))
 		    != NULL) && (UnhighlightT->getUnhighlightGC != NULL))
 	{
-	    /* if unhighlight trait in parent use specified GC... */
+	    // if unhighlight trait in parent use specified GC...
 	    manager_background_GC =
 		 UnhighlightT->getUnhighlightGC(eb->core.parent, (Widget) eb);
 	}
 	else
 	{
-	    /* ...otherwise, use parent's background GC */
+	    // ...otherwise, use parent's background GC
 	    manager_background_GC = ((XmManagerWidget)
 				    (eb->core.parent))->manager.background_GC;
 	}
@@ -696,7 +708,7 @@ draw_label(XmEnhancedButtonWidget eb, XEvent *event, Region region)
 		eb->label.pixmap = eb->pushbutton.unarm_pixmap;
 	}
 	else
-	    /* pushbutton is not armed */
+	    // pushbutton is not armed
 	    eb->label.pixmap = eb->pushbutton.unarm_pixmap;
     }
 
@@ -716,9 +728,9 @@ draw_label(XmEnhancedButtonWidget eb, XEvent *event, Region region)
     {
 	XtExposeProc expose;
 
-	XtProcessLock();
+	XTPROCESS_LOCK;
 	expose = xmLabelClassRec.core_class.expose;
-	XtProcessUnlock();
+	XTPROCESS_UNLOCK;
 	(*expose)((Widget) eb, event, region);
     }
 
@@ -758,7 +770,7 @@ Enter(Widget wid,
 	    if (eb->pushbutton.armed)
 		return;
 
-	    /* ...so KHelp event is delivered correctly. */
+	    // ...so KHelp event is delivered correctly.
 	    _XmSetFocusFlag(XtParent(XtParent(eb)), XmFOCUS_IGNORE, TRUE);
 	    XtSetKeyboardFocus(XtParent(XtParent(eb)), (Widget) eb);
 	    _XmSetFocusFlag(XtParent(XtParent(eb)), XmFOCUS_IGNORE, FALSE);
@@ -767,7 +779,7 @@ Enter(Widget wid,
 
 	    ((XmManagerWidget) XtParent(wid))->manager.active_child = wid;
 
-	    /* etched in menu button */
+	    // etched in menu button
 	    if (etched_in && !XmIsTearOffButton(eb))
 	    {
 		XFillRectangle(XtDisplay(eb), XtWindow(eb),
@@ -811,9 +823,9 @@ Enter(Widget wid,
 	_XmPrimitiveEnter((Widget) eb, event, NULL, NULL);
 	if (eb->pushbutton.armed == TRUE)
 	{
-	    XtProcessLock();
+	    XTPROCESS_LOCK;
 	    expose = XtClass(eb)->core_class.expose;
-	    XtProcessUnlock();
+	    XTPROCESS_UNLOCK;
 	    (*expose) (wid, event, (Region) NULL);
 	}
 
@@ -843,7 +855,7 @@ Leave(Widget wid,
 
 	if (_XmGetInDragMode((Widget)eb)
 		&& eb->pushbutton.armed
-		&& ( /* !ActiveTearOff || */
+		&& ( // !ActiveTearOff ||
 				       event->xcrossing.mode == NotifyNormal))
 	{
 	    eb->pushbutton.armed = FALSE;
@@ -889,9 +901,9 @@ Leave(Widget wid,
 	{
 	    XtExposeProc expose;
 	    eb->pushbutton.armed = FALSE;
-	    XtProcessLock();
+	    XTPROCESS_LOCK;
 	    expose = XtClass(eb)->core_class.expose;
-	    XtProcessUnlock();
+	    XTPROCESS_UNLOCK;
 	    (*expose) (wid, event, (Region)NULL);
 	    draw_unhighlight(eb);
 	    draw_pixmap(eb, event, NULL);
@@ -915,7 +927,7 @@ set_size(XmEnhancedButtonWidget newtb)
 
     _XmCalcLabelDimensions((Widget) newtb);
 
-    /* Find out how big the pixmap is */
+    // Find out how big the pixmap is
     if (newtb->enhancedbutton.pixmap_data
 	    && !IsNull(newtb->label.pixmap)
 	    && !IsNull(newtb->enhancedbutton.normal_pixmap))
@@ -958,8 +970,8 @@ set_size(XmEnhancedButtonWidget newtb)
     }
     else
     {
-	/* FIXME: We should calculate an drawing offset for the pixmap here to
-	 * adjust it.  */
+	// FIXME: We should calculate a drawing offset for the pixmap here to
+	// adjust it.
     }
 
 #if 0
@@ -972,12 +984,12 @@ set_size(XmEnhancedButtonWidget newtb)
 	    newtb->core.height);
 #endif
 
-    /* Invoke Label's Resize procedure. */
+    // Invoke Label's Resize procedure.
     {
 	XtWidgetProc resize;
-	XtProcessLock();
+	XTPROCESS_LOCK;
 	resize = xmLabelClassRec.core_class.resize;
-	XtProcessUnlock();
+	XTPROCESS_UNLOCK;
 
 	(* resize) ((Widget) newtb);
     }
@@ -990,11 +1002,11 @@ Initialize(Widget rq, Widget ebw, ArgList args UNUSED, Cardinal *n UNUSED)
     XmEnhancedButtonWidget  eb = (XmEnhancedButtonWidget)ebw;
     XtWidgetProc	    resize;
 
-    XtProcessLock();
+    XTPROCESS_LOCK;
     resize = xmLabelClassRec.core_class.resize;
-    XtProcessUnlock();
+    XTPROCESS_UNLOCK;
 
-    /* Create a bitmap for stippling (Drawable resources are cheap).  */
+    // Create a bitmap for stippling (Drawable resources are cheap).
     if (STIPPLE_BITMAP == None)
     {
 	Display *dpy = XtDisplay((Widget) request);
@@ -1005,15 +1017,14 @@ Initialize(Widget rq, Widget ebw, ArgList args UNUSED, Cardinal *n UNUSED)
     }
     eb->enhancedbutton.doing_setvalues = False;
 
-    /* First see what type of extended label this is.
-     */
+    // First see what type of extended label this is.
     if (eb->enhancedbutton.pixmap_data)
     {
 	XmString str;
 	set_pixmap(eb);
 
-	/* FIXME: this is not the perfect way to deal with menus, which do not
-	 * have any string set right now.  */
+	// FIXME: this is not the perfect way to deal with menus, which do not
+	// have any string set right now.
 	str = XmStringCreateLocalized("");
 	XtVaSetValues((Widget) eb, XmNlabelString, str, NULL);
 	XmStringFree(str);
@@ -1106,7 +1117,7 @@ SetValues(Widget current,
 	    /*
 	     * Artificially let the highlight appear if the mouse is over us.
 	     */
-	    /* Best way to get the root window of object: */
+	    // Best way to get the root window of object:
 	    XGetGeometry(dpy, XtWindow(cur), &root, &r_x, &r_y, &r_width,
 			 &r_height, &r_border, &r_depth);
 	    XQueryPointer(XtDisplay(cur), XtWindow(cur), &root_q, &child,
@@ -1133,7 +1144,7 @@ SetValues(Widget current,
     if (NOT_EQUAL(primitive.shadow_thickness))
     {
 	redraw = True;
-	/* Don't change the pixmaps */
+	// Don't change the pixmaps
 	change = False;
     }
 
@@ -1230,10 +1241,9 @@ Redisplay(Widget w, XEvent *event, Region region)
     {
 	GC  gc;
 
-	/* Don't shade if the button contains a label with a pixmap, since
-	 * there is no variant of the label available with the needed
-	 * background.
-	 */
+	// Don't shade if the button contains a label with a pixmap, since
+	// there is no variant of the label available with the needed
+	// background.
 	if (eb->pushbutton.armed && eb->pushbutton.fill_on_arm)
 	{
 		if (eb->label.label_type == (int)XmPIXMAP)
@@ -1248,7 +1258,7 @@ Redisplay(Widget w, XEvent *event, Region region)
 	}
 	else
 	    gc = eb->pushbutton.background_gc;
-	/* really need to fill with background if not armed ? */
+	// really need to fill with background if not armed ?
 	if (gc)
 	    XFillRectangle(XtDisplay(eb), XtWindow(eb), gc,
 		    box.x, box.y, box.width, box.height);
@@ -1318,7 +1328,7 @@ Redisplay(Widget w, XEvent *event, Region region)
 	    switch (default_button_emphasis)
 	    {
 		case XmINTERNAL_HIGHLIGHT:
-		    /* The call above erases the border highlighting. */
+		    // The call above erases the border highlighting.
 		    if (eb->primitive.highlight_drawn)
 			(*(((XmPushButtonWidgetClass) XtClass (eb))
 			   ->primitive_class.border_highlight)) ((Widget) eb) ;
@@ -1368,13 +1378,13 @@ Redisplay(Widget w, XEvent *event, Region region)
 		parent = XtParent(eb);
 		if (XmIsManager(parent))
 		{
-		    /* Use the parent's GC so monochrome works. */
+		    // Use the parent's GC so monochrome works.
 		    bottom_gc = XmParentTopShadowGC(eb);
 		    top_gc = XmParentBottomShadowGC(eb);
 		}
 		else
 		{
-		    /* Use your own pixel for drawing. */
+		    // Use your own pixel for drawing.
 		    bottom_gc = eb->primitive.top_shadow_GC;
 		    top_gc = eb->primitive.bottom_shadow_GC;
 		}
@@ -1447,4 +1457,4 @@ BorderUnhighlight(Widget w)
     draw_pixmap(eb, NULL, NULL);
 }
 
-#endif /* FEAT_TOOLBAR */
+#endif // FEAT_TOOLBAR

@@ -67,18 +67,27 @@ typedef struct terminal_S	term_T;
 typedef struct VimMenu vimmenu_T;
 #endif
 
+// maximum value for sc_version
+#define SCRIPT_VERSION_MAX 4
+// value for sc_version in a Vim9 script file
+#define SCRIPT_VERSION_VIM9 999999
+
 /*
- * SCript ConteXt (SCTX): identifies a script script line.
+ * SCript ConteXt (SCTX): identifies a script line.
  * When sourcing a script "sc_lnum" is zero, "sourcing_lnum" is the current
  * line number. When executing a user function "sc_lnum" is the line where the
  * function was defined, "sourcing_lnum" is the line number inside the
  * function.  When stored with a function, mapping, option, etc. "sc_lnum" is
  * the line number in the script "sc_sid".
+ *
+ * sc_version is also here, for convenience.
  */
 typedef struct {
+#ifdef FEAT_EVAL
     scid_T	sc_sid;		// script ID
     int		sc_seq;		// sourcing sequence number
     linenr_T	sc_lnum;	// line number
+#endif
     int		sc_version;	// :scriptversion
 } sctx_T;
 
@@ -114,14 +123,19 @@ typedef struct {
 #endif
 #define COLOR_INVALID(x) ((x) == INVALCOLOR || (x) == CTERMCOLOR)
 
+#ifdef FEAT_TERMINAL
+# include "libvterm/include/vterm.h"
+typedef struct {
+    VTermColor	fg;
+    VTermColor	bg;
+} termcellcolor_T;
+#endif
+
 /*
  * marks: positions in a file
  * (a normal mark is a lnum/col pair, the same as a file position)
  */
 
-// (Note: for EBCDIC there are more than 26, because there are gaps in the
-// alphabet coding.  To minimize changes to the code, I decided to just
-// increase the number of possible marks.
 #define NMARKS		('z' - 'a' + 1)	// max. # of named marks
 #define EXTRA_MARKS	10		// marks 0-9
 #define JUMPLISTSIZE	100		// max. # of marks in jump list
@@ -216,10 +230,16 @@ typedef struct
 #endif
     int		wo_list;
 #define w_p_list w_onebuf_opt.wo_list	// 'list'
+    char_u	*wo_lcs;
+#define w_p_lcs w_onebuf_opt.wo_lcs	// 'listchars'
     int		wo_nu;
 #define w_p_nu w_onebuf_opt.wo_nu	// 'number'
     int		wo_rnu;
 #define w_p_rnu w_onebuf_opt.wo_rnu	// 'relativenumber'
+    char_u	*wo_ve;
+#define w_p_ve w_onebuf_opt.wo_ve	// 'virtualedit'
+    unsigned	wo_ve_flags;
+#define	w_ve_flags w_onebuf_opt.wo_ve_flags	// flags for 'virtualedit'
 #ifdef FEAT_LINEBREAK
     long	wo_nuw;
 # define w_p_nuw w_onebuf_opt.wo_nuw	// 'numberwidth'
@@ -253,6 +273,10 @@ typedef struct
 # define w_p_culopt w_onebuf_opt.wo_culopt	// 'cursorlineopt'
     char_u	*wo_cc;
 # define w_p_cc w_onebuf_opt.wo_cc	// 'colorcolumn'
+#endif
+#ifdef FEAT_LINEBREAK
+    char_u	*wo_sbr;
+#define w_p_sbr w_onebuf_opt.wo_sbr	// 'showbreak'
 #endif
 #ifdef FEAT_STL_OPT
     char_u	*wo_stl;
@@ -313,12 +337,13 @@ struct wininfo_S
     wininfo_T	*wi_prev;	// previous entry or NULL for first entry
     win_T	*wi_win;	// pointer to window that did set wi_fpos
     pos_T	wi_fpos;	// last cursor position in the file
-    int		wi_optset;	// TRUE when wi_opt has useful values
     winopt_T	wi_opt;		// local window options
+    int		wi_optset;	// TRUE when wi_opt has useful values
 #ifdef FEAT_FOLDING
     int		wi_fold_manual;	// copy of w_fold_manual
     garray_T	wi_folds;	// clone of w_folds
 #endif
+    int		wi_changelistidx; // copy of w_changelistidx
 };
 
 /*
@@ -554,8 +579,8 @@ typedef struct
  */
 typedef struct expand
 {
-    int		xp_context;		// type of expansion
     char_u	*xp_pattern;		// start of item to expand
+    int		xp_context;		// type of expansion
     int		xp_pattern_len;		// bytes in xp_pattern before cursor
 #if defined(FEAT_EVAL)
     char_u	*xp_arg;		// completion function
@@ -568,9 +593,9 @@ typedef struct expand
 #endif
     int		xp_numfiles;		// number of files found by
 					// file name completion
+    int		xp_col;			// cursor position in line
     char_u	**xp_files;		// list of files
     char_u	*xp_line;		// text being completed
-    int		xp_col;			// cursor position in line
 } expand_T;
 
 /*
@@ -614,24 +639,43 @@ typedef struct
  */
 typedef struct
 {
-    int		hide;			// TRUE when ":hide" was used
-# ifdef FEAT_BROWSE_CMD
-    int		browse;			// TRUE to invoke file dialog
-# endif
-    int		split;			// flags for win_split()
-    int		tab;			// > 0 when ":tab" was used
-# if defined(FEAT_GUI_DIALOG) || defined(FEAT_CON_DIALOG)
-    int		confirm;		// TRUE to invoke yes/no dialog
-# endif
-    int		keepalt;		// TRUE when ":keepalt" was used
-    int		keepmarks;		// TRUE when ":keepmarks" was used
-    int		keepjumps;		// TRUE when ":keepjumps" was used
-    int		lockmarks;		// TRUE when ":lockmarks" was used
-    int		keeppatterns;		// TRUE when ":keeppatterns" was used
-    int		noswapfile;		// TRUE when ":noswapfile" was used
-    char_u	*save_ei;		// saved value of 'eventignore'
-    regmatch_T	filter_regmatch;	// set by :filter /pat/
-    int		filter_force;		// set for :filter!
+    int		cmod_flags;		// CMOD_ flags
+#define CMOD_SANDBOX	    0x0001	// ":sandbox"
+#define CMOD_SILENT	    0x0002	// ":silent"
+#define CMOD_ERRSILENT	    0x0004	// ":silent!"
+#define CMOD_UNSILENT	    0x0008	// ":unsilent"
+#define CMOD_NOAUTOCMD	    0x0010	// ":noautocmd"
+#define CMOD_HIDE	    0x0020	// ":hide"
+#define CMOD_BROWSE	    0x0040	// ":browse" - invoke file dialog
+#define CMOD_CONFIRM	    0x0080	// ":confirm" - invoke yes/no dialog
+#define CMOD_KEEPALT	    0x0100	// ":keepalt"
+#define CMOD_KEEPMARKS	    0x0200	// ":keepmarks"
+#define CMOD_KEEPJUMPS	    0x0400	// ":keepjumps"
+#define CMOD_LOCKMARKS	    0x0800	// ":lockmarks"
+#define CMOD_KEEPPATTERNS   0x1000	// ":keeppatterns"
+#define CMOD_NOSWAPFILE	    0x2000	// ":noswapfile"
+#define CMOD_VIM9CMD	    0x4000	// ":vim9cmd"
+#define CMOD_LEGACY	    0x8000	// ":legacy"
+
+    int		cmod_split;		// flags for win_split()
+    int		cmod_tab;		// > 0 when ":tab" was used
+    regmatch_T	cmod_filter_regmatch;	// set by :filter /pat/
+    int		cmod_filter_force;	// set for :filter!
+
+    int		cmod_verbose;		// 0 if not set, > 0 to set 'verbose'
+					// to cmod_verbose - 1
+
+    // values for undo_cmdmod()
+    char_u	*cmod_save_ei;		// saved value of 'eventignore'
+#ifdef HAVE_SANDBOX
+    int		cmod_did_sandbox;	// set when "sandbox" was incremented
+#endif
+    long	cmod_verbose_save;	// if 'verbose' was set: value of
+					// p_verbose plus one
+    int		cmod_save_msg_silent;	// if non-zero: saved value of
+					// msg_silent + 1
+    int		cmod_save_msg_scroll;	// for restoring msg_scroll
+    int		cmod_did_esilent;	// incremented when emsg_silent is
 } cmdmod_T;
 
 #define MF_SEED_LEN	8
@@ -708,19 +752,19 @@ typedef struct memline
 
     memfile_T	*ml_mfp;	// pointer to associated memfile
 
+    infoptr_T	*ml_stack;	// stack of pointer blocks (array of IPTRs)
+    int		ml_stack_top;	// current top of ml_stack
+    int		ml_stack_size;	// total number of entries in ml_stack
+
 #define ML_EMPTY	1	// empty buffer
 #define ML_LINE_DIRTY	2	// cached line was changed and allocated
 #define ML_LOCKED_DIRTY	4	// ml_locked was changed
 #define ML_LOCKED_POS	8	// ml_locked needs positive block number
     int		ml_flags;
 
-    infoptr_T	*ml_stack;	// stack of pointer blocks (array of IPTRs)
-    int		ml_stack_top;	// current top of ml_stack
-    int		ml_stack_size;	// total number of entries in ml_stack
-
+    colnr_T	ml_line_len;	// length of the cached line, including NUL
     linenr_T	ml_line_lnum;	// line number of cached line, 0 if not valid
     char_u	*ml_line_ptr;	// pointer to cached line
-    colnr_T	ml_line_len;	// length of the cached line, including NUL
 
     bhdr_T	*ml_locked;	// block used by last ml_get
     linenr_T	ml_locked_low;	// first line in ml_locked
@@ -732,6 +776,17 @@ typedef struct memline
     int		ml_usedchunks;
 #endif
 } memline_T;
+
+// Values for the flags argument of ml_delete_flags().
+#define ML_DEL_MESSAGE	    1	// may give a "No lines in buffer" message
+#define ML_DEL_UNDO	    2	// called from undo, do not update textprops
+#define ML_DEL_NOPROP	    4	// splitting data block, do not update textprops
+
+// Values for the flags argument of ml_append_int().
+#define ML_APPEND_NEW	    1	// starting to edit a new file
+#define ML_APPEND_MARK	    2	// mark the new line
+#define ML_APPEND_UNDO	    4	// called from undo
+#define ML_APPEND_NOPROP    8	// do not continue textprop from previous line
 
 
 /*
@@ -780,10 +835,10 @@ typedef struct sign_entry sign_entry_T;
 struct sign_entry
 {
     int		 se_id;		// unique identifier for each placed sign
-    linenr_T	 se_lnum;	// line number which has this sign
     int		 se_typenr;	// typenr of sign
-    signgroup_T	 *se_group;	// sign group
     int		 se_priority;	// priority for highlighting
+    linenr_T	 se_lnum;	// line number which has this sign
+    signgroup_T	 *se_group;	// sign group
     sign_entry_T *se_next;	// next entry in a list of signs
     sign_entry_T *se_prev;	// previous entry -- for easy reordering
 };
@@ -797,6 +852,9 @@ typedef struct sign_attrs_S {
     char_u	*sat_text;
     int		sat_texthl;
     int		sat_linehl;
+    int		sat_culhl;
+    int		sat_numhl;
+    int		sat_priority;
 } sign_attrs_T;
 
 #if defined(FEAT_SIGNS) || defined(PROTO)
@@ -823,7 +881,7 @@ typedef struct arglist
 /*
  * For each argument remember the file name as it was given, and the buffer
  * number that contains the expanded file name (required for when ":cd" is
- * used.
+ * used).
  */
 typedef struct argentry
 {
@@ -859,8 +917,7 @@ struct eslist_elem
  */
 #define CSTACK_LEN	50
 
-struct condstack
-{
+typedef struct {
     short	cs_flags[CSTACK_LEN];	// CSF_ flags
     char	cs_pending[CSTACK_LEN];	// CSTP_: what's pending in ":finally"
     union {
@@ -869,12 +926,15 @@ struct condstack
     }		cs_pend;
     void	*cs_forinfo[CSTACK_LEN]; // info used by ":for"
     int		cs_line[CSTACK_LEN];	// line nr of ":while"/":for" line
+    int		cs_block_id[CSTACK_LEN];    // block ID stack
+    int		cs_script_var_len[CSTACK_LEN];	// value of sn_var_vals.ga_len
+						// when entering the block
     int		cs_idx;			// current entry, or -1 if none
     int		cs_looplevel;		// nr of nested ":while"s and ":for"s
     int		cs_trylevel;		// nr of nested ":try"s
     eslist_T	*cs_emsg_silent_list;	// saved values of "emsg_silent"
     char	cs_lflags;		// loop flags: CSL_ flags
-};
+} cstack_T;
 # define cs_rettv	cs_pend.csp_rv
 # define cs_exception	cs_pend.csp_ex
 
@@ -885,14 +945,19 @@ struct condstack
 # define CSF_ELSE	0x0004	// ":else" has been passed
 # define CSF_WHILE	0x0008	// is a ":while"
 # define CSF_FOR	0x0010	// is a ":for"
+# define CSF_BLOCK	0x0020	// is a "{" block
 
 # define CSF_TRY	0x0100	// is a ":try"
 # define CSF_FINALLY	0x0200	// ":finally" has been passed
-# define CSF_THROWN	0x0400	// exception thrown to this try conditional
-# define CSF_CAUGHT	0x0800  // exception caught by this try conditional
-# define CSF_SILENT	0x1000	// "emsg_silent" reset by ":try"
+# define CSF_CATCH	0x0400	// ":catch" has been seen
+# define CSF_THROWN	0x0800	// exception thrown to this try conditional
+# define CSF_CAUGHT	0x1000  // exception caught by this try conditional
+# define CSF_FINISHED	0x2000  // CSF_CAUGHT was handled by finish_exception()
+# define CSF_SILENT	0x4000	// "emsg_silent" reset by ":try"
 // Note that CSF_ELSE is only used when CSF_TRY and CSF_WHILE are unset
 // (an ":if"), and CSF_SILENT is only used when CSF_TRY is set.
+
+# define CSF_FUNC_DEF	0x8000	// a function was defined in this block
 
 /*
  * What's pending for being reactivated at the ":endtry" of this try
@@ -908,7 +973,7 @@ struct condstack
 # define CSTP_FINISH	32	// ":finish" is pending
 
 /*
- * Flags for the cs_lflags item in struct condstack.
+ * Flags for the cs_lflags item in cstack_T.
  */
 # define CSL_HAD_LOOP	 1	// just found ":while" or ":for"
 # define CSL_HAD_ENDLOOP 2	// just found ":endwhile" or ":endfor"
@@ -919,13 +984,17 @@ struct condstack
  * A list of error messages that can be converted to an exception.  "throw_msg"
  * is only set in the first element of the list.  Usually, it points to the
  * original message stored in that element, but sometimes it points to a later
- * message in the list.  See cause_errthrow() below.
+ * message in the list.  See cause_errthrow().
  */
+typedef struct msglist msglist_T;
 struct msglist
 {
-    char		*msg;		// original message
-    char		*throw_msg;	// msg to throw: usually original one
-    struct msglist	*next;		// next of several messages in a row
+    msglist_T	*next;		// next of several messages in a row
+    char	*msg;		// original message, allocated
+    char	*throw_msg;	// msg to throw: usually original one
+    char_u	*sfile;		// value from estack_sfile(), allocated
+    long	slnum;		// line number for "sfile"
+    int		msg_compiling;	// saved value of estack_compiling
 };
 
 /*
@@ -1048,9 +1117,11 @@ typedef struct attr_entry
 	    // These colors need to be > 8 bits to hold 256.
 	    short_u	    fg_color;	// foreground color number
 	    short_u	    bg_color;	// background color number
+	    short_u	    ul_color;	// underline color number
 # ifdef FEAT_TERMGUICOLORS
 	    guicolor_T	    fg_rgb;	// foreground color RGB
 	    guicolor_T	    bg_rgb;	// background color RGB
+	    guicolor_T	    ul_rgb;	// underline color RGB
 # endif
 	} cterm;
 # ifdef FEAT_GUI
@@ -1101,7 +1172,7 @@ typedef struct
     int		tb_change_cnt;	// nr of time tb_buf was changed; never zero
 } typebuf_T;
 
-/* Struct to hold the saved typeahead for save_typeahead(). */
+// Struct to hold the saved typeahead for save_typeahead().
 typedef struct
 {
     typebuf_T		save_typebuf;
@@ -1182,21 +1253,23 @@ struct mapblock
 #endif
 };
 
+
 /*
  * Used for highlighting in the status line.
  */
-struct stl_hlrec
+typedef struct
 {
     char_u	*start;
     int		userhl;		// 0: no HL, 1-9: User HL, < 0 for syn ID
-};
+} stl_hlrec_T;
 
 
 /*
  * Syntax items - usually buffer-specific.
  */
 
-/* Item for a hashtable.  "hi_key" can be one of three values:
+/*
+ * Item for a hashtable.  "hi_key" can be one of three values:
  * NULL:	   Never been used
  * HI_KEY_REMOVED: Entry was removed
  * Otherwise:	   Used item, pointer to the actual key; this usually is
@@ -1225,6 +1298,7 @@ typedef struct hashtable_S
 				// array is "ht_mask" + 1)
     long_u	ht_used;	// number of items used
     long_u	ht_filled;	// number of items used + removed
+    int		ht_changed;	// incremented when adding or removing an item
     int		ht_locked;	// counter for hash_lock()
     int		ht_error;	// when set growing failed, can't add more
 				// items before growing works
@@ -1236,43 +1310,54 @@ typedef struct hashtable_S
 typedef long_u hash_T;		// Type for hi_hash
 
 
-#ifdef FEAT_NUM64
 // Use 64-bit Number.
-# ifdef MSWIN
-#  ifdef PROTO
-typedef long		    varnumber_T;
-typedef unsigned long	    uvarnumber_T;
-#   define VARNUM_MIN	    LONG_MIN
-#   define VARNUM_MAX	    LONG_MAX
-#   define UVARNUM_MAX	    ULONG_MAX
-#  else
-typedef __int64		    varnumber_T;
-typedef unsigned __int64    uvarnumber_T;
-#   define VARNUM_MIN	    _I64_MIN
-#   define VARNUM_MAX	    _I64_MAX
-#   define UVARNUM_MAX	    _UI64_MAX
-#  endif
-# elif defined(HAVE_STDINT_H)
-typedef int64_t		    varnumber_T;
-typedef uint64_t	    uvarnumber_T;
-#  define VARNUM_MIN	    INT64_MIN
-#  define VARNUM_MAX	    INT64_MAX
-#  define UVARNUM_MAX	    UINT64_MAX
+#ifdef MSWIN
+# ifdef PROTO
+   // workaround for cproto that doesn't recognize __int64
+   typedef long			varnumber_T;
+   typedef unsigned long	uvarnumber_T;
+#  define VARNUM_MIN		LONG_MIN
+#  define VARNUM_MAX		LONG_MAX
+#  define UVARNUM_MAX		ULONG_MAX
 # else
-typedef long		    varnumber_T;
-typedef unsigned long	    uvarnumber_T;
-#  define VARNUM_MIN	    LONG_MIN
-#  define VARNUM_MAX	    LONG_MAX
-#  define UVARNUM_MAX	    ULONG_MAX
+   typedef __int64		varnumber_T;
+   typedef unsigned __int64	uvarnumber_T;
+#  define VARNUM_MIN		_I64_MIN
+#  define VARNUM_MAX		_I64_MAX
+#  define UVARNUM_MAX		_UI64_MAX
+# endif
+#elif defined(HAVE_NO_LONG_LONG)
+# if defined(HAVE_STDINT_H)
+   typedef int64_t		varnumber_T;
+   typedef uint64_t		uvarnumber_T;
+#  define VARNUM_MIN		INT64_MIN
+#  define VARNUM_MAX		INT64_MAX
+#  define UVARNUM_MAX		UINT64_MAX
+# else
+   // this may cause trouble for code that depends on 64 bit ints
+   typedef long			varnumber_T;
+   typedef unsigned long	uvarnumber_T;
+#  define VARNUM_MIN		LONG_MIN
+#  define VARNUM_MAX		LONG_MAX
+#  define UVARNUM_MAX		ULONG_MAX
 # endif
 #else
-// Use 32-bit Number.
-typedef int		    varnumber_T;
-typedef unsigned int	    uvarnumber_T;
-# define VARNUM_MIN	    INT_MIN
-# define VARNUM_MAX	    INT_MAX
-# define UVARNUM_MAX	    UINT_MAX
+  typedef long long		varnumber_T;
+  typedef unsigned long long	uvarnumber_T;
+# ifdef LLONG_MIN
+#  define VARNUM_MIN		LLONG_MIN
+#  define VARNUM_MAX		LLONG_MAX
+#  define UVARNUM_MAX		ULLONG_MAX
+# else
+#  define VARNUM_MIN		LONG_LONG_MIN
+#  define VARNUM_MAX		LONG_LONG_MAX
+#  define UVARNUM_MAX		ULONG_LONG_MAX
+# endif
 #endif
+
+// On rare systems "char" is unsigned, sometimes we really want a signed 8-bit
+// value.
+typedef signed char int8_T;
 
 typedef double	float_T;
 
@@ -1292,28 +1377,59 @@ typedef struct {
     int		cb_free_name;	    // cb_name was allocated
 } callback_T;
 
+typedef struct isn_S isn_T;	    // instruction
+typedef struct dfunc_S dfunc_T;	    // :def function
+
 typedef struct jobvar_S job_T;
 typedef struct readq_S readq_T;
 typedef struct writeq_S writeq_T;
 typedef struct jsonq_S jsonq_T;
 typedef struct cbq_S cbq_T;
 typedef struct channel_S channel_T;
+typedef struct cctx_S cctx_T;
+typedef struct ectx_S ectx_T;
+typedef struct instr_S instr_T;
 
 typedef enum
 {
-    VAR_UNKNOWN = 0,
-    VAR_NUMBER,	 // "v_number" is used
-    VAR_STRING,	 // "v_string" is used
-    VAR_FUNC,	 // "v_string" is function name
-    VAR_PARTIAL, // "v_partial" is used
-    VAR_LIST,	 // "v_list" is used
-    VAR_DICT,	 // "v_dict" is used
-    VAR_FLOAT,	 // "v_float" is used
-    VAR_SPECIAL, // "v_number" is used
-    VAR_JOB,	 // "v_job" is used
-    VAR_CHANNEL, // "v_channel" is used
-    VAR_BLOB,	 // "v_blob" is used
+    VAR_UNKNOWN = 0,	// not set, any type or "void" allowed
+    VAR_ANY,		// used for "any" type
+    VAR_VOID,		// no value (function not returning anything)
+    VAR_BOOL,		// "v_number" is used: VVAL_TRUE or VVAL_FALSE
+    VAR_SPECIAL,	// "v_number" is used: VVAL_NULL or VVAL_NONE
+    VAR_NUMBER,		// "v_number" is used
+    VAR_FLOAT,		// "v_float" is used
+    VAR_STRING,		// "v_string" is used
+    VAR_BLOB,		// "v_blob" is used
+    VAR_FUNC,		// "v_string" is function name
+    VAR_PARTIAL,	// "v_partial" is used
+    VAR_LIST,		// "v_list" is used
+    VAR_DICT,		// "v_dict" is used
+    VAR_JOB,		// "v_job" is used
+    VAR_CHANNEL,	// "v_channel" is used
+    VAR_INSTR,		// "v_instr" is used
 } vartype_T;
+
+// A type specification.
+typedef struct type_S type_T;
+struct type_S {
+    vartype_T	    tt_type;
+    int8_T	    tt_argcount;    // for func, incl. vararg, -1 for unknown
+    int8_T	    tt_min_argcount; // number of non-optional arguments
+    char_u	    tt_flags;	    // TTFLAG_ values
+    type_T	    *tt_member;	    // for list, dict, func return type
+    type_T	    **tt_args;	    // func argument types, allocated
+};
+
+typedef struct {
+    type_T	*type_curr;	    // current type, value type
+    type_T	*type_decl;	    // declared type or equal to type_current
+} type2_T;
+
+#define TTFLAG_VARARGS	1	    // func args ends with "..."
+#define TTFLAG_OPTARG	2	    // func arg type with "?"
+#define TTFLAG_BOOL_OK	4	    // can be converted to bool
+#define TTFLAG_STATIC	8	    // one of the static types, e.g. t_any
 
 /*
  * Structure to hold an internal variable without a name.
@@ -1337,6 +1453,7 @@ typedef struct
 	channel_T	*v_channel;	// channel value (can be NULL!)
 #endif
 	blob_T		*v_blob;	// blob value (can be NULL!)
+	instr_T		*v_instr;	// instructions to execute
     }		vval;
 } typval_T;
 
@@ -1346,8 +1463,9 @@ typedef struct
 			// allowed to mask existing functions
 
 // Values for "v_lock".
-#define VAR_LOCKED  1	// locked with lock(), can use unlock()
-#define VAR_FIXED   2	// locked forever
+#define VAR_LOCKED	    1	// locked with lock(), can use unlock()
+#define VAR_FIXED	    2	// locked forever
+#define VAR_ITEMS_LOCKED    4	// items of non-materialized list locked
 
 /*
  * Structure to hold an item of a list: an internal variable without a name.
@@ -1373,19 +1491,36 @@ struct listwatch_S
 /*
  * Structure to hold info about a list.
  * Order of members is optimized to reduce padding.
+ * When created by range() it will at first have special value:
+ *  lv_first == &range_list_item;
+ * and use lv_start, lv_end, lv_stride.
  */
 struct listvar_S
 {
-    listitem_T	*lv_first;	// first item, NULL if none
-    listitem_T	*lv_last;	// last item, NULL if none
+    listitem_T	*lv_first;	// first item, NULL if none, &range_list_item
+				// for a non-materialized list
     listwatch_T	*lv_watch;	// first watcher, NULL if none
-    listitem_T	*lv_idx_item;	// when not NULL item at index "lv_idx"
+    union {
+	struct {	// used for non-materialized range list:
+			// "lv_first" is &range_list_item
+	    varnumber_T lv_start;
+	    varnumber_T lv_end;
+	    int		lv_stride;
+	} nonmat;
+	struct {	// used for materialized list
+	    listitem_T	*lv_last;	// last item, NULL if none
+	    listitem_T	*lv_idx_item;	// when not NULL item at index "lv_idx"
+	    int		lv_idx;		// cached index of an item
+	} mat;
+    } lv_u;
+    type_T	*lv_type;	// current type, allocated by alloc_type()
     list_T	*lv_copylist;	// copied list used by deepcopy()
     list_T	*lv_used_next;	// next list in used lists list
     list_T	*lv_used_prev;	// previous list in used lists list
     int		lv_refcount;	// reference count
     int		lv_len;		// number of items
-    int		lv_idx;		// cached index of an item
+    int		lv_with_items;	// number of items following this struct that
+				// should not be freed
     int		lv_copyID;	// ID used by deepcopy()
     char	lv_lock;	// zero, VAR_LOCKED, VAR_FIXED
 };
@@ -1406,7 +1541,7 @@ typedef struct {
 struct dictitem_S
 {
     typval_T	di_tv;		// type and value of the variable
-    char_u	di_flags;	// flags (only used for variable)
+    char_u	di_flags;	// DI_FLAGS_ flags (only used for variable)
     char_u	di_key[1];	// key (actually longer!)
 };
 typedef struct dictitem_S dictitem_T;
@@ -1419,16 +1554,18 @@ typedef struct dictitem_S dictitem_T;
 struct dictitem16_S
 {
     typval_T	di_tv;		// type and value of the variable
-    char_u	di_flags;	// flags (only used for variable)
+    char_u	di_flags;	// DI_FLAGS_ flags (only used for variable)
     char_u	di_key[DICTITEM16_KEY_LEN + 1];	// key
 };
 typedef struct dictitem16_S dictitem16_T;
 
-#define DI_FLAGS_RO	1  // "di_flags" value: read-only variable
-#define DI_FLAGS_RO_SBX 2  // "di_flags" value: read-only in the sandbox
-#define DI_FLAGS_FIX	4  // "di_flags" value: fixed: no :unlet or remove()
-#define DI_FLAGS_LOCK	8  // "di_flags" value: locked variable
-#define DI_FLAGS_ALLOC	16 // "di_flags" value: separately allocated
+// Flags for "di_flags"
+#define DI_FLAGS_RO	   0x01	    // read-only variable
+#define DI_FLAGS_RO_SBX	   0x02	    // read-only in the sandbox
+#define DI_FLAGS_FIX	   0x04	    // fixed: no :unlet or remove()
+#define DI_FLAGS_LOCK	   0x08	    // locked variable
+#define DI_FLAGS_ALLOC	   0x10	    // separately allocated
+#define DI_FLAGS_RELOAD	   0x20	    // set when script sourced again
 
 /*
  * Structure to hold info about a Dictionary.
@@ -1440,6 +1577,7 @@ struct dictvar_S
     int		dv_refcount;	// reference count
     int		dv_copyID;	// ID used by deepcopy()
     hashtab_T	dv_hashtab;	// hashtab that refers to the items
+    type_T	*dv_type;	// current type, allocated by alloc_type()
     dict_T	*dv_copydict;	// copied dict used by deepcopy()
     dict_T	*dv_used_next;	// next dict in used dicts list
     dict_T	*dv_used_prev;	// previous dict in used dicts list
@@ -1455,21 +1593,72 @@ struct blobvar_S
     char	bv_lock;	// zero, VAR_LOCKED, VAR_FIXED
 };
 
+typedef int (*cfunc_T)(int argcount, typval_T *argvars, typval_T *rettv, void *state);
+typedef void (*cfunc_free_T)(void *state);
+
+// type of getline() last argument
+typedef enum {
+    GETLINE_NONE,	    // do not concatenate any lines
+    GETLINE_CONCAT_CONT,    // concatenate continuation lines with backslash
+    GETLINE_CONCAT_CONTBAR, // concatenate continuation lines with \ and |
+    GETLINE_CONCAT_ALL	    // concatenate continuation and Vim9 # comment lines
+} getline_opt_T;
+
+typedef struct svar_S svar_T;
+
 #if defined(FEAT_EVAL) || defined(PROTO)
 typedef struct funccall_S funccall_T;
 
+// values used for "uf_def_status"
+typedef enum {
+    UF_NOT_COMPILED,	    // executed with interpreter
+    UF_TO_BE_COMPILED,	    // to be compiled before execution
+    UF_COMPILING,	    // in compile_def_function()
+    UF_COMPILED,	    // successfully compiled
+    UF_COMPILE_ERROR	    // compilation error, cannot execute
+} def_status_T;
+
 /*
  * Structure to hold info for a user function.
+ * When adding a field check copy_func().
  */
 typedef struct
 {
-    int		uf_varargs;	// variable nr of arguments
-    int		uf_flags;
+    int		uf_varargs;	// variable nr of arguments (old style)
+    int		uf_flags;	// FC_ flags
     int		uf_calls;	// nr of active calls
     int		uf_cleared;	// func_clear() was already called
-    garray_T	uf_args;	// arguments
+    def_status_T uf_def_status; // UF_NOT_COMPILED, UF_TO_BE_COMPILED, etc.
+    int		uf_dfunc_idx;	// only valid if uf_def_status is UF_COMPILED
+    garray_T	uf_args;	// arguments, including optional arguments
     garray_T	uf_def_args;	// default argument expressions
+    int		uf_args_visible; // normally uf_args.ga_len, less when
+				 // compiling default argument expression.
+
+    // for :def (for :function uf_ret_type is NULL)
+    type_T	**uf_arg_types;	// argument types (count == uf_args.ga_len)
+    type_T	*uf_ret_type;	// return type
+    garray_T	uf_type_list;	// types used in arg and return types
+    partial_T	*uf_partial;	// for closure created inside :def function:
+				// information about the context
+
+    char_u	*uf_va_name;	// name from "...name" or NULL
+    type_T	*uf_va_type;	// type from "...name: type" or NULL
+    type_T	*uf_func_type;	// type of the function, &t_func_any if unknown
+    int		uf_block_depth;	// nr of entries in uf_block_ids
+    int		*uf_block_ids;	// blocks a :def function is defined inside
+# if defined(FEAT_LUA)
+    cfunc_T     uf_cb;		// callback function for cfunc
+    cfunc_free_T uf_cb_free;    // callback function to free cfunc
+    void	*uf_cb_state;   // state of uf_cb
+# endif
+
     garray_T	uf_lines;	// function lines
+
+    int		uf_debug_tick;	// when last checked for a breakpoint in this
+				// function.
+    int		uf_has_breakpoint;  // TRUE when a breakpoint has been set in
+				    // this function.
 # ifdef FEAT_PROFILE
     int		uf_profiling;	// TRUE when func is being profiled
     int		uf_prof_initialized;
@@ -1489,19 +1678,43 @@ typedef struct
     int		uf_tml_execed;	// line being timed was executed
 # endif
     sctx_T	uf_script_ctx;	// SCTX where function was defined,
-				// used for s: variables
+				// used for s: variables; sc_version changed
+				// for :function
+    int		uf_script_ctx_version;  // original sc_version of SCTX
     int		uf_refcount;	// reference count, see func_name_refcount()
+
     funccall_T	*uf_scoped;	// l: local variables for closure
-    char_u	uf_name[1];	// name of function (actually longer); can
-				// start with <SNR>123_ (<SNR> is K_SPECIAL
+
+    char_u	*uf_name_exp;	// if "uf_name[]" starts with SNR the name with
+				// "<SNR>" as a string, otherwise NULL
+    char_u	uf_name[4];	// name of function (actual size equals name);
+				// can start with <SNR>123_ (<SNR> is K_SPECIAL
 				// KS_EXTRA KE_SNR)
 } ufunc_T;
+
+// flags used in uf_flags
+#define FC_ABORT    0x01	// abort function on error
+#define FC_RANGE    0x02	// function accepts range
+#define FC_DICT	    0x04	// Dict function, uses "self"
+#define FC_CLOSURE  0x08	// closure, uses outer scope variables
+#define FC_DELETED  0x10	// :delfunction used while uf_refcount > 0
+#define FC_REMOVED  0x20	// function redefined while uf_refcount > 0
+#define FC_SANDBOX  0x40	// function defined in the sandbox
+#define FC_DEAD	    0x80	// function kept only for reference to dfunc
+#define FC_EXPORT   0x100	// "export def Func()"
+#define FC_NOARGS   0x200	// no a: variables in lambda
+#define FC_VIM9	    0x400	// defined in vim9 script file
+#define FC_CFUNC    0x800	// defined as Lua C func
+#define FC_COPY	    0x1000	// copy of another function by copy_func()
+#define FC_LAMBDA   0x2000	// one line "return {expr}"
 
 #define MAX_FUNC_ARGS	20	// maximum number of function arguments
 #define VAR_SHORT_LEN	20	// short variable name length
 #define FIXVAR_CNT	12	// number of fixed variables
 
-/* structure to hold info for a function that is currently being executed. */
+/*
+ * Structure to hold info for a function that is currently being executed.
+ */
 struct funccall_S
 {
     ufunc_T	*func;		// function being called
@@ -1525,7 +1738,8 @@ struct funccall_S
 #ifdef FEAT_PROFILE
     proftime_T	prof_child;	// time spent in a child
 #endif
-    funccall_T	*caller;	// calling function or NULL
+    funccall_T	*caller;	// calling function or NULL; or next funccal in
+				// list pointed to by previous_funccal.
 
     // for closure
     int		fc_refcount;	// number of user functions that reference this
@@ -1551,22 +1765,117 @@ struct funccal_entry {
     funccal_entry_T *next;
 };
 
-/* From user function to hashitem and back. */
+// From user function to hashitem and back.
 #define UF2HIKEY(fp) ((fp)->uf_name)
 #define HIKEY2UF(p)  ((ufunc_T *)((p) - offsetof(ufunc_T, uf_name)))
 #define HI2UF(hi)     HIKEY2UF((hi)->hi_key)
 
-/* Growarray to store info about already sourced scripts.
- * For Unix also store the dev/ino, so that we don't have to stat() each
- * script when going through the list. */
-typedef struct scriptitem_S
+/*
+ * Holds the hashtab with variables local to each sourced script.
+ * Each item holds a variable (nameless) that points to the dict_T.
+ */
+typedef struct {
+    dictitem_T	sv_var;
+    dict_T	sv_dict;
+} scriptvar_T;
+
+/*
+ * Entry for "sn_all_vars".  Contains the s: variables from sn_vars plus the
+ * block-local ones.
+ */
+typedef struct sallvar_S sallvar_T;
+struct sallvar_S {
+    sallvar_T	*sav_next;	  // var with same name but different block
+    int		sav_block_id;	  // block ID where declared
+    int		sav_var_vals_idx; // index in sn_var_vals
+
+    // So long as the variable is valid (block it was defined in is still
+    // active) "sav_di" is used.  It is set to NULL when leaving the block,
+    // then sav_tv and sav_flags are used.
+    dictitem_T *sav_di;		// dictitem with di_key and di_tv
+    typval_T	sav_tv;		// type and value of the variable
+    char_u	sav_flags;	// DI_FLAGS_ flags (only used for variable)
+    char_u	sav_key[1];	// key (actually longer!)
+};
+
+/*
+ * In the sn_all_vars hashtab item "hi_key" points to "sav_key" in a sallvar_T.
+ * This makes it possible to store and find the sallvar_T.
+ * SAV2HIKEY() converts a sallvar_T pointer to a hashitem key pointer.
+ * HIKEY2SAV() converts a hashitem key pointer to a sallvar_T pointer.
+ * HI2SAV() converts a hashitem pointer to a sallvar_T pointer.
+ */
+#define SAV2HIKEY(sav) ((sav)->sav_key)
+#define HIKEY2SAV(p)  ((sallvar_T *)(p - offsetof(sallvar_T, sav_key)))
+#define HI2SAV(hi)     HIKEY2SAV((hi)->hi_key)
+
+#define SVFLAG_TYPE_ALLOCATED	1  // call free_type() for "sv_type"
+#define SVFLAG_EXPORTED		2  // "export let var = val"
+#define SVFLAG_ASSIGNED		4  // assigned a value
+
+/*
+ * Entry for "sn_var_vals".  Used for script-local variables.
+ */
+struct svar_S {
+    char_u	*sv_name;	// points into "sn_all_vars" di_key
+    typval_T	*sv_tv;		// points into "sn_vars" or "sn_all_vars" di_tv
+    type_T	*sv_type;
+    int		sv_flags;	// SVFLAG_ values above
+    int		sv_const;	// 0, ASSIGN_CONST or ASSIGN_FINAL
+};
+
+typedef struct {
+    char_u	*imp_name;	    // name imported as (allocated)
+    scid_T	imp_sid;	    // script ID of "from"
+    int		imp_flags;	    // IMP_FLAGS_ values
+} imported_T;
+
+#define IMP_FLAGS_RELOAD	2   // script reloaded, OK to redefine
+#define IMP_FLAGS_AUTOLOAD	4   // script still needs to be loaded
+
+/*
+ * Info about an already sourced scripts.
+ */
+typedef struct
 {
-    char_u	*sn_name;
-# ifdef UNIX
-    int		sn_dev_valid;
-    dev_t	sn_dev;
-    ino_t	sn_ino;
-# endif
+    char_u	*sn_name;	    // full path of script file
+    int		sn_script_seq;	    // latest sctx_T sc_seq value
+
+    // "sn_vars" stores the s: variables currently valid.  When leaving a block
+    // variables local to that block are removed.
+    scriptvar_T	*sn_vars;
+
+    // Specific for a Vim9 script.
+    // "sn_all_vars" stores all script variables ever declared.  So long as the
+    // variable is still valid the value is in "sn_vars->sv_dict...di_tv".
+    // When the block of a declaration is left the value is moved to
+    // "sn_all_vars..sav_tv".
+    // Variables with duplicate names are possible, the sav_block_id must be
+    // used to check that which variable is valid.
+    dict_T	sn_all_vars;	// all script variables, dict of sallvar_T
+
+    // Stores the same variables as in "sn_all_vars" as a list of svar_T, so
+    // that they can be quickly found by index instead of a hash table lookup.
+    // Also stores the type.
+    garray_T	sn_var_vals;
+
+    garray_T	sn_imports;	// imported items, imported_T
+    garray_T	sn_type_list;	// keeps types used by variables
+    int		sn_current_block_id; // ID for current block, 0 for outer
+    int		sn_last_block_id;  // Unique ID for each script block
+
+    int		sn_version;	// :scriptversion
+    int		sn_state;	// SN_STATE_ values
+    char_u	*sn_save_cpo;	// 'cpo' value when :vim9script found
+    char	sn_is_vimrc;	// .vimrc file, do not restore 'cpo'
+
+    // for a Vim9 script under "rtp/autoload/" this is "dir#scriptname#"
+    char_u	*sn_autoload_prefix;
+
+    // TRUE for a script used with "import autoload './dirname/script.vim'"
+    // For "../autoload/script.vim" sn_autoload_prefix is also set.
+    int		sn_import_autoload;
+
 # ifdef FEAT_PROFILE
     int		sn_prof_on;	// TRUE when script is/was profiled
     int		sn_pr_force;	// forceit: profile functions in this script
@@ -1588,8 +1897,55 @@ typedef struct scriptitem_S
 # endif
 } scriptitem_T;
 
+#define SN_STATE_NEW		0   // newly loaded script, nothing done
+#define SN_STATE_NOT_LOADED	1   // script located but not loaded
+#define SN_STATE_RELOAD		2   // script loaded before, nothing done
+#define SN_STATE_HAD_COMMAND	9   // a command was executed
+
+// Struct passed through eval() functions.
+// See EVALARG_EVALUATE for a fixed value with eval_flags set to EVAL_EVALUATE.
+typedef struct {
+    int		eval_flags;	    // EVAL_ flag values below
+    int		eval_break_count;   // nr of line breaks consumed
+
+    // copied from exarg_T when "getline" is "getsourceline". Can be NULL.
+    char_u	*(*eval_getline)(int, void *, int, getline_opt_T);
+    void	*eval_cookie;	    // argument for eval_getline()
+
+    // used when compiling a :def function, NULL otherwise
+    cctx_T	*eval_cctx;
+
+    // used when executing commands from a script, NULL otherwise
+    cstack_T	*eval_cstack;
+
+    // Used to collect lines while parsing them, so that they can be
+    // concatenated later.  Used when "eval_ga.ga_itemsize" is not zero.
+    // "eval_ga.ga_data" is a list of pointers to lines.
+    // "eval_freega" list pointers that need to be freed after concatenating.
+    garray_T	eval_ga;
+    garray_T	eval_freega;
+
+    // pointer to the last line obtained with getsourceline()
+    char_u	*eval_tofree;
+
+    // array with lines of an inline function
+    garray_T	eval_tofree_ga;
+
+    // set when "arg" points into the last entry of "eval_tofree_ga"
+    int		eval_using_cmdline;
+
+    // pointer to the lines concatenated for a lambda.
+    char_u	*eval_tofree_lambda;
+} evalarg_T;
+
+// Flags for expression evaluation.
+#define EVAL_EVALUATE	    1	    // when missing don't actually evaluate
+#define EVAL_CONSTANT	    2	    // when not a constant return FAIL
+
 # ifdef FEAT_PROFILE
-/* Struct used in sn_prl_ga for every line of a script. */
+/*
+ * Struct used in sn_prl_ga for every line of a script.
+ */
 typedef struct sn_prl_S
 {
     int		snp_count;	// nr of times line was executed
@@ -1598,6 +1954,18 @@ typedef struct sn_prl_S
 } sn_prl_T;
 
 #  define PRL_ITEM(si, idx)	(((sn_prl_T *)(si)->sn_prl_ga.ga_data)[(idx)])
+
+typedef struct {
+    int		pi_started_profiling;
+    proftime_T	pi_wait_start;
+    proftime_T	pi_call_start;
+} profinfo_T;
+
+# else
+typedef struct
+{
+    int	    dummy;
+} profinfo_T;
 # endif
 #else
 // dummy typedefs for use in function prototypes
@@ -1621,38 +1989,124 @@ typedef struct
 {
     int	    dummy;
 } scriptitem_T;
+typedef struct
+{
+    int	    dummy;
+} evalarg_T;
 #endif
 
 // Struct passed between functions dealing with function call execution.
 //
 // "argv_func", when not NULL, can be used to fill in arguments only when the
 // invoked function uses them.  It is called like this:
-//   new_argcount = argv_func(current_argcount, argv, called_func_argcount)
+//   new_argcount = argv_func(current_argcount, argv, partial_argcount,
+//							called_func_argcount)
 //
 typedef struct {
-    int		(* argv_func)(int, typval_T *, int);
-    linenr_T	firstline;	// first line of range
-    linenr_T	lastline;	// last line of range
-    int		*doesrange;	// if not NULL: return: function handled range
-    int		evaluate;	// actually evaluate expressions
-    partial_T	*partial;	// for extra arguments
-    dict_T	*selfdict;	// Dictionary for "self"
-    typval_T	*basetv;	// base for base->method()
+    int		(* fe_argv_func)(int, typval_T *, int, int);
+    linenr_T	fe_firstline;	// first line of range
+    linenr_T	fe_lastline;	// last line of range
+    int		*fe_doesrange;	// if not NULL: return: function handled range
+    int		fe_evaluate;	// actually evaluate expressions
+    partial_T	*fe_partial;	// for extra arguments
+    dict_T	*fe_selfdict;	// Dictionary for "self"
+    typval_T	*fe_basetv;	// base for base->method()
+    type_T	*fe_check_type;	// type from funcref or NULL
+    int		fe_found_var;	// if the function is not found then give an
+				// error that a variable is not callable.
 } funcexe_T;
+
+/*
+ * Structure to hold the context of a compiled function, used by closures
+ * defined in that function.
+ */
+typedef struct funcstack_S funcstack_T;
+
+struct funcstack_S
+{
+    funcstack_T *fs_next;	// linked list at "first_funcstack"
+    funcstack_T *fs_prev;
+
+    garray_T	fs_ga;		// contains the stack, with:
+				// - arguments
+				// - frame
+				// - local variables
+    int		fs_var_offset;	// count of arguments + frame size == offset to
+				// local variables
+
+    int		fs_refcount;	// nr of closures referencing this funcstack
+    int		fs_min_refcount; // nr of closures on this funcstack
+    int		fs_copyID;	// for garray_T collection
+};
+
+typedef struct outer_S outer_T;
+struct outer_S {
+    garray_T	*out_stack;	    // stack from outer scope
+    int		out_frame_idx;	    // index of stack frame in out_stack
+    outer_T	*out_up;	    // outer scope of outer scope or NULL
+    partial_T	*out_up_partial;    // partial owning out_up or NULL
+};
 
 struct partial_S
 {
     int		pt_refcount;	// reference count
+    int		pt_auto;	// when TRUE the partial was created for using
+				// dict.member in handle_subscript()
     char_u	*pt_name;	// function name; when NULL use
 				// pt_func->uf_name
     ufunc_T	*pt_func;	// function pointer; when NULL lookup function
 				// with pt_name
-    int		pt_auto;	// when TRUE the partial was created for using
-				// dict.member in handle_subscript()
-    int		pt_argc;	// number of arguments
+
+    // For a compiled closure: the arguments and local variables scope
+    outer_T	pt_outer;
+
+    // For a partial of a partial: use pt_outer values of this partial.
+    partial_T	*pt_outer_partial;
+
+    funcstack_T	*pt_funcstack;	// copy of stack, used after context
+				// function returns
+
     typval_T	*pt_argv;	// arguments in allocated array
+    int		pt_argc;	// number of arguments
+
+    int		pt_copyID;	// funcstack may contain pointer to partial
     dict_T	*pt_dict;	// dict for "self"
 };
+
+typedef struct AutoPatCmd_S AutoPatCmd_T;
+
+/*
+ * Entry in the execution stack "exestack".
+ */
+typedef enum {
+    ETYPE_TOP,		    // toplevel
+    ETYPE_SCRIPT,	    // sourcing script, use es_info.sctx
+    ETYPE_UFUNC,	    // user function, use es_info.ufunc
+    ETYPE_AUCMD,	    // autocomand, use es_info.aucmd
+    ETYPE_MODELINE,	    // modeline, use es_info.sctx
+    ETYPE_EXCEPT,	    // exception, use es_info.exception
+    ETYPE_ARGS,		    // command line argument
+    ETYPE_ENV,		    // environment variable
+    ETYPE_INTERNAL,	    // internal operation
+    ETYPE_SPELL,	    // loading spell file
+} etype_T;
+
+typedef struct {
+    long      es_lnum;      // replaces "sourcing_lnum"
+    char_u    *es_name;     // replaces "sourcing_name"
+    etype_T   es_type;
+    union {
+	sctx_T  *sctx;      // script and modeline info
+#if defined(FEAT_EVAL)
+	ufunc_T *ufunc;     // function info
+#endif
+	AutoPatCmd_T *aucmd;  // autocommand info
+	except_T   *except; // exception info
+    } es_info;
+#if defined(FEAT_EVAL)
+    sctx_T	es_save_sctx;	    // saved current_sctx when calling function
+#endif
+} estack_T;
 
 // Information returned by get_tty_info().
 typedef struct {
@@ -1685,9 +2139,9 @@ struct jobvar_S
     PROCESS_INFORMATION	jv_proc_info;
     HANDLE		jv_job_object;
 #endif
+    jobstatus_T	jv_status;
     char_u	*jv_tty_in;	// controlling tty input, allocated
     char_u	*jv_tty_out;	// controlling tty output, allocated
-    jobstatus_T	jv_status;
     char_u	*jv_stoponexit;	// allocated
 #ifdef UNIX
     char_u	*jv_termsig;	// allocated
@@ -1744,10 +2198,11 @@ struct cbq_S
 // mode for a channel
 typedef enum
 {
-    MODE_NL = 0,
-    MODE_RAW,
-    MODE_JSON,
-    MODE_JS,
+    CH_MODE_NL = 0,
+    CH_MODE_RAW,
+    CH_MODE_JSON,
+    CH_MODE_JS,
+    CH_MODE_LSP		// Language Server Protocol (http + json)
 } ch_mode_T;
 
 typedef enum {
@@ -1928,6 +2383,7 @@ struct channel_S {
 #define JO2_TTY_TYPE	    0x10000	// "tty_type"
 #define JO2_BUFNR	    0x20000	// "bufnr"
 #define JO2_TERM_API	    0x40000	// "term_api"
+#define JO2_TERM_HIGHLIGHT  0x80000	// "highlight"
 
 #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
 #define JO_CB_ALL \
@@ -1973,7 +2429,7 @@ typedef struct
     int		jo_block_write;	// for testing only
     int		jo_part;
     int		jo_id;
-    char_u	jo_soe_buf[NUMBUFLEN];
+    char_u	jo_stoponexit_buf[NUMBUFLEN];
     char_u	*jo_stoponexit;
     dict_T	*jo_env;	// environment variables
     char_u	jo_cwd_buf[NUMBUFLEN];
@@ -1988,17 +2444,23 @@ typedef struct
     buf_T	*jo_bufnr_buf;
     int		jo_hidden;
     int		jo_term_norestore;
+    char_u	jo_term_name_buf[NUMBUFLEN];
     char_u	*jo_term_name;
+    char_u	jo_term_opencmd_buf[NUMBUFLEN];
     char_u	*jo_term_opencmd;
     int		jo_term_finish;
+    char_u	jo_eof_chars_buf[NUMBUFLEN];
     char_u	*jo_eof_chars;
+    char_u	jo_term_kill_buf[NUMBUFLEN];
     char_u	*jo_term_kill;
 # if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
     long_u	jo_ansi_colors[16];
 # endif
+    char_u	jo_term_highlight_buf[NUMBUFLEN];
+    char_u	*jo_term_highlight;
     int		jo_tty_type;	    // first character of "tty_type"
-    char_u	*jo_term_api;
     char_u	jo_term_api_buf[NUMBUFLEN];
+    char_u	*jo_term_api;
 #endif
 } jobopt_T;
 
@@ -2047,6 +2509,10 @@ typedef struct
 #define SYNSPL_DEFAULT	0	// spell check if @Spell not defined
 #define SYNSPL_TOP	1	// spell check toplevel text
 #define SYNSPL_NOTOP	2	// don't spell check toplevel text
+
+// values for b_syn_foldlevel: how to compute foldlevel on a line
+#define SYNFLD_START	0	// use level of item at start of line
+#define SYNFLD_MINIMUM	1	// use lowest local minimum level on line
 
 // avoid #ifdefs for when b_spell is not available
 #ifdef FEAT_SPELL
@@ -2100,20 +2566,22 @@ typedef struct {
 # define CRYPT_M_ZIP	0
 # define CRYPT_M_BF	1
 # define CRYPT_M_BF2	2
-# define CRYPT_M_COUNT	3 // number of crypt methods
+# define CRYPT_M_SOD    3
+# define CRYPT_M_COUNT	4 // number of crypt methods
 
 // Currently all crypt methods work inplace.  If one is added that isn't then
 // define this.
-//  # define CRYPT_NOT_INPLACE 1
+# define CRYPT_NOT_INPLACE 1
 #endif
 
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
 typedef enum {
     POPPOS_BOTLEFT,
     POPPOS_TOPLEFT,
     POPPOS_BOTRIGHT,
     POPPOS_TOPRIGHT,
-    POPPOS_CENTER
+    POPPOS_CENTER,
+    POPPOS_NONE
 } poppos_T;
 
 typedef enum {
@@ -2141,6 +2609,7 @@ typedef struct {
     int		b_syn_slow;		// TRUE when 'redrawtime' reached
 # endif
     int		b_syn_ic;		// ignore case for :syn cmds
+    int		b_syn_foldlevel;	// how to compute foldlevel on a line
     int		b_syn_spell;		// SYNSPL_ values
     garray_T	b_syn_patterns;		// table for syntax patterns
     garray_T	b_syn_clusters;		// table for syntax clusters
@@ -2199,6 +2668,7 @@ typedef struct {
     regprog_T	*b_cap_prog;	    // program for 'spellcapcheck'
     char_u	*b_p_spf;	    // 'spellfile'
     char_u	*b_p_spl;	    // 'spelllang'
+    char_u	*b_p_spo;	    // 'spelloptions'
     int		b_cjk;		    // all CJK letters as OK
 #endif
 #if !defined(FEAT_SYN_HL) && !defined(FEAT_SPELL)
@@ -2230,6 +2700,8 @@ struct file_buffer
     int		b_flags;	// various BF_ flags
     int		b_locked;	// Buffer is being closed or referenced, don't
 				// let autocommands wipe it out.
+    int		b_locked_split;	// Buffer is being closed, don't allow opening
+				// a new window with it.
 
     /*
      * b_ffname has the full path of the file (NULL for no name).
@@ -2248,9 +2720,6 @@ struct file_buffer
     dev_t	b_dev;		// device number
     ino_t	b_ino;		// inode number
 #endif
-#ifdef FEAT_CW_EDITOR
-    FSSpec	b_FSSpec;	// MacOS File Identification
-#endif
 #ifdef VMS
     char	 b_fab_rfm;	// Record format
     char	 b_fab_rat;	// Record attribute
@@ -2268,10 +2737,10 @@ struct file_buffer
 				// incremented for each change, also for undo
 #define CHANGEDTICK(buf) ((buf)->b_ct_di.di_tv.vval.v_number)
 
-    varnumber_T	b_last_changedtick; // b:changedtick when TextChanged or
-				    // TextChangedI was last triggered.
-    varnumber_T	b_last_changedtick_pum; // b:changedtick when TextChangedP was
+    varnumber_T	b_last_changedtick;	// b:changedtick when TextChanged was
 					// last triggered.
+    varnumber_T	b_last_changedtick_pum; // b:changedtick for TextChangedP
+    varnumber_T	b_last_changedtick_i;   // b:changedtick for TextChangedI
 
     int		b_saving;	// Set to TRUE if we are in the middle of
 				// saving the buffer.
@@ -2291,7 +2760,9 @@ struct file_buffer
     wininfo_T	*b_wininfo;	// list of last used info for each window
 
     long	b_mtime;	// last change time of original file
+    long	b_mtime_ns;	// nanoseconds of last change time
     long	b_mtime_read;	// last change time when reading
+    long	b_mtime_read_ns;  // nanoseconds of last read time
     off_T	b_orig_size;	// size of original file in bytes
     int		b_orig_mode;	// mode of original file
 #ifdef FEAT_VIMINFO
@@ -2312,14 +2783,12 @@ struct file_buffer
     pos_T	b_last_insert;	// where Insert mode was left
     pos_T	b_last_change;	// position of last change: '. mark
 
-#ifdef FEAT_JUMPLIST
     /*
      * the changelist contains old change positions
      */
     pos_T	b_changelist[JUMPLISTSIZE];
     int		b_changelistlen;	// number of active entries
     int		b_new_change;		// set by u_savecommon()
-#endif
 
     /*
      * Character table, only used in charset.c for 'iskeyword'
@@ -2371,7 +2840,7 @@ struct file_buffer
     // flags for use of ":lmap" and IM control
     long	b_p_iminsert;	// input mode for insert
     long	b_p_imsearch;	// input mode for search
-#define B_IMODE_USE_INSERT -1	//	Use b_p_iminsert value for search
+#define B_IMODE_USE_INSERT (-1)	//	Use b_p_iminsert value for search
 #define B_IMODE_NONE 0		//	Input via none
 #define B_IMODE_LMAP 1		//	Input via langmap
 #define B_IMODE_IM 2		//	Input via input method
@@ -2410,14 +2879,11 @@ struct file_buffer
     int		b_has_qf_entry;
 #endif
     int		b_p_bl;		// 'buflisted'
-#ifdef FEAT_CINDENT
     int		b_p_cin;	// 'cindent'
     char_u	*b_p_cino;	// 'cinoptions'
     char_u	*b_p_cink;	// 'cinkeys'
-#endif
-#if defined(FEAT_CINDENT) || defined(FEAT_SMARTINDENT)
+    char_u	*b_p_cinsd;	// 'cinscopedecls'
     char_u	*b_p_cinw;	// 'cinwords'
-#endif
     char_u	*b_p_com;	// 'comments'
 #ifdef FEAT_FOLDING
     char_u	*b_p_cms;	// 'commentstring'
@@ -2428,10 +2894,13 @@ struct file_buffer
 #endif
 #ifdef FEAT_COMPL_FUNC
     char_u	*b_p_cfu;	// 'completefunc'
+    callback_T	b_cfu_cb;	// 'completefunc' callback
     char_u	*b_p_ofu;	// 'omnifunc'
+    callback_T	b_ofu_cb;	// 'omnifunc' callback
 #endif
 #ifdef FEAT_EVAL
-    char_u	*b_p_tfu;	// 'tagfunc'
+    char_u	*b_p_tfu;	// 'tagfunc' option value
+    callback_T	b_tfu_cb;	// 'tagfunc' callback
 #endif
     int		b_p_eol;	// 'endofline'
     int		b_p_fixeol;	// 'fixendofline'
@@ -2453,7 +2922,7 @@ struct file_buffer
     long_u	b_p_inex_flags;	// flags for 'includeexpr'
 # endif
 #endif
-#if defined(FEAT_CINDENT) && defined(FEAT_EVAL)
+#if defined(FEAT_EVAL)
     char_u	*b_p_inde;	// 'indentexpr'
     long_u	b_p_inde_flags;	// flags for 'indentexpr'
     char_u	*b_p_indk;	// 'indentkeys'
@@ -2467,9 +2936,7 @@ struct file_buffer
     char_u	*b_p_key;	// 'key'
 #endif
     char_u	*b_p_kp;	// 'keywordprg'
-#ifdef FEAT_LISP
     int		b_p_lisp;	// 'lisp'
-#endif
     char_u	*b_p_menc;	// 'makeencoding'
     char_u	*b_p_mps;	// 'matchpairs'
     int		b_p_ml;		// 'modeline'
@@ -2483,9 +2950,7 @@ struct file_buffer
     int		b_p_ro;		// 'readonly'
     long	b_p_sw;		// 'shiftwidth'
     int		b_p_sn;		// 'shortname'
-#ifdef FEAT_SMARTINDENT
     int		b_p_si;		// 'smartindent'
-#endif
     long	b_p_sts;	// 'softtabstop'
     long	b_p_sts_nopaste; // b_p_sts saved for paste mode
 #ifdef FEAT_SEARCHPATH
@@ -2531,13 +2996,15 @@ struct file_buffer
     unsigned	b_tc_flags;     // flags for 'tagcase'
     char_u	*b_p_dict;	// 'dictionary' local value
     char_u	*b_p_tsr;	// 'thesaurus' local value
+#ifdef FEAT_COMPL_FUNC
+    char_u	*b_p_tsrfu;	// 'thesaurusfunc' local value
+    callback_T	b_tsrfu_cb;	// 'thesaurusfunc' callback
+#endif
     long	b_p_ul;		// 'undolevels' local value
 #ifdef FEAT_PERSISTENT_UNDO
     int		b_p_udf;	// 'undofile'
 #endif
-#ifdef FEAT_LISP
     char_u	*b_p_lw;	// 'lispwords' local value
-#endif
 #ifdef FEAT_TERMINAL
     long	b_p_twsl;	// 'termwinscroll'
 #endif
@@ -2546,7 +3013,6 @@ struct file_buffer
      * end of buffer options
      */
 
-#ifdef FEAT_CINDENT
     // values set from b_p_cino
     int		b_ind_level;
     int		b_ind_open_imag;
@@ -2584,7 +3050,7 @@ struct file_buffer
     int		b_ind_cpp_namespace;
     int		b_ind_if_for_while;
     int		b_ind_cpp_extern_c;
-#endif
+    int		b_ind_pragma;
 
     linenr_T	b_no_eol_lnum;	// non-zero lnum when last line of next binary
 				// write should not have an end-of-line
@@ -2602,7 +3068,7 @@ struct file_buffer
     listener_T	*b_listener;
     list_T	*b_recorded_changes;
 #endif
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
     int		b_has_textprop;	// TRUE when text props were added
     hashtab_T	*b_proptypes;	// text property types local to buffer
 #endif
@@ -2737,7 +3203,7 @@ struct diffblock_S
 #endif
 
 #define SNAP_HELP_IDX	0
-#define SNAP_AUCMD_IDX 1
+#define SNAP_AUCMD_IDX	1
 #define SNAP_COUNT	2
 
 /*
@@ -2755,11 +3221,12 @@ struct tabpage_S
     win_T	    *tp_prevwin;    // previous window in this Tab page
     win_T	    *tp_firstwin;   // first window in this Tab page
     win_T	    *tp_lastwin;    // last window in this Tab page
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
     win_T	    *tp_first_popupwin; // first popup window in this Tab page
 #endif
     long	    tp_old_Rows;    // Rows when Tab page was left
-    long	    tp_old_Columns; // Columns when Tab page was left
+    long	    tp_old_Columns; // Columns when Tab page was left, -1 when
+				    // calling shell_new_columns() postponed
     long	    tp_ch_used;	    // value of 'cmdheight' when frame size
 				    // was set
 #ifdef FEAT_GUI
@@ -2769,6 +3236,8 @@ struct tabpage_S
 
     char_u	    *tp_localdir;	// absolute path of local directory or
 					// NULL
+    char_u	    *tp_prevdir;	// previous directory
+
 #ifdef FEAT_DIFF
     diff_T	    *tp_first_diff;
     buf_T	    *(tp_diffbuf[DB_COUNT]);
@@ -2831,7 +3300,8 @@ struct frame_S
 				// for first
     // fr_child and fr_win are mutually exclusive
     frame_T	*fr_child;	// first contained frame
-    win_T	*fr_win;	// window that fills this frame
+    win_T	*fr_win;	// window that fills this frame; for a snapshot
+				// set to the current window
 };
 
 #define FR_LEAF	0	// frame is a leaf
@@ -2855,11 +3325,10 @@ typedef struct
     linenr_T	first_lnum; // first lnum to search for multi-line pat
     colnr_T	startcol;   // in win_line() points to char where HL starts
     colnr_T	endcol;	    // in win_line() points to char where HL ends
-    int		is_addpos;  // position specified directly by
+    char	is_addpos;  // position specified directly by
 			    // matchaddpos(). TRUE/FALSE
-#ifdef FEAT_RELTIME
-    proftime_T	tm;	    // for a time limit
-#endif
+    char	has_cursor; // TRUE if the cursor is inside the match, used for
+			    // CurSearch
 } match_T;
 
 // number of positions supported by matchaddpos()
@@ -2899,10 +3368,10 @@ struct matchitem
     int		id;	    // match ID
     int		priority;   // match priority
     char_u	*pattern;   // pattern to highlight
-    int		hlg_id;	    // highlight group ID
     regmmatch_T	match;	    // regexp program for pattern
     posmatch_T	pos;	    // position matches
     match_T	hl;	    // struct for doing the actual highlighting
+    int		hlg_id;	    // highlight group ID
 #ifdef FEAT_CONCEAL
     int		conceal_char; // cchar for Conceal highlighting
 #endif
@@ -2925,6 +3394,28 @@ typedef struct {
     vimmenu_T	*wb_menu;
 } winbar_item_T;
 #endif
+
+/*
+ * Characters from the 'listchars' option
+ */
+typedef struct
+{
+    int		eol;
+    int		ext;
+    int		prec;
+    int		nbsp;
+    int		space;
+    int		tab1;
+    int		tab2;
+    int		tab3;
+    int		trail;
+    int		lead;
+    int		*multispace;
+    int		*leadmultispace;
+#ifdef FEAT_CONCEAL
+    int		conceal;
+#endif
+} lcs_chars_T;
 
 /*
  * Structure which contains all information that belongs to a window
@@ -2974,6 +3465,11 @@ struct window_S
     colnr_T	w_old_visual_col;   // last known start of visual part
     colnr_T	w_old_curswant;	    // last known value of Curswant
 
+    linenr_T    w_last_cursor_lnum_rnu;  // cursor lnum when 'rnu' was last
+					 // redrawn
+
+    lcs_chars_T	w_lcs_chars;	    // 'listchars' characters
+
     /*
      * "w_topline", "w_leftcol" and "w_skipcol" specify the offsets for
      * displaying the buffer.
@@ -2982,6 +3478,10 @@ struct window_S
 				    // top of the window
     char	w_topline_was_set;  // flag set to TRUE when topline is set,
 				    // e.g. by winrestview()
+
+    linenr_T	w_botline;	    // number of the line below the bottom of
+				    // the window
+
 #ifdef FEAT_DIFF
     int		w_topfill;	    // number of filler lines above w_topline
     int		w_old_topfill;	    // w_topfill at last redraw
@@ -2995,6 +3495,18 @@ struct window_S
     colnr_T	w_skipcol;	    // starting column when a single line
 				    // doesn't fit in the window
 
+    int		w_empty_rows;	    // number of ~ rows in window
+#ifdef FEAT_DIFF
+    int		w_filler_rows;	    // number of filler rows at the end of the
+				    // window
+#endif
+
+    // four fields that are only used when there is a WinScrolled autocommand
+    linenr_T	w_last_topline;	    // last known value for w_topline
+    colnr_T	w_last_leftcol;	    // last known value for w_leftcol
+    int		w_last_width;	    // last known value for w_width
+    int		w_last_height;	    // last known value for w_height
+
     /*
      * Layout of the window in the screen.
      * May need to add "msg_scrolled" to "w_winrow" in rare situations.
@@ -3002,13 +3514,17 @@ struct window_S
     int		w_winrow;	    // first row of window in screen
     int		w_height;	    // number of rows in window, excluding
 				    // status/command/winbar line(s)
+
     int		w_status_height;    // number of status lines (0 or 1)
     int		w_wincol;	    // Leftmost column of window in screen.
     int		w_width;	    // Width of window, excluding separation.
     int		w_vsep_width;	    // Number of separator columns (0 or 1).
+
     pos_save_T	w_save_cursor;	    // backup of cursor pos and topline
-#ifdef FEAT_TEXT_PROP
+
+#ifdef FEAT_PROP_POPUP
     int		w_popup_flags;	    // POPF_ values
+    int		w_popup_handled;    // POPUP_HANDLE[0-9] flags
     char_u	*w_popup_title;
     poppos_T	w_popup_pos;
     int		w_popup_fixed;	    // do not shift popup to fit on screen
@@ -3020,6 +3536,7 @@ struct window_S
     int		w_minwidth;	    // "minwidth" for popup window
     int		w_maxheight;	    // "maxheight" for popup window
     int		w_maxwidth;	    // "maxwidth" for popup window
+    int		w_maxwidth_opt;	    // maxwidth from option
     int		w_wantline;	    // "line" for popup window
     int		w_wantcol;	    // "col" for popup window
     int		w_firstline;	    // "firstline" for popup window
@@ -3046,6 +3563,7 @@ struct window_S
 				      // with "cursorline" set
     callback_T	w_close_cb;	    // popup close callback
     callback_T	w_filter_cb;	    // popup filter callback
+    int		w_filter_errors;    // popup filter error count
     int		w_filter_mode;	    // mode when filter callback is used
 
     win_T	*w_popup_curwin;    // close popup if curwin differs
@@ -3064,8 +3582,14 @@ struct window_S
 # if defined(FEAT_TIMERS)
     timer_T	*w_popup_timer;	    // timer for closing popup window
 # endif
-#endif
 
+    int		w_flags;	    // WFLAG_ flags
+
+# define WFLAG_WCOL_OFF_ADDED	1   // popup border and padding were added to
+				    // w_wcol
+# define WFLAG_WROW_OFF_ADDED	2   // popup border and padding were added to
+				    // w_wrow
+#endif
 
     /*
      * === start of cached values ====
@@ -3106,14 +3630,6 @@ struct window_S
      */
     int		w_wrow, w_wcol;	    // cursor position in window
 
-    linenr_T	w_botline;	    // number of the line below the bottom of
-				    // the window
-    int		w_empty_rows;	    // number of ~ rows in window
-#ifdef FEAT_DIFF
-    int		w_filler_rows;	    // number of filler rows at the end of the
-				    // window
-#endif
-
     /*
      * Info about the lines currently in the window is remembered to avoid
      * recomputing it every time.  The allocated size of w_lines[] is Rows.
@@ -3137,6 +3653,9 @@ struct window_S
 #ifdef FEAT_LINEBREAK
     int		w_nrwidth;	    // width of 'number' and 'relativenumber'
 				    // column being used
+#endif
+#ifdef FEAT_TERMINAL
+    termcellcolor_T w_term_wincolor;	 // cache for term color of 'wincolor'
 #endif
 
     /*
@@ -3171,6 +3690,7 @@ struct window_S
 
     char_u	*w_localdir;	    // absolute path of local directory or
 				    // NULL
+    char_u	*w_prevdir;	    // previous directory
 #ifdef FEAT_MENU
     vimmenu_T	*w_winbar;	    // The root of the WinBar menu hierarchy.
     winbar_item_T *w_winbar_items;  // list of items in the WinBar
@@ -3186,6 +3706,8 @@ struct window_S
      */
     winopt_T	w_onebuf_opt;
     winopt_T	w_allbuf_opt;
+    // transform a pointer to a "onebuf" option into a "allbuf" option
+#define GLOBAL_WO(p)	((char *)(p) + sizeof(winopt_T))
 
     // A few options have local flags for P_INSECURE.
 #ifdef FEAT_STL_OPT
@@ -3199,16 +3721,16 @@ struct window_S
     int		*w_p_cc_cols;	    // array of columns to highlight or NULL
     char_u	w_p_culopt_flags;   // flags for cursorline highlighting
 #endif
-#ifdef FEAT_LINEBREAK
-    int		w_p_brimin;	    // minimum width for breakindent
-    int		w_p_brishift;	    // additional shift for breakindent
-    int		w_p_brisbr;	    // sbr in 'briopt'
-#endif
     long	w_p_siso;	    // 'sidescrolloff' local value
     long	w_p_so;		    // 'scrolloff' local value
 
-    // transform a pointer to a "onebuf" option into a "allbuf" option
-#define GLOBAL_WO(p)	((char *)p + sizeof(winopt_T))
+#ifdef FEAT_LINEBREAK
+    int		w_briopt_min;	    // minimum width for breakindent
+    int		w_briopt_shift;	    // additional shift for breakindent
+    int		w_briopt_sbr;	    // sbr in 'briopt'
+    int		w_briopt_list;      // additional indent for lists
+    int		w_briopt_vcol;	    // indent for specific column
+#endif
 
     long	w_scbind_pos;
 
@@ -3225,7 +3747,6 @@ struct window_S
     pos_T	w_pcmark;	// previous context mark
     pos_T	w_prev_pcmark;	// previous w_pcmark
 
-#ifdef FEAT_JUMPLIST
     /*
      * the jumplist contains old cursor positions
      */
@@ -3234,7 +3755,6 @@ struct window_S
     int		w_jumplistidx;		// current position
 
     int		w_changelistidx;	// current position in b_changelist
-#endif
 
 #ifdef FEAT_SEARCH_EXTRA
     matchitem_T	*w_match_head;		// head of match list
@@ -3316,7 +3836,7 @@ typedef struct oparg_S
     int		use_reg_one;	// TRUE if delete uses reg 1 even when not
 				// linewise
     int		inclusive;	// TRUE if char motion is inclusive (only
-				// valid when motion_type is MCHAR
+				// valid when motion_type is MCHAR)
     int		end_adjusted;	// backuped b_op_end one char (only used by
 				// do_format())
     pos_T	start;		// start of the operator
@@ -3333,6 +3853,8 @@ typedef struct oparg_S
     colnr_T	end_vcol;	// end col for block mode operator
     long	prev_opcount;	// ca.opcount saved for K_CURSORHOLD
     long	prev_count0;	// ca.count0 saved for K_CURSORHOLD
+    int		excl_tr_ws;	// exclude trailing whitespace for yank of a
+				// block
 } oparg_T;
 
 /*
@@ -3363,7 +3885,7 @@ typedef struct cmdarg_S
 /*
  * struct to store values from 'guicursor' and 'mouseshape'
  */
-/* Indexes in shape_table[] */
+// Indexes in shape_table[]
 #define SHAPE_IDX_N	0	// Normal mode
 #define SHAPE_IDX_V	1	// Visual mode
 #define SHAPE_IDX_I	2	// Insert mode
@@ -3449,8 +3971,8 @@ struct VimMenu
     char_u	*en_dname;	    // "dname" untranslated, NULL when "dname"
 				    // was not translated
 #endif
-    int		mnemonic;	    // mnemonic key (after '&')
     char_u	*actext;	    // accelerator text (after TAB)
+    int		mnemonic;	    // mnemonic key (after '&')
     int		priority;	    // Menu order priority
 #ifdef FEAT_GUI
     void	(*cb)(vimmenu_T *); // Call-back function
@@ -3483,9 +4005,6 @@ struct VimMenu
     char	**xpm;		    // pixmap data
     char	*xpm_fname;	    // file with pixmap data
 #endif
-#ifdef FEAT_GUI_ATHENA
-    Pixmap	image;		    // Toolbar image
-#endif
 #ifdef FEAT_BEVAL_TIP
     BalloonEval *tip;		    // tooltip for this menu item
 #endif
@@ -3494,14 +4013,12 @@ struct VimMenu
     HMENU	submenu_id;	    // If this is submenu, add children here
     HWND	tearoff_handle;	    // hWnd of tearoff if created
 #endif
-#ifdef FEAT_GUI_MAC
-//  MenuHandle	id;
-//  short	index;		    // the item index within the father menu
-    short	menu_id;	    // the menu id to which this item belong
-    short	submenu_id;	    // the menu id of the children (could be
-				    // get through some tricks)
-    MenuHandle	menu_handle;
-    MenuHandle	submenu_handle;
+#if FEAT_GUI_HAIKU
+    BMenuItem  *id;		    // Id of menu item
+    BMenu  *submenu_id;		    // If this is submenu, add children here
+# ifdef FEAT_TOOLBAR
+    BPictureButton *button;
+# endif
 #endif
 #ifdef FEAT_GUI_PHOTON
     PtWidget_t	*id;
@@ -3520,13 +4037,14 @@ typedef int vimmenu_T;
  */
 typedef struct
 {
-    buf_T	*save_curbuf;	// saved curbuf
-    int		use_aucmd_win;	// using aucmd_win
-    win_T	*save_curwin;	// saved curwin
-    win_T	*new_curwin;	// new curwin
-    win_T	*save_prevwin;	// saved prevwin
-    bufref_T	new_curbuf;	// new curbuf
-    char_u	*globaldir;	// saved value of globaldir
+    buf_T	*save_curbuf;	    // saved curbuf
+    int		use_aucmd_win;	    // using aucmd_win
+    int		save_curwin_id;	    // ID of saved curwin
+    int		new_curwin_id;	    // ID of new curwin
+    int		save_prevwin_id;    // ID of saved prevwin
+    bufref_T	new_curbuf;	    // new curbuf
+    char_u	*globaldir;	    // saved value of globaldir
+    int		save_VIsual_active; // saved VIsual_active
 } aco_save_T;
 
 /*
@@ -3615,16 +4133,29 @@ typedef struct {
  */
 typedef enum
 {
-    TYPE_UNKNOWN = 0,
-    TYPE_EQUAL,		// ==
-    TYPE_NEQUAL,	// !=
-    TYPE_GREATER,	// >
-    TYPE_GEQUAL,	// >=
-    TYPE_SMALLER,	// <
-    TYPE_SEQUAL,	// <=
-    TYPE_MATCH,		// =~
-    TYPE_NOMATCH,	// !~
-} exptype_T;
+    EXPR_UNKNOWN = 0,
+    EXPR_EQUAL,		// ==
+    EXPR_NEQUAL,	// !=
+    EXPR_GREATER,	// >
+    EXPR_GEQUAL,	// >=
+    EXPR_SMALLER,	// <
+    EXPR_SEQUAL,	// <=
+    EXPR_MATCH,		// =~
+    EXPR_NOMATCH,	// !~
+    EXPR_IS,		// is
+    EXPR_ISNOT,		// isnot
+    // used with ISN_OPNR
+    EXPR_ADD,		// +
+    EXPR_SUB,		// -
+    EXPR_MULT,		// *
+    EXPR_DIV,		// /
+    EXPR_REM,		// %
+    EXPR_LSHIFT,	// <<
+    EXPR_RSHIFT,	// >>
+    // used with ISN_ADDLIST
+    EXPR_COPY,		// create new list
+    EXPR_APPEND,	// append to first list
+} exprtype_T;
 
 /*
  * Structure used for reading in json_decode().
@@ -3676,6 +4207,9 @@ typedef struct
 
     int		want_full_screen;
     int		not_a_term;		// no warning for missing term?
+#ifdef FEAT_GUI
+    char_u	*gui_dialog_file;	// file to write dialog text in
+#endif
     int		tty_fail;		// exit if not a tty
     char_u	*term;			// specified terminal name
 #ifdef FEAT_CRYPT
@@ -3737,19 +4271,26 @@ typedef struct
 typedef struct lval_S
 {
     char_u	*ll_name;	// start of variable name (can be NULL)
+    char_u	*ll_name_end;	// end of variable name (can be NULL)
+    type_T	*ll_type;	// type of variable (can be NULL)
     char_u	*ll_exp_name;	// NULL or expanded name in allocated memory.
+
+    scid_T	ll_sid;		// for an imported item: the script ID it was
+				// imported from; zero otherwise
+
     typval_T	*ll_tv;		// Typeval of item being used.  If "newkey"
 				// isn't NULL it's the Dict to which to add
 				// the item.
     listitem_T	*ll_li;		// The list item or NULL.
     list_T	*ll_list;	// The list or NULL.
     int		ll_range;	// TRUE when a [i:j] range was used
+    int		ll_empty2;	// Second index is empty: [i:]
     long	ll_n1;		// First index for list
     long	ll_n2;		// Second index for list range
-    int		ll_empty2;	// Second index is empty: [i:]
     dict_T	*ll_dict;	// The Dictionary or NULL
     dictitem_T	*ll_di;		// The dictitem or NULL
     char_u	*ll_newkey;	// New key for Dict in alloc. mem or NULL.
+    type_T	*ll_valtype;	// type expected for the value or NULL
     blob_T	*ll_blob;	// The Blob or NULL
 } lval_T;
 
@@ -3764,6 +4305,8 @@ typedef struct {
     int		save_finish_op;
     int		save_opcount;
     int		save_reg_executing;
+    int		save_pending_end_reg_executing;
+    int		save_script_version;
     tasave_T	tabuf;
 } save_state_T;
 
@@ -3877,11 +4420,41 @@ typedef struct
 {
     linenr_T	sa_stop_lnum;	// stop after this line number when != 0
 #ifdef FEAT_RELTIME
-    proftime_T	*sa_tm;		// timeout limit or NULL
+    long	sa_tm;		// timeout limit or zero
     int		sa_timed_out;	// set when timed out
 #endif
     int		sa_wrapped;	// search wrapped around
 } searchit_arg_T;
+
+/*
+ * Cookie used by getsourceline().
+ */
+/*
+ * Cookie used to store info for each sourced file.
+ * It is shared between do_source() and getsourceline().
+ * This is passed to do_cmdline().
+ */
+typedef struct {
+    FILE	*fp;		// opened file for sourcing
+    char_u	*nextline;	// if not NULL: line that was read ahead
+    linenr_T	sourcing_lnum;	// line number of the source file
+    int		finished;	// ":finish" used
+    int		source_from_buf;// TRUE if sourcing from current buffer
+    int		buf_lnum;	// line number in the current buffer
+    garray_T	buflines;	// lines in the current buffer
+#ifdef USE_CRNL
+    int		fileformat;	// EOL_UNKNOWN, EOL_UNIX or EOL_DOS
+    int		error;		// TRUE if LF found after CR-LF
+#endif
+#ifdef FEAT_EVAL
+    linenr_T	breakpoint;	// next line with breakpoint or zero
+    char_u	*fname;		// name of sourced file
+    int		dbg_tick;	// debug_tick when breakpoint was set
+    int		level;		// top nesting level of sourced file
+#endif
+    vimconv_T	conv;		// type of conversion
+} source_cookie_T;
+
 
 #define WRITEBUFSIZE	8192	// size of normal write buffer
 
@@ -3902,7 +4475,7 @@ typedef struct
 #define FIO_ENCRYPTED	0x1000	// encrypt written bytes
 #define FIO_NOCONVERT	0x2000	// skip encoding conversion
 #define FIO_UCSBOM	0x4000	// check for BOM at start of file
-#define FIO_ALL	-1	// allow all formats
+#define FIO_ALL	(-1)	// allow all formats
 
 // When converting, a read() or write() may leave some bytes to be converted
 // for the next call.  The value is guessed...
@@ -3911,3 +4484,59 @@ typedef struct
 // We have to guess how much a sequence of bytes may expand when converting
 // with iconv() to be able to allocate a buffer.
 #define ICONV_MULT 8
+
+// Used for "magic_overruled".
+typedef enum {
+    OPTION_MAGIC_NOT_SET,	// p_magic not overruled
+    OPTION_MAGIC_ON,		// magic on inside regexp
+    OPTION_MAGIC_OFF		// magic off inside regexp
+} optmagic_T;
+
+// Magicness of a pattern, used by regexp code.
+// The order and values matter:
+//  magic <= MAGIC_OFF includes MAGIC_NONE
+//  magic >= MAGIC_ON  includes MAGIC_ALL
+typedef enum {
+    MAGIC_NONE = 1,		// "\V" very unmagic
+    MAGIC_OFF = 2,		// "\M" or 'magic' off
+    MAGIC_ON = 3,		// "\m" or 'magic'
+    MAGIC_ALL = 4		// "\v" very magic
+} magic_T;
+
+// Struct used to pass to error messages about where the error happened.
+typedef struct {
+    char    *wt_func_name;  // function name or NULL
+    char    wt_index;	    // argument or variable index, 0 means unknown
+    char    wt_variable;    // "variable" when TRUE, "argument" otherwise
+} where_T;
+
+#define WHERE_INIT {NULL, 0, 0}
+
+// Struct passed to get_v_event() and restore_v_event().
+typedef struct {
+    int		sve_did_save;
+    hashtab_T	sve_hashtab;
+} save_v_event_T;
+
+// Enum used by filter(), map() and mapnew()
+typedef enum {
+    FILTERMAP_FILTER,
+    FILTERMAP_MAP,
+    FILTERMAP_MAPNEW
+} filtermap_T;
+
+// Structure used by switch_win() to pass values to restore_win()
+typedef struct {
+    win_T	*sw_curwin;
+    tabpage_T	*sw_curtab;
+    int		sw_same_win;	    // VIsual_active was not reset
+    int		sw_visual_active;
+} switchwin_T;
+
+// Fuzzy matched string list item. Used for fuzzy match completion. Items are
+// usually sorted by 'score'. The 'idx' member is used for stable-sort.
+typedef struct {
+    int		idx;
+    char_u	*str;
+    int		score;
+} fuzmatch_str_T;

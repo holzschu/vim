@@ -10,9 +10,11 @@ set nomore
 " The terminal size is restored at the end.
 " Clear out t_WS, we don't want to resize the actual terminal.
 let script = [
+      \ '" DO NOT EDIT: Generated with gen_opt_test.vim',
+      \ '" Used by test_options.vim.',
+      \ '',
       \ 'let save_columns = &columns',
       \ 'let save_lines = &lines',
-      \ 'let save_term = &term',
       \ 'set t_WS=',
       \ ]
 
@@ -61,7 +63,7 @@ let test_values = {
       \
       \ 'ambiwidth': [['', 'single'], ['xxx']],
       \ 'background': [['', 'light', 'dark'], ['xxx']],
-      \ 'backspace': [[0, 2, '', 'eol', 'eol,start'], ['xxx']],
+      \ 'backspace': [[0, 2, 3, '', 'eol', 'eol,start', 'indent,eol,nostop'], ['4', 'xxx']],
       \ 'backupcopy': [['yes', 'auto'], ['', 'xxx', 'yes,no']],
       \ 'backupext': [['xxx'], ['']],
       \ 'belloff': [['', 'all', 'copy,error'], ['xxx']],
@@ -71,7 +73,7 @@ let test_values = {
       \ 'buftype': [['', 'help', 'nofile'], ['xxx', 'help,nofile']],
       \ 'casemap': [['', 'internal'], ['xxx']],
       \ 'cedit': [['', '\<Esc>'], ['xxx', 'f']],
-      \ 'clipboard': [['', 'unnamed', 'autoselect,unnamed'], ['xxx']],
+      \ 'clipboard': [['', 'unnamed', 'autoselect,unnamed', 'html', 'exclude:vimdisplay'], ['xxx', '\ze*', 'exclude:\\%(']],
       \ 'colorcolumn': [['', '8', '+2'], ['xxx']],
       \ 'comments': [['', 'b:#'], ['xxx']],
       \ 'commentstring': [['', '/*%s*/'], ['xxx']],
@@ -88,7 +90,7 @@ let test_values = {
       \ 'display': [['', 'lastline', 'lastline,uhex'], ['xxx']],
       \ 'eadirection': [['', 'both', 'ver'], ['xxx', 'ver,hor']],
       \ 'encoding': [['latin1'], ['xxx', '']],
-      \ 'eventignore': [['', 'WinEnter', 'WinLeave,winenter'], ['xxx']],
+      \ 'eventignore': [['', 'WinEnter', 'WinLeave,winenter', 'all,WinEnter'], ['xxx']],
       \ 'fileencoding': [['', 'latin1', 'xxx'], []],
       \ 'fileformat': [['', 'dos', 'unix'], ['xxx']],
       \ 'fileformats': [['', 'dos', 'dos,unix'], ['xxx']],
@@ -123,13 +125,14 @@ let test_values = {
       \ 'printmbfont': [['', 'r:some', 'b:Bold,c:yes'], ['xxx']],
       \ 'printoptions': [['', 'header:0', 'left:10pc,top:5pc'], ['xxx']],
       \ 'scrollopt': [['', 'ver', 'ver,hor'], ['xxx']],
-      \ 'renderoptions': [['', 'type:directx'], ['xxx']],
+      \ 'renderoptions': [[''], ['xxx']],
       \ 'selection': [['old', 'inclusive'], ['', 'xxx']],
       \ 'selectmode': [['', 'mouse', 'key,cmd'], ['xxx']],
       \ 'sessionoptions': [['', 'blank', 'help,options,slash'], ['xxx']],
       \ 'signcolumn': [['', 'auto', 'no'], ['xxx', 'no,yes']],
-      \ 'spellfile': [['', 'file.en.add'], ['xxx', '/tmp/file']],
+      \ 'spellfile': [['', 'file.en.add', '/tmp/dir\ with\ space/en.utf-8.add'], ['xxx', '/tmp/file']],
       \ 'spelllang': [['', 'xxx', 'sr@latin'], ['not&lang', "that\\\rthere"]],
+      \ 'spelloptions': [['', 'camel'], ['xxx']],
       \ 'spellsuggest': [['', 'best', 'double,33'], ['xxx']],
       \ 'switchbuf': [['', 'useopen', 'split,newtab'], ['xxx']],
       \ 'tagcase': [['smart', 'match'], ['', 'xxx', 'smart,match']],
@@ -148,8 +151,8 @@ let test_values = {
       \ 'viminfo': [['', '''50', '"30'], ['xxx']],
       \ 'virtualedit': [['', 'all', 'all,block'], ['xxx']],
       \ 'whichwrap': [['', 'b,s', 'bs'], ['xxx']],
-      \ 'wildmode': [['', 'full', 'list:full', 'full,longest'], ['xxx']],
-      \ 'wildoptions': [['', 'tagfile'], ['xxx']],
+      \ 'wildmode': [['', 'full', 'list:full', 'full,longest'], ['xxx', 'a4', 'full,full,full,full,full']],
+      \ 'wildoptions': [['', 'tagfile', 'pum', 'fuzzy'], ['xxx']],
       \ 'winaltkeys': [['menu', 'no'], ['', 'xxx']],
       \
       \ 'luadll': [[], []],
@@ -197,8 +200,8 @@ while 1
       " setting an option can only fail when it's implemented.
       call add(script, "if exists('+" . name . "')")
       for val in a[1]
-	call add(script, "call assert_fails('set " . name . "=" . val . "')")
-	call add(script, "call assert_fails('set " . shortname . "=" . val . "')")
+	call add(script, "silent! call assert_fails('set " . name . "=" . val . "')")
+	call add(script, "silent! call assert_fails('set " . shortname . "=" . val . "')")
       endfor
       call add(script, "endif")
     endif
@@ -220,7 +223,6 @@ while 1
   endif
 endwhile
 
-call add(script, 'let &term = save_term')
 call add(script, 'let &columns = save_columns')
 call add(script, 'let &lines = save_lines')
 

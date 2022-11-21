@@ -1,10 +1,10 @@
 /* screen.c */
 int conceal_cursor_line(win_T *wp);
-void conceal_check_cursor_line(void);
+void conceal_check_cursor_line(int was_concealed);
 int get_wcr_attr(win_T *wp);
 void win_draw_end(win_T *wp, int c1, int c2, int draw_margin, int row, int endrow, hlf_T hl);
 int compute_foldcolumn(win_T *wp, int col);
-void fill_foldcolumn(char_u *p, win_T *wp, int closed, linenr_T lnum);
+size_t fill_foldcolumn(char_u *p, win_T *wp, int closed, linenr_T lnum);
 int screen_get_current_line_off(void);
 void reset_screen_attr(void);
 void screen_line(int row, int coloff, int endcol, int clear_width, int flags);
@@ -17,7 +17,7 @@ void win_redr_custom(win_T *wp, int draw_ruler);
 void screen_putchar(int c, int row, int col, int attr);
 void screen_getbytes(int row, int col, char_u *bytes, int *attrp);
 void screen_puts(char_u *text, int row, int col, int attr);
-void screen_puts_len(char_u *text, int textlen, int row, int col, int attr);
+void screen_puts_len(char_u *text, int textlen, int row, int col, int attr_arg);
 void start_search_hl(void);
 void end_search_hl(void);
 void screen_stop_highlight(void);
@@ -31,6 +31,7 @@ int screen_valid(int doclear);
 void screenalloc(int doclear);
 void free_screenlines(void);
 void screenclear(void);
+void line_was_clobbered(int screen_lnum);
 int can_clear(char_u *p);
 void screen_start(void);
 void windgoto(int row, int col);
@@ -54,5 +55,5 @@ void comp_col(void);
 int number_width(win_T *wp);
 int screen_screencol(void);
 int screen_screenrow(void);
-char *set_chars_option(char_u **varp);
+char *set_chars_option(win_T *wp, char_u **varp);
 /* vim: set ft=c : */

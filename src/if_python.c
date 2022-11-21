@@ -21,16 +21,15 @@
 
 #include <limits.h>
 
-/* uncomment this if used with the debug version of python.
- * Checked on 2.7.4. */
-/* #define Py_DEBUG */
-/* Note: most of time you can add -DPy_DEBUG to CFLAGS in place of uncommenting
- */
-/* uncomment this if used with the debug version of python, but without its
- * allocator */
-/* #define Py_DEBUG_NO_PYMALLOC */
+// uncomment this if used with the debug version of python.
+// Checked on 2.7.4.
+// #define Py_DEBUG
+// Note: most of time you can add -DPy_DEBUG to CFLAGS in place of uncommenting
+// uncomment this if used with the debug version of python, but without its
+// allocator
+// #define Py_DEBUG_NO_PYMALLOC
 
-/* Python.h defines _POSIX_THREADS itself (if needed) */
+// Python.h defines _POSIX_THREADS itself (if needed)
 #ifdef _POSIX_THREADS
 # undef _POSIX_THREADS
 #endif
@@ -53,13 +52,13 @@
 # undef HAVE_PUTENV
 #endif
 #ifdef HAVE_STDARG_H
-# undef HAVE_STDARG_H	/* Python's config.h defines it as well. */
+# undef HAVE_STDARG_H	// Python's config.h defines it as well.
 #endif
 #ifdef _POSIX_C_SOURCE
-# undef _POSIX_C_SOURCE	/* pyconfig.h defines it as well. */
+# undef _POSIX_C_SOURCE	// pyconfig.h defines it as well.
 #endif
 #ifdef _XOPEN_SOURCE
-# undef _XOPEN_SOURCE	/* pyconfig.h defines it as well. */
+# undef _XOPEN_SOURCE	// pyconfig.h defines it as well.
 #endif
 
 #define PY_SSIZE_T_CLEAN
@@ -70,8 +69,12 @@
 # undef PY_SSIZE_T_CLEAN
 #endif
 
-#undef main /* Defined in python.h - aargh */
-#undef HAVE_FCNTL_H /* Clash with os_win32.h */
+// these are NULL for Python 2
+#define ERRORS_DECODE_ARG NULL
+#define ERRORS_ENCODE_ARG ERRORS_DECODE_ARG
+
+#undef main // Defined in python.h - aargh
+#undef HAVE_FCNTL_H // Clash with os_win32.h
 
 // Perhaps leave this out for Python 2.6, which supports bytes?
 #define PyBytes_FromString      PyString_FromString
@@ -80,7 +83,7 @@
 #define PyBytes_FromStringAndSize   PyString_FromStringAndSize
 
 #if !defined(FEAT_PYTHON) && defined(PROTO)
-/* Use this to be able to generate prototypes without python being used. */
+// Use this to be able to generate prototypes without python being used.
 # define PyObject Py_ssize_t
 # define PyThreadState Py_ssize_t
 # define PyTypeObject Py_ssize_t
@@ -112,19 +115,19 @@ struct PyMethodDef { Py_ssize_t a; };
 #endif
 #define Py_bytes_fmt "s"
 
-/* Parser flags */
+// Parser flags
 #define single_input	256
 #define file_input	257
 #define eval_input	258
 
 #if defined(PY_VERSION_HEX) && PY_VERSION_HEX >= 0x020300F0
-  /* Python 2.3: can invoke ":python" recursively. */
+  // Python 2.3: can invoke ":python" recursively.
 # define PY_CAN_RECURSE
 #endif
 
 #if defined(DYNAMIC_PYTHON) || defined(PROTO)
 # ifndef DYNAMIC_PYTHON
-#  define HINSTANCE long_u		/* for generating prototypes */
+#  define HINSTANCE long_u		// for generating prototypes
 # endif
 
 # ifndef MSWIN
@@ -138,14 +141,16 @@ struct PyMethodDef { Py_ssize_t a; };
 #  endif
 #  define close_dll dlclose
 #  define symbol_from_dll dlsym
+#  define load_dll_error dlerror
 # else
 #  define load_dll vimLoadLib
 #  define close_dll FreeLibrary
 #  define symbol_from_dll GetProcAddress
+#  define load_dll_error GetWin32Error
 # endif
 
-/* This makes if_python.c compile without warnings against Python 2.5
- * on Win32 and Win64. */
+// This makes if_python.c compile without warnings against Python 2.5
+// on Win32 and Win64.
 # undef PyRun_SimpleString
 # undef PyRun_String
 # undef PyArg_Parse
@@ -456,9 +461,9 @@ static void* (*dll_PyCObject_AsVoidPtr)(PyObject *);
 static int* dll_Py_NoSiteFlag;
 # endif
 
-static HINSTANCE hinstPython = 0; /* Instance of python.dll */
+static HINSTANCE hinstPython = 0; // Instance of python.dll
 
-/* Imported exception objects */
+// Imported exception objects
 static PyObject *imp_PyExc_AttributeError;
 static PyObject *imp_PyExc_IndexError;
 static PyObject *imp_PyExc_KeyError;
@@ -656,19 +661,6 @@ static struct
 };
 
 /*
- * Free python.dll
- */
-    static void
-end_dynamic_python(void)
-{
-    if (hinstPython)
-    {
-	close_dll(hinstPython);
-	hinstPython = 0;
-    }
-}
-
-/*
  * Load library and get all pointers.
  * Parameter 'libname' provides name of DLL.
  * Return OK or FAIL.
@@ -681,13 +673,13 @@ python_runtime_link_init(char *libname, int verbose)
 				   (PYTHON_PROC*)&py_PyUnicode_AsEncodedString;
 
 # if !(defined(PY_NO_RTLD_GLOBAL) && defined(PY3_NO_RTLD_GLOBAL)) && defined(UNIX) && defined(FEAT_PYTHON3)
-    /* Can't have Python and Python3 loaded at the same time.
-     * It cause a crash, because RTLD_GLOBAL is needed for
-     * standard C extension libraries of one or both python versions. */
+    // Can't have Python and Python3 loaded at the same time.
+    // It causes a crash, because RTLD_GLOBAL is needed for
+    // standard C extension libraries of one or both python versions.
     if (python3_loaded())
     {
 	if (verbose)
-	    emsg(_("E836: This Vim cannot execute :python after using :py3"));
+	    emsg(_(e_this_vim_cannot_execute_python_after_using_py3));
 	return FAIL;
     }
 # endif
@@ -698,7 +690,7 @@ python_runtime_link_init(char *libname, int verbose)
     if (!hinstPython)
     {
 	if (verbose)
-	    semsg(_(e_loadlib), libname);
+	    semsg(_(e_could_not_load_library_str_str), libname, load_dll_error());
 	return FAIL;
     }
 
@@ -710,13 +702,13 @@ python_runtime_link_init(char *libname, int verbose)
 	    close_dll(hinstPython);
 	    hinstPython = 0;
 	    if (verbose)
-		semsg(_(e_loadfunc), python_funcname_table[i].name);
+		semsg(_(e_could_not_load_library_function_str), python_funcname_table[i].name);
 	    return FAIL;
 	}
     }
 
-    /* Load unicode functions separately as only the ucs2 or the ucs4 functions
-     * will be present in the library. */
+    // Load unicode functions separately as only the ucs2 or the ucs4 functions
+    // will be present in the library.
     *ucs_as_encoded_string = symbol_from_dll(hinstPython,
 					     "PyUnicodeUCS2_AsEncodedString");
     if (*ucs_as_encoded_string == NULL)
@@ -727,7 +719,7 @@ python_runtime_link_init(char *libname, int verbose)
 	close_dll(hinstPython);
 	hinstPython = 0;
 	if (verbose)
-	    semsg(_(e_loadfunc), "PyUnicode_UCSX_*");
+	    semsg(_(e_could_not_load_library_function_str), "PyUnicode_UCSX_*");
 	return FAIL;
     }
 
@@ -775,7 +767,7 @@ get_exceptions(void)
     Py_XINCREF(imp_PyExc_OverflowError);
     Py_XDECREF(exmod);
 }
-#endif /* DYNAMIC_PYTHON */
+#endif // DYNAMIC_PYTHON
 
 static int initialised = 0;
 #define PYINITIALISED initialised
@@ -830,18 +822,16 @@ typedef PySliceObject PySliceObject_T;
 #include "if_py_both.h"
 
 
-/******************************************************
- * Internal function prototypes.
- */
+///////////////////////////////////////////////////////
+// Internal function prototypes.
 
 static int PythonMod_Init(void);
 
 
-/******************************************************
- * 1. Python interpreter main program.
- */
+///////////////////////////////////////////////////////
+// 1. Python interpreter main program.
 
-#if PYTHON_API_VERSION < 1007 /* Python 1.4 */
+#if PYTHON_API_VERSION < 1007 // Python 1.4
 typedef PyObject PyThreadState;
 #endif
 
@@ -875,7 +865,7 @@ python_end(void)
 {
     static int recurse = 0;
 
-    /* If a crash occurs while doing this, don't try again. */
+    // If a crash occurs while doing this, don't try again.
     if (recurse != 0)
 	return;
 
@@ -888,18 +878,17 @@ python_end(void)
 # ifdef PY_CAN_RECURSE
 	PyGILState_Ensure();
 # else
-	Python_RestoreThread();	    /* enter python */
+	Python_RestoreThread();	    // enter python
 # endif
 	Py_Finalize();
     }
-    end_dynamic_python();
 #else
     if (Py_IsInitialized())
     {
 # ifdef PY_CAN_RECURSE
 	PyGILState_Ensure();
 # else
-	Python_RestoreThread();	    /* enter python */
+	Python_RestoreThread();	    // enter python
 # endif
 	Py_Finalize();
     }
@@ -930,14 +919,14 @@ Python_Init(void)
 #ifdef DYNAMIC_PYTHON
 	if (!python_enabled(TRUE))
 	{
-	    emsg(_("E263: Sorry, this command is disabled, the Python library could not be loaded."));
+	    emsg(_(e_sorry_this_command_is_disabled_python_library_could_not_be_found));
 	    goto fail;
 	}
 #endif
 
 	if (*p_pyhome != NUL)
 	{
-	    /* The string must not change later, make a copy in static memory. */
+	    // The string must not change later, make a copy in static memory.
 	    py_home_buf = (char *)vim_strsave(p_pyhome);
 	    if (py_home_buf != NULL)
 		Py_SetPythonHome(py_home_buf);
@@ -950,28 +939,28 @@ Python_Init(void)
 	init_structs();
 
 #if defined(PY_VERSION_HEX) && PY_VERSION_HEX >= 0x02070000
-	/* Disable implicit 'import site', because it may cause Vim to exit
-	 * when it can't be found. */
+	// Disable implicit 'import site', because it may cause Vim to exit
+	// when it can't be found.
 	Py_NoSiteFlag++;
 #endif
 
 	Py_Initialize();
 
 #if defined(PY_VERSION_HEX) && PY_VERSION_HEX >= 0x02070000
-	/* 'import site' explicitly. */
+	// 'import site' explicitly.
 	site = PyImport_ImportModule("site");
 	if (site == NULL)
 	{
-	    emsg(_("E887: Sorry, this command is disabled, the Python's site module could not be loaded."));
+	    emsg(_(e_sorry_this_command_is_disabled_python_side_module_could_not_be_loaded));
 	    goto fail;
 	}
 	Py_DECREF(site);
 #endif
 
-	/* Initialise threads, and below save the state using
-	 * PyEval_SaveThread.  Without the call to PyEval_SaveThread, thread
-	 * specific state (such as the system trace hook), will be lost
-	 * between invocations of Python code. */
+	// Initialise threads, and below save the state using
+	// PyEval_SaveThread.  Without the call to PyEval_SaveThread, thread
+	// specific state (such as the system trace hook), will be lost
+	// between invocations of Python code.
 	PyEval_InitThreads();
 #ifdef DYNAMIC_PYTHON
 	get_exceptions();
@@ -985,19 +974,18 @@ Python_Init(void)
 
 	globals = PyModule_GetDict(PyImport_AddModule("__main__"));
 
-	/* Remove the element from sys.path that was added because of our
-	 * argv[0] value in PythonMod_Init().  Previously we used an empty
-	 * string, but depending on the OS we then get an empty entry or
-	 * the current directory in sys.path. */
+	// Remove the element from sys.path that was added because of our
+	// argv[0] value in PythonMod_Init().  Previously we used an empty
+	// string, but depending on the OS we then get an empty entry or
+	// the current directory in sys.path.
 	PyRun_SimpleString("import sys; sys.path = filter(lambda x: x != '/must>not&exist', sys.path)");
 
-	/* lock is created and acquired in PyEval_InitThreads() and thread
-	 * state is created in Py_Initialize()
-	 * there _PyGILState_NoteThreadState() also sets gilcounter to 1
-	 * (python must have threads enabled!)
-	 * so the following does both: unlock GIL and save thread state in TLS
-	 * without deleting thread state
-	 */
+	// lock is created and acquired in PyEval_InitThreads() and thread
+	// state is created in Py_Initialize()
+	// there _PyGILState_NoteThreadState() also sets gilcounter to 1
+	// (python must have threads enabled!)
+	// so the following does both: unlock GIL and save thread state in TLS
+	// without deleting thread state
 #ifndef PY_CAN_RECURSE
 	saved_python_thread =
 #endif
@@ -1009,11 +997,10 @@ Python_Init(void)
     return 0;
 
 fail:
-    /* We call PythonIO_Flush() here to print any Python errors.
-     * This is OK, as it is possible to call this function even
-     * if PythonIO_Init_io() has not completed successfully (it will
-     * not do anything in this case).
-     */
+    // We call PythonIO_Flush() here to print any Python errors.
+    // This is OK, as it is possible to call this function even
+    // if PythonIO_Init_io() has not completed successfully (it will
+    // not do anything in this case).
     PythonIO_Flush();
     return -1;
 }
@@ -1037,7 +1024,7 @@ DoPyCommand(const char *cmd, rangeinitializer init_range, runner run, void *arg)
 #ifndef PY_CAN_RECURSE
     if (recursive)
     {
-	emsg(_("E659: Cannot invoke Python recursively"));
+	emsg(_(e_cannot_invoke_python_recursively));
 	return;
     }
     ++recursive;
@@ -1050,16 +1037,16 @@ DoPyCommand(const char *cmd, rangeinitializer init_range, runner run, void *arg)
 
     init_range(arg);
 
-    Python_Release_Vim();	    /* leave vim */
+    Python_Release_Vim();	    // leave Vim
 
 #if defined(HAVE_LOCALE_H) || defined(X_LOCALE)
-    /* Python only works properly when the LC_NUMERIC locale is "C". */
+    // Python only works properly when the LC_NUMERIC locale is "C".
     saved_locale = setlocale(LC_NUMERIC, NULL);
     if (saved_locale == NULL || STRCMP(saved_locale, "C") == 0)
 	saved_locale = NULL;
     else
     {
-	/* Need to make a copy, value may change when setting new locale. */
+	// Need to make a copy, value may change when setting new locale.
 	saved_locale = (char *) PY_STRSAVE(saved_locale);
 	(void)setlocale(LC_NUMERIC, "C");
     }
@@ -1068,7 +1055,7 @@ DoPyCommand(const char *cmd, rangeinitializer init_range, runner run, void *arg)
 #ifdef PY_CAN_RECURSE
     pygilstate = PyGILState_Ensure();
 #else
-    Python_RestoreThread();	    /* enter python */
+    Python_RestoreThread();	    // enter python
 #endif
 
     run((char *) cmd, arg
@@ -1080,7 +1067,7 @@ DoPyCommand(const char *cmd, rangeinitializer init_range, runner run, void *arg)
 #ifdef PY_CAN_RECURSE
     PyGILState_Release(pygilstate);
 #else
-    Python_SaveThread();	    /* leave python */
+    Python_SaveThread();	    // leave python
 #endif
 
 #if defined(HAVE_LOCALE_H) || defined(X_LOCALE)
@@ -1091,7 +1078,7 @@ DoPyCommand(const char *cmd, rangeinitializer init_range, runner run, void *arg)
     }
 #endif
 
-    Python_Lock_Vim();		    /* enter vim */
+    Python_Lock_Vim();		    // enter vim
     PythonIO_Flush();
 
 theend:
@@ -1138,17 +1125,16 @@ ex_pyfile(exarg_T *eap)
     if (p_pyx == 0)
 	p_pyx = 2;
 
-    /* Have to do it like this. PyRun_SimpleFile requires you to pass a
-     * stdio file pointer, but Vim and the Python DLL are compiled with
-     * different options under Windows, meaning that stdio pointers aren't
-     * compatible between the two. Yuk.
-     *
-     * Put the string "execfile('file')" into buffer. But, we need to
-     * escape any backslashes or single quotes in the file name, so that
-     * Python won't mangle the file name.
-     */
+    // Have to do it like this. PyRun_SimpleFile requires you to pass a
+    // stdio file pointer, but Vim and the Python DLL are compiled with
+    // different options under Windows, meaning that stdio pointers aren't
+    // compatible between the two. Yuk.
+    //
+    // Put the string "execfile('file')" into buffer. But, we need to
+    // escape any backslashes or single quotes in the file name, so that
+    // Python won't mangle the file name.
     strcpy(buffer, "execfile('");
-    p = buffer + 10; /* size of "execfile('" */
+    p = buffer + 10; // size of "execfile('"
 
     while (*file && p < buffer + (BUFFER_SIZE - 3))
     {
@@ -1157,16 +1143,16 @@ ex_pyfile(exarg_T *eap)
 	*p++ = *file++;
     }
 
-    /* If we didn't finish the file name, we hit a buffer overflow */
+    // If we didn't finish the file name, we hit a buffer overflow
     if (*file != '\0')
 	return;
 
-    /* Put in the terminating "')" and a null */
+    // Put in the terminating "')" and a null
     *p++ = '\'';
     *p++ = ')';
     *p++ = '\0';
 
-    /* Execute the file */
+    // Execute the file
     DoPyCommand(buffer,
 	    (rangeinitializer) init_range_cmd,
 	    (runner) run_cmd,
@@ -1185,12 +1171,10 @@ ex_pydo(exarg_T *eap)
 	    (void *)eap);
 }
 
-/******************************************************
- * 2. Python output stream: writes output via [e]msg().
- */
+///////////////////////////////////////////////////////
+// 2. Python output stream: writes output via [e]msg().
 
-/* Implementation functions
- */
+// Implementation functions
 
     static PyObject *
 OutputGetattr(PyObject *self, char *name)
@@ -1206,53 +1190,47 @@ OutputGetattr(PyObject *self, char *name)
     return Py_FindMethod(OutputMethods, self, name);
 }
 
-/******************************************************
- * 3. Implementation of the Vim module for Python
- */
+///////////////////////////////////////////////////////
+// 3. Implementation of the Vim module for Python
 
-/* Window type - Implementation functions
- * --------------------------------------
- */
+// Window type - Implementation functions
+// --------------------------------------
 
 #define WindowType_Check(obj) ((obj)->ob_type == &WindowType)
 
-/* Buffer type - Implementation functions
- * --------------------------------------
- */
+// Buffer type - Implementation functions
+// --------------------------------------
 
 #define BufferType_Check(obj) ((obj)->ob_type == &BufferType)
 
-static PyInt BufferAssItem(PyObject *, PyInt, PyObject *);
-static PyInt BufferAssSlice(PyObject *, PyInt, PyInt, PyObject *);
+static int BufferAssItem(PyObject *, PyInt, PyObject *);
+static int BufferAssSlice(PyObject *, PyInt, PyInt, PyObject *);
 
-/* Line range type - Implementation functions
- * --------------------------------------
- */
+// Line range type - Implementation functions
+// --------------------------------------
 
 #define RangeType_Check(obj) ((obj)->ob_type == &RangeType)
 
-static PyInt RangeAssItem(PyObject *, PyInt, PyObject *);
-static PyInt RangeAssSlice(PyObject *, PyInt, PyInt, PyObject *);
+static int RangeAssItem(PyObject *, PyInt, PyObject *);
+static int RangeAssSlice(PyObject *, PyInt, PyInt, PyObject *);
 
-/* Current objects type - Implementation functions
- * -----------------------------------------------
- */
+// Current objects type - Implementation functions
+// -----------------------------------------------
 
 static PySequenceMethods BufferAsSeq = {
-    (PyInquiry)		BufferLength,	    /* sq_length,    len(x)   */
-    (binaryfunc)	0,		    /* BufferConcat, sq_concat, x+y */
-    (PyIntArgFunc)	0,		    /* BufferRepeat, sq_repeat, x*n */
-    (PyIntArgFunc)	BufferItem,	    /* sq_item,      x[i]     */
-    (PyIntIntArgFunc)	BufferSlice,	    /* sq_slice,     x[i:j]   */
-    (PyIntObjArgProc)	BufferAssItem,	    /* sq_ass_item,  x[i]=v   */
-    (PyIntIntObjArgProc) BufferAssSlice,    /* sq_ass_slice, x[i:j]=v */
+    (PyInquiry)		BufferLength,	    // sq_length,    len(x)
+    (binaryfunc)	0,		    // BufferConcat, sq_concat, x+y
+    (PyIntArgFunc)	0,		    // BufferRepeat, sq_repeat, x*n
+    (PyIntArgFunc)	BufferItem,	    // sq_item,      x[i]
+    (PyIntIntArgFunc)	BufferSlice,	    // sq_slice,     x[i:j]
+    (PyIntObjArgProc)	BufferAssItem,	    // sq_ass_item,  x[i]=v
+    (PyIntIntObjArgProc) BufferAssSlice,    // sq_ass_slice, x[i:j]=v
     (objobjproc)	0,
     (binaryfunc)	0,
     0,
 };
 
-/* Buffer object - Implementation
- */
+// Buffer object - Implementation
 
     static PyObject *
 BufferGetattr(PyObject *self, char *name)
@@ -1272,28 +1250,28 @@ BufferGetattr(PyObject *self, char *name)
 	return Py_FindMethod(BufferMethods, self, name);
 }
 
-/******************/
+//////////////////
 
-    static PyInt
+    static int
 BufferAssItem(PyObject *self, PyInt n, PyObject *val)
 {
     return RBAsItem((BufferObject *)(self), n, val, 1, -1, NULL);
 }
 
-    static PyInt
+    static int
 BufferAssSlice(PyObject *self, PyInt lo, PyInt hi, PyObject *val)
 {
     return RBAsSlice((BufferObject *)(self), lo, hi, val, 1, -1, NULL);
 }
 
 static PySequenceMethods RangeAsSeq = {
-    (PyInquiry)		RangeLength,	      /* sq_length,    len(x)   */
-    (binaryfunc)	0, /* RangeConcat, */ /* sq_concat,    x+y      */
-    (PyIntArgFunc)	0, /* RangeRepeat, */ /* sq_repeat,    x*n      */
-    (PyIntArgFunc)	RangeItem,	      /* sq_item,      x[i]     */
-    (PyIntIntArgFunc)	RangeSlice,	      /* sq_slice,     x[i:j]   */
-    (PyIntObjArgProc)	RangeAssItem,	      /* sq_ass_item,  x[i]=v   */
-    (PyIntIntObjArgProc) RangeAssSlice,	      /* sq_ass_slice, x[i:j]=v */
+    (PyInquiry)		RangeLength,	      // sq_length,    len(x)
+    (binaryfunc)	0, /* RangeConcat, */ // sq_concat,    x+y
+    (PyIntArgFunc)	0, /* RangeRepeat, */ // sq_repeat,    x*n
+    (PyIntArgFunc)	RangeItem,	      // sq_item,      x[i]
+    (PyIntIntArgFunc)	RangeSlice,	      // sq_slice,     x[i:j]
+    (PyIntObjArgProc)	RangeAssItem,	      // sq_ass_item,  x[i]=v
+    (PyIntIntObjArgProc) RangeAssSlice,	      // sq_ass_slice, x[i:j]=v
     (objobjproc)	0,
 #if PY_MAJOR_VERSION >= 2
     (binaryfunc)	0,
@@ -1301,8 +1279,7 @@ static PySequenceMethods RangeAsSeq = {
 #endif
 };
 
-/* Line range object - Implementation
- */
+// Line range object - Implementation
 
     static PyObject *
 RangeGetattr(PyObject *self, char *name)
@@ -1317,9 +1294,9 @@ RangeGetattr(PyObject *self, char *name)
 	return Py_FindMethod(RangeMethods, self, name);
 }
 
-/****************/
+////////////////
 
-    static PyInt
+    static int
 RangeAssItem(PyObject *self, PyInt n, PyObject *val)
 {
     return RBAsItem(((RangeObject *)(self))->buf, n, val,
@@ -1328,7 +1305,7 @@ RangeAssItem(PyObject *self, PyInt n, PyObject *val)
 		     &((RangeObject *)(self))->end);
 }
 
-    static PyInt
+    static int
 RangeAssSlice(PyObject *self, PyInt lo, PyInt hi, PyObject *val)
 {
     return RBAsSlice(((RangeObject *)(self))->buf, lo, hi, val,
@@ -1337,8 +1314,7 @@ RangeAssSlice(PyObject *self, PyInt lo, PyInt hi, PyObject *val)
 		      &((RangeObject *)(self))->end);
 }
 
-/* TabPage object - Implementation
- */
+// TabPage object - Implementation
 
     static PyObject *
 TabPageGetattr(PyObject *self, char *name)
@@ -1358,8 +1334,7 @@ TabPageGetattr(PyObject *self, char *name)
 	return Py_FindMethod(TabPageMethods, self, name);
 }
 
-/* Window object - Implementation
- */
+// Window object - Implementation
 
     static PyObject *
 WindowGetattr(PyObject *self, char *name)
@@ -1379,17 +1354,16 @@ WindowGetattr(PyObject *self, char *name)
 	return Py_FindMethod(WindowMethods, self, name);
 }
 
-/* Tab page list object - Definitions
- */
+// Tab page list object - Definitions
 
 static PySequenceMethods TabListAsSeq = {
-    (PyInquiry)		TabListLength,	    /* sq_length,    len(x)   */
-    (binaryfunc)	0,		    /* sq_concat,    x+y      */
-    (PyIntArgFunc)	0,		    /* sq_repeat,    x*n      */
-    (PyIntArgFunc)	TabListItem,	    /* sq_item,      x[i]     */
-    (PyIntIntArgFunc)	0,		    /* sq_slice,     x[i:j]   */
-    (PyIntObjArgProc)	0,		    /* sq_ass_item,  x[i]=v   */
-    (PyIntIntObjArgProc) 0,		    /* sq_ass_slice, x[i:j]=v */
+    (PyInquiry)		TabListLength,	    // sq_length,    len(x)
+    (binaryfunc)	0,		    // sq_concat,    x+y
+    (PyIntArgFunc)	0,		    // sq_repeat,    x*n
+    (PyIntArgFunc)	TabListItem,	    // sq_item,      x[i]
+    (PyIntIntArgFunc)	0,		    // sq_slice,     x[i:j]
+    (PyIntObjArgProc)	0,		    // sq_ass_item,  x[i]=v
+    (PyIntIntObjArgProc) 0,		    // sq_ass_slice, x[i:j]=v
     (objobjproc)	0,
 #if PY_MAJOR_VERSION >= 2
     (binaryfunc)	0,
@@ -1397,17 +1371,16 @@ static PySequenceMethods TabListAsSeq = {
 #endif
 };
 
-/* Window list object - Definitions
- */
+// Window list object - Definitions
 
 static PySequenceMethods WinListAsSeq = {
-    (PyInquiry)		WinListLength,	    /* sq_length,    len(x)   */
-    (binaryfunc)	0,		    /* sq_concat,    x+y      */
-    (PyIntArgFunc)	0,		    /* sq_repeat,    x*n      */
-    (PyIntArgFunc)	WinListItem,	    /* sq_item,      x[i]     */
-    (PyIntIntArgFunc)	0,		    /* sq_slice,     x[i:j]   */
-    (PyIntObjArgProc)	0,		    /* sq_ass_item,  x[i]=v   */
-    (PyIntIntObjArgProc) 0,		    /* sq_ass_slice, x[i:j]=v */
+    (PyInquiry)		WinListLength,	    // sq_length,    len(x)
+    (binaryfunc)	0,		    // sq_concat,    x+y
+    (PyIntArgFunc)	0,		    // sq_repeat,    x*n
+    (PyIntArgFunc)	WinListItem,	    // sq_item,      x[i]
+    (PyIntIntArgFunc)	0,		    // sq_slice,     x[i:j]
+    (PyIntObjArgProc)	0,		    // sq_ass_item,  x[i]=v
+    (PyIntIntObjArgProc) 0,		    // sq_ass_slice, x[i:j]=v
     (objobjproc)	0,
 #if PY_MAJOR_VERSION >= 2
     (binaryfunc)	0,
@@ -1415,8 +1388,7 @@ static PySequenceMethods WinListAsSeq = {
 #endif
 };
 
-/* External interface
- */
+// External interface
 
     void
 python_buffer_free(buf_T *buf)
@@ -1454,13 +1426,13 @@ python_tabpage_free(tabpage_T *tab)
     static int
 PythonMod_Init(void)
 {
-    /* The special value is removed from sys.path in Python_Init(). */
+    // The special value is removed from sys.path in Python_Init().
     static char	*(argv[2]) = {"/must>not&exist/foo", NULL};
 
     if (init_types())
 	return -1;
 
-    /* Set sys.argv[] to avoid a crash in warn(). */
+    // Set sys.argv[] to avoid a crash in warn().
     PySys_SetArgv(1, argv);
 
     vim_module = Py_InitModule4("vim", VimMethods, (char *)NULL,
@@ -1475,15 +1447,13 @@ PythonMod_Init(void)
     return 0;
 }
 
-/*************************************************************************
- * 4. Utility functions for handling the interface between Vim and Python.
- */
+//////////////////////////////////////////////////////////////////////////
+// 4. Utility functions for handling the interface between Vim and Python.
 
-/* Convert a Vim line into a Python string.
- * All internal newlines are replaced by null characters.
- *
- * On errors, the Python exception data is set, and NULL is returned.
- */
+// Convert a Vim line into a Python string.
+// All internal newlines are replaced by null characters.
+//
+// On errors, the Python exception data is set, and NULL is returned.
     static PyObject *
 LineToString(const char *str)
 {
@@ -1491,10 +1461,9 @@ LineToString(const char *str)
     PyInt len = strlen(str);
     char *p;
 
-    /* Allocate an Python string object, with uninitialised contents. We
-     * must do it this way, so that we can modify the string in place
-     * later. See the Python source, Objects/stringobject.c for details.
-     */
+    // Allocate a Python string object, with uninitialised contents. We
+    // must do it this way, so that we can modify the string in place
+    // later. See the Python source, Objects/stringobject.c for details.
     result = PyString_FromStringAndSize(NULL, len);
     if (result == NULL)
 	return NULL;
@@ -1568,8 +1537,8 @@ do_pyeval(char_u *str, typval_T *rettv)
     }
 }
 
-/* Don't generate a prototype for the next function, it generates an error on
- * newer Python versions. */
+// Don't generate a prototype for the next function, it generates an error on
+// newer Python versions.
 #if PYTHON_API_VERSION < 1007 /* Python 1.4 */ && !defined(PROTO)
 
     char *
@@ -1577,7 +1546,7 @@ Py_GetProgramName(void)
 {
     return "vim";
 }
-#endif /* Python 1.4 */
+#endif // Python 1.4
 
     int
 set_ref_in_python(int copyID)

@@ -1,4 +1,4 @@
-README.txt for version 8.1 of Vim: Vi IMproved.
+README.txt for version 8.2 of Vim: Vi IMproved.
 
 
 WHAT IS VIM?
@@ -16,10 +16,10 @@ All commands are given with normal keyboard characters, so those who can type
 with ten fingers can work very fast.  Additionally, function keys can be
 mapped to commands by the user, and the mouse can be used.
 
-Vim runs under MS-Windows (NT, 2000, XP, Vista, 7, 8, 10), Macintosh, VMS and
-almost all flavours of UNIX.  Porting to other systems should not be very
-difficult.  Older versions of Vim run on MS-DOS, MS-Windows 95/98/Me, Amiga
-DOS, Atari MiNT, BeOS, RISC OS and OS/2.  These are no longer maintained.
+Vim runs under MS-Windows (XP, Vista, 7, 8, 10), macOS, VMS and almost all
+flavours of UNIX.  Porting to other systems should not be very difficult.
+Older versions of Vim run on MS-DOS, MS-Windows 95/98/Me/NT/2000, Amiga DOS,
+Atari MiNT, BeOS, RISC OS and OS/2.  These are no longer maintained.
 
 
 DISTRIBUTION
@@ -33,7 +33,7 @@ This README.txt file comes with the runtime archive.  It includes the
 documentation, syntax files and other files that are used at runtime.  To run
 Vim you must get either one of the binary archives or a source archive.
 Which one you need depends on the system you want to run it on and whether you
-want or must compile it yourself.  Check "http://www.vim.org/download.php" for
+want or must compile it yourself.  Check "https://www.vim.org/download.php" for
 an overview of currently available distributions.
 
 Some popular places to get the latest Vim:
@@ -101,7 +101,7 @@ increase Bram's motivation to keep working on Vim!
 
 For the most recent information about sponsoring look on the Vim web site:
 
-	http://www.vim.org/sponsor/
+	https://www.vim.org/sponsor/
 
 
 CONTRIBUTING
@@ -112,15 +112,15 @@ If you would like to help making Vim better, see the CONTRIBUTING.md file.
 INFORMATION
 
 The latest news about Vim can be found on the Vim home page:
-	http://www.vim.org/
+	https://www.vim.org/
 
 If you have problems, have a look at the Vim documentation or tips:
-	http://www.vim.org/docs.php
-	http://vim.wikia.com/wiki/Vim_Tips_Wiki
+	https://www.vim.org/docs.php
+	https://vim.fandom.com/wiki/Vim_Tips_Wiki
 
 If you still have problems or any other questions, use one of the mailing
 lists to discuss them with Vim users and developers:
-	http://www.vim.org/maillist.php
+	https://www.vim.org/maillist.php
 
 If nothing else works, report bugs directly:
 	Bram Moolenaar <Bram@vim.org>

@@ -79,8 +79,8 @@ sha256_process(context_sha256_T *ctx, char_u data[64])
     GET_UINT32(W[14], data, 56);
     GET_UINT32(W[15], data, 60);
 
-#define  SHR(x, n) ((x & 0xFFFFFFFF) >> n)
-#define ROTR(x, n) (SHR(x, n) | (x << (32 - n)))
+#define  SHR(x, n) (((x) & 0xFFFFFFFF) >> (n))
+#define ROTR(x, n) (SHR(x, n) | ((x) << (32 - (n))))
 
 #define S0(x) (ROTR(x, 7) ^ ROTR(x, 18) ^  SHR(x, 3))
 #define S1(x) (ROTR(x, 17) ^ ROTR(x, 19) ^  SHR(x, 10))
@@ -88,20 +88,20 @@ sha256_process(context_sha256_T *ctx, char_u data[64])
 #define S2(x) (ROTR(x, 2) ^ ROTR(x, 13) ^ ROTR(x, 22))
 #define S3(x) (ROTR(x, 6) ^ ROTR(x, 11) ^ ROTR(x, 25))
 
-#define F0(x, y, z) ((x & y) | (z & (x | y)))
-#define F1(x, y, z) (z ^ (x & (y ^ z)))
+#define F0(x, y, z) (((x) & (y)) | ((z) & ((x) | (y))))
+#define F1(x, y, z) ((z) ^ ((x) & ((y) ^ (z))))
 
 #define R(t)				\
 (					\
-    W[t] = S1(W[t -  2]) + W[t -  7] +	\
-	   S0(W[t - 15]) + W[t - 16]	\
+    W[t] = S1(W[(t) -  2]) + W[(t) -  7] +	\
+	   S0(W[(t) - 15]) + W[(t) - 16]	\
 )
 
 #define P(a,b,c,d,e,f,g,h,x,K)		     \
 {					     \
-    temp1 = h + S3(e) + F1(e, f, g) + K + x; \
+    temp1 = (h) + S3(e) + F1(e, f, g) + (K) + (x); \
     temp2 = S2(a) + F0(a, b, c);	     \
-    d += temp1; h = temp1 + temp2;	     \
+    (d) += temp1; (h) = temp1 + temp2;	     \
 }
 
     A = ctx->state[0];
@@ -260,7 +260,7 @@ sha256_finish(context_sha256_T *ctx, char_u digest[32])
     PUT_UINT32(ctx->state[6], digest, 24);
     PUT_UINT32(ctx->state[7], digest, 28);
 }
-#endif /* FEAT_CRYPT || FEAT_PERSISTENT_UNDO */
+#endif // FEAT_CRYPT || FEAT_PERSISTENT_UNDO
 
 #if defined(FEAT_CRYPT) || defined(PROTO)
 /*
@@ -301,7 +301,7 @@ sha256_key(
     char_u *salt,
     int    salt_len)
 {
-    /* No passwd means don't encrypt */
+    // No passwd means don't encrypt
     if (buf == NULL || *buf == NUL)
 	return (char_u *)"";
 
@@ -370,7 +370,7 @@ sha256_self_test(void)
 	{
 	    failures++;
 	    output[sizeof(output) - 1] = '\0';
-	    /* printf("sha256_self_test %d failed %s\n", i, output); */
+	    // printf("sha256_self_test %d failed %s\n", i, output);
 	}
     }
     return failures > 0 ? FAIL : OK;
@@ -382,7 +382,7 @@ get_some_time(void)
 # ifdef HAVE_GETTIMEOFDAY
     struct timeval tv;
 
-    /* Using usec makes it less predictable. */
+    // Using usec makes it less predictable.
     gettimeofday(&tv, NULL);
     return (unsigned int)(tv.tv_sec + tv.tv_usec);
 # else
@@ -414,14 +414,14 @@ sha2_seed(
     sha256_update(&ctx, (char_u *)random_data, sizeof(random_data));
     sha256_finish(&ctx, sha256sum);
 
-    /* put first block into header. */
+    // put first block into header.
     for (i = 0; i < header_len; i++)
 	header[i] = sha256sum[i % sizeof(sha256sum)];
 
-    /* put remaining block into salt. */
+    // put remaining block into salt.
     if (salt != NULL)
 	for (i = 0; i < salt_len; i++)
 	    salt[i] = sha256sum[(i + header_len) % sizeof(sha256sum)];
 }
 
-#endif /* FEAT_CRYPT */
+#endif // FEAT_CRYPT

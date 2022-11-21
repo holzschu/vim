@@ -23,10 +23,10 @@
  * problem since this code was originally created in Europe and India.
  */
 
-/* Need a type that should be 32 bits. 64 also works but wastes space. */
-typedef unsigned int u32_T;	/* int is at least 32 bits */
+// Need a type that should be 32 bits. 64 also works but wastes space.
+typedef unsigned int u32_T;	// int is at least 32 bits
 
-/* The state of encryption, referenced by cryptstate_T. */
+// The state of encryption, referenced by cryptstate_T.
 typedef struct {
     u32_T keys[3];
 } zip_state_T;
@@ -122,7 +122,8 @@ crypt_zip_encode(
     cryptstate_T *state,
     char_u	*from,
     size_t	len,
-    char_u	*to)
+    char_u	*to,
+    int		last UNUSED)
 {
     zip_state_T *zs = state->method_state;
     size_t	i;
@@ -145,7 +146,8 @@ crypt_zip_decode(
     cryptstate_T *state,
     char_u	*from,
     size_t	len,
-    char_u	*to)
+    char_u	*to,
+    int		last UNUSED)
 {
     zip_state_T *zs = state->method_state;
     size_t	i;
@@ -159,4 +161,4 @@ crypt_zip_decode(
     }
 }
 
-#endif /* FEAT_CRYPT */
+#endif // FEAT_CRYPT

@@ -629,8 +629,6 @@ MSGFMT
 INSTALL_TOOL_LANGS
 INSTALL_LANGS
 TAGPRG
-HANGULIN_OBJ
-HANGULIN_SRC
 GUI_X_LIBS
 GUITYPE
 GUI_LIB_LOC
@@ -664,12 +662,14 @@ CHANNEL_SRC
 NETBEANS_OBJ
 NETBEANS_SRC
 RUBY_LIBS
+RUBY_CFLAGS_EXTRA
 RUBY_CFLAGS
 RUBY_PRO
 RUBY_OBJ
 RUBY_SRC
 vi_cv_path_ruby
 TCL_LIBS
+TCL_CFLAGS_EXTRA
 TCL_CFLAGS
 TCL_PRO
 TCL_OBJ
@@ -677,15 +677,18 @@ TCL_SRC
 vi_cv_path_tcl
 PYTHON3_OBJ
 PYTHON3_SRC
+PYTHON3_CFLAGS_EXTRA
 PYTHON3_CFLAGS
 PYTHON3_LIBS
 vi_cv_path_python3
 PYTHON_OBJ
 PYTHON_SRC
+PYTHON_CFLAGS_EXTRA
 PYTHON_CFLAGS
 PYTHON_LIBS
 vi_cv_path_python
 PERL_LIBS
+PERL_CFLAGS_EXTRA
 PERL_CFLAGS
 PERL_PRO
 PERL_OBJ
@@ -702,6 +705,7 @@ MZSCHEME_PRO
 MZSCHEME_OBJ
 MZSCHEME_SRC
 vi_cv_path_mzscheme
+LUA_CFLAGS_EXTRA
 LUA_CFLAGS
 LUA_LIBS
 LUA_PRO
@@ -710,6 +714,7 @@ LUA_SRC
 vi_cv_path_plain_lua
 vi_cv_path_luajit
 vi_cv_path_lua
+XDIFF_OBJS_USED
 compiledby
 dogvimdiff
 dovimdiff
@@ -723,6 +728,7 @@ OS_EXTRA_SRC
 XCODE_SELECT
 CPP_MM
 CROSS_COMPILING
+BUILD_DATE_MSG
 STRIP
 AWK
 FGREP
@@ -756,7 +762,6 @@ infodir
 docdir
 oldincludedir
 includedir
-runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -820,7 +825,6 @@ enable_multibyte
 enable_rightleft
 enable_arabic
 enable_farsi
-enable_hangulinput
 enable_xim
 enable_fontset
 with_x
@@ -829,9 +833,6 @@ enable_gtk2_check
 enable_gnome_check
 enable_gtk3_check
 enable_motif_check
-enable_athena_check
-enable_nextaw_check
-enable_carbon_check
 enable_gtktest
 with_gnome_includes
 with_gnome_libs
@@ -842,6 +843,7 @@ with_motif_lib
 with_tlib
 enable_largefile
 enable_canberra
+enable_libsodium
 enable_acl
 enable_gpm
 enable_sysmouse
@@ -895,7 +897,6 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
-runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -1148,15 +1149,6 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
-  -runstatedir | --runstatedir | --runstatedi | --runstated \
-  | --runstate | --runstat | --runsta | --runst | --runs \
-  | --run | --ru | --r)
-    ac_prev=runstatedir ;;
-  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
-  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
-  | --run=* | --ru=* | --r=*)
-    runstatedir=$ac_optarg ;;
-
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1294,7 +1286,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir runstatedir
+		libdir localedir mandir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1447,7 +1439,6 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
-  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1502,24 +1493,21 @@ Optional Features:
   --disable-rightleft     Do not include Right-to-Left language support.
   --disable-arabic        Do not include Arabic language support.
   --disable-farsi         Deprecated.
-  --enable-hangulinput    Include Hangul input support.
   --enable-xim            Include XIM input support.
   --enable-fontset        Include X fontset output support.
-  --enable-gui=OPTS       X11 GUI. default=auto OPTS=auto/no/gtk2/gnome2/gtk3/motif/athena/neXtaw/photon/carbon
+  --enable-gui=OPTS       X11 GUI. default=auto OPTS=auto/no/gtk2/gnome2/gtk3/motif/haiku/photon/carbon
   --enable-gtk2-check     If auto-select GUI, check for GTK+ 2 default=yes
   --enable-gnome-check    If GTK GUI, check for GNOME default=no
   --enable-gtk3-check     If auto-select GUI, check for GTK+ 3 default=yes
   --enable-motif-check    If auto-select GUI, check for Motif default=yes
-  --enable-athena-check   If auto-select GUI, check for Athena default=yes
-  --enable-nextaw-check   If auto-select GUI, check for neXtaw default=yes
-  --enable-carbon-check   If auto-select GUI, check for Carbon default=yes
   --disable-gtktest       Do not try to compile and run a test GTK program
   --disable-icon-cache-update        update disabled
   --disable-desktop-database-update  update disabled
   --disable-largefile     omit support for large files
   --disable-canberra      Do not use libcanberra.
+  --disable-libsodium      Do not use libsodium.
   --disable-acl           No check for ACL support.
-  --disable-gpm           Don't use gpm (Linux mouse daemon).
+  --enable-gpm=OPTS       Use gpm (Linux mouse daemon). default=yes OPTS=yes/no/dynamic
   --disable-sysmouse      Don't use sysmouse (mouse in *BSD console).
   --disable-nls           Don't support NLS (gettext()).
 
@@ -4459,6 +4447,17 @@ See \`config.log' for more details" "$LINENO" 5; }
   fi
 fi
 
+if test -n "$SOURCE_DATE_EPOCH"; then
+  DATE_FMT="%b %d %Y %H:%M:%S"
+  BUILD_DATE=$(LC_ALL=C date -u -d "@$SOURCE_DATE_EPOCH" "+$DATE_FMT" 2>/dev/null || LC_ALL=C date -u -r "$SOURCE_DATE_EPOCH" "+$DATE_FMT" 2>/dev/null || LC_ALL=C date -u "+$DATE_FMT")
+  cat >>confdefs.h <<_ACEOF
+#define BUILD_DATE "$BUILD_DATE"
+_ACEOF
+
+  BUILD_DATE_MSG=-"echo -e '=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\nNOTE: build date/time is fixed: $BUILD_DATE\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-='"
+
+fi
+
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking --enable-fail-if-missing argument" >&5
 $as_echo_n "checking --enable-fail-if-missing argument... " >&6; }
@@ -4476,7 +4475,7 @@ with_x_arg="$with_x"
 
 if test -z "$CFLAGS"; then
   CFLAGS="-O"
-  test "$GCC" = yes && CFLAGS="-O2 -fno-strength-reduce -Wall"
+  test "$GCC" = yes && CFLAGS="-O2 -fno-strength-reduce -Wall -Wno-deprecated-declarations"
 fi
 if test "$GCC" = yes; then
     gccversion=`$CC -dumpversion`
@@ -4504,9 +4503,9 @@ if test x"$CLANG_VERSION_STRING" != x"" ; then
   CLANG_VERSION=`expr $CLANG_MAJOR '*' 1000000 '+' $CLANG_MINOR '*' 1000 '+' $CLANG_REVISION`
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: $CLANG_VERSION" >&5
 $as_echo "$CLANG_VERSION" >&6; }
-          { $as_echo "$as_me:${as_lineno-$LINENO}: checking if clang supports -fno-strength-reduce" >&5
+            { $as_echo "$as_me:${as_lineno-$LINENO}: checking if clang supports -fno-strength-reduce" >&5
 $as_echo_n "checking if clang supports -fno-strength-reduce... " >&6; }
-  if test "$CLANG_VERSION" -ge 500002075 ; then
+  if test "$CLANG_MAJOR" -ge 10 -o "$CLANG_VERSION" -ge 500002075 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
     CFLAGS=`echo "$CFLAGS" | sed -e 's/-fno-strength-reduce/ /'`
@@ -4530,26 +4529,58 @@ fi
 test "$GCC" = yes && CPP_MM=M;
 
 if test -f ./toolcheck; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for buggy tools..." >&5
-$as_echo "$as_me: checking for buggy tools..." >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for buggy tools" >&5
+$as_echo_n "checking for buggy tools... " >&6; }
   sh ./toolcheck 1>&6
 fi
 
 OS_EXTRA_SRC=""; OS_EXTRA_OBJ=""
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for BeOS" >&5
-$as_echo_n "checking for BeOS... " >&6; }
-case `uname` in
-    BeOS)	OS_EXTRA_SRC=os_beos.c; OS_EXTRA_OBJ=objects/os_beos.o
-		BEOS=yes; { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking uname" >&5
+$as_echo_n "checking uname... " >&6; }
+if test "x$vim_cv_uname_output" = "x" ; then
+  vim_cv_uname_output=`(uname) 2>/dev/null`
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $vim_cv_uname_output" >&5
+$as_echo "$vim_cv_uname_output" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $vim_cv_uname_output (cached)" >&5
+$as_echo "$vim_cv_uname_output (cached)" >&6; }
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking uname -r" >&5
+$as_echo_n "checking uname -r... " >&6; }
+if test "x$vim_cv_uname_r_output" = "x" ; then
+  vim_cv_uname_r_output=`(uname -r) 2>/dev/null`
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $vim_cv_uname_r_output" >&5
+$as_echo "$vim_cv_uname_r_output" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $vim_cv_uname_r_output (cached)" >&5
+$as_echo "$vim_cv_uname_r_output (cached)" >&6; }
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking uname -m" >&5
+$as_echo_n "checking uname -m... " >&6; }
+if test "x$vim_cv_uname_m_output" = "x" ; then
+  vim_cv_uname_m_output=`(uname -m) 2>/dev/null`
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $vim_cv_uname_m_output" >&5
+$as_echo "$vim_cv_uname_m_output" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $vim_cv_uname_m_output (cached)" >&5
+$as_echo "$vim_cv_uname_m_output (cached)" >&6; }
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for Haiku" >&5
+$as_echo_n "checking for Haiku... " >&6; }
+case $vim_cv_uname_output in
+    Haiku) HAIKU=yes; { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; };;
-    *)		BEOS=no; { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+    *)     HAIKU=no; { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; };;
 esac
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for QNX" >&5
 $as_echo_n "checking for QNX... " >&6; }
-case `uname` in
+case $vim_cv_uname_output in
     QNX)	OS_EXTRA_SRC=os_qnx.c; OS_EXTRA_OBJ=objects/os_qnx.o
 		test -z "$with_x" && with_x=no
 		QNX=yes; { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
@@ -4560,7 +4591,7 @@ esac
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Darwin (Mac OS X)" >&5
 $as_echo_n "checking for Darwin (Mac OS X)... " >&6; }
-if test "`(uname) 2>/dev/null`" = Darwin; then
+if test "$vim_cv_uname_output" = Darwin; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
   MACOS_X=yes
@@ -4738,9 +4769,25 @@ rm -f core conftest.err conftest.$ac_objext \
     MACOS_X_DARWIN=yes
     OS_EXTRA_SRC="os_macosx.m os_mac_conv.c";
     OS_EXTRA_OBJ="objects/os_macosx.o objects/os_mac_conv.o"
+        $as_echo "#define HAVE_TIMER_CREATE 1" >>confdefs.h
+
             CPPFLAGS="$CPPFLAGS -DMACOS_X_DARWIN"
 
-                # On IRIX 5.3, sys/types and inttypes.h are conflicting.
+               if test -z "$with_x" -a "X$enable_gui" != Xmotif -a "X$enable_gui" != Xgtk2 -a "X$enable_gui" != Xgtk3; then
+      with_x=no
+     fi
+  fi
+
+        if test "$MACARCH" = "intel" -o "$MACARCH" = "both"; then
+    CFLAGS=`echo "$CFLAGS" | sed 's/-O[23456789]/-Oz/'`
+  fi
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+# On IRIX 5.3, sys/types and inttypes.h are conflicting.
 for ac_header in sys/types.h sys/stat.h stdlib.h string.h memory.h strings.h \
 		  inttypes.h stdint.h unistd.h
 do :
@@ -4756,28 +4803,6 @@ fi
 
 done
 
-
-ac_fn_c_check_header_mongrel "$LINENO" "Carbon/Carbon.h" "ac_cv_header_Carbon_Carbon_h" "$ac_includes_default"
-if test "x$ac_cv_header_Carbon_Carbon_h" = xyes; then :
-  CARBON=yes
-fi
-
-
-    if test "x$CARBON" = "xyes"; then
-      if test -z "$with_x" -a "X$enable_gui" != Xmotif -a "X$enable_gui" != Xathena -a "X$enable_gui" != Xgtk2 -a "X$enable_gui" != Xgtk3; then
-	with_x=no
-      fi
-    fi
-  fi
-
-        if test "$MACARCH" = "intel" -o "$MACARCH" = "both"; then
-    CFLAGS=`echo "$CFLAGS" | sed 's/-O[23456789]/-Oz/'`
-  fi
-
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
 
 for ac_header in AvailabilityMacros.h
 do :
@@ -4969,7 +4994,7 @@ esac
 if test "$cf_cv_ebcdic" = "yes"; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for z/OS Unix" >&5
 $as_echo_n "checking for z/OS Unix... " >&6; }
-case `uname` in
+case $vim_cv_uname_output in
     OS/390)	zOSUnix="yes";
 										if test "$CC" = "cc"; then
 		  ccm="$_CC_CCMODE"
@@ -5009,9 +5034,9 @@ esac
 fi
 
 if test "$zOSUnix" = "yes"; then
-    QUOTESED="sed -e 's/[\\\\\"]/\\\\\\\\&/g' -e 's/\\\\\\\\\"/\"/' -e 's/\\\\\\\\\";\$\$/\";/'"
+    QUOTESED="sed -e 's/[\\\\\"]/\\\\\\\\&/g' -e 's/\\\\\\\\\"/\"/' -e 's/\\\\\\\\\";\$\$/\";/' -e 's/  */ /g'"
 else
-    QUOTESED="sed -e 's/[\\\\\"]/\\\\&/g' -e 's/\\\\\"/\"/' -e 's/\\\\\";\$\$/\";/'"
+    QUOTESED="sed -e 's/[\\\\\"]/\\\\&/g' -e 's/\\\\\"/\"/' -e 's/\\\\\";\$\$/\";/' -e 's/  */ /g'"
 fi
 
 
@@ -5217,6 +5242,12 @@ esac
 
 
 
+if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+  has_eval=no
+else
+  has_eval=yes
+fi
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking --with-compiledby argument" >&5
 $as_echo_n "checking --with-compiledby argument... " >&6; }
 
@@ -5267,6 +5298,20 @@ else
 $as_echo "yes" >&6; }
 fi
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking diff feature" >&5
+$as_echo_n "checking diff feature... " >&6; }
+if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: disabled in $features version" >&5
+$as_echo "disabled in $features version" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: enabled" >&5
+$as_echo "enabled" >&6; }
+  $as_echo "#define FEAT_DIFF 1" >>confdefs.h
+
+  XDIFF_OBJS_USED="\$(XDIFF_OBJS)"
+
+fi
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking --enable-luainterp argument" >&5
 $as_echo_n "checking --enable-luainterp argument... " >&6; }
 # Check whether --enable-luainterp was given.
@@ -5280,7 +5325,7 @@ fi
 $as_echo "$enable_luainterp" >&6; }
 
 if test "$enable_luainterp" = "yes" -o "$enable_luainterp" = "dynamic"; then
-  if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+  if test "$has_eval" = "no"; then
     as_fn_error $? "cannot use Lua with tiny or small features" "$LINENO" 5
   fi
 
@@ -5475,7 +5520,29 @@ $as_echo "yes" >&6; }
 	else
 	  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-	  vi_cv_path_lua_pfx=
+
+	  # Detect moonjit:
+	  # https://groups.google.com/forum/#!topic/vim_use/O0vek60WuTk
+	  lua_suf=/moonjit-2.3
+	  inc_path="$vi_cv_path_lua_pfx/include"
+	  for dir in "$inc_path"/moonjit-[0-9]* ; do
+	    if test -d "$dir" ; then
+	      lua_suf=`basename "$dir"`
+	      lua_suf="/$lua_suf"
+	      break
+	    fi
+	  done
+	  { $as_echo "$as_me:${as_lineno-$LINENO}: checking if lua.h can be found in $inc_path$lua_suf" >&5
+$as_echo_n "checking if lua.h can be found in $inc_path$lua_suf... " >&6; }
+	  if test -f "$inc_path$lua_suf/lua.h"; then
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	    LUA_INC=$lua_suf
+	  else
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	    vi_cv_path_lua_pfx=
+	  fi
 	fi
       fi
     fi
@@ -5594,13 +5661,14 @@ $as_echo "yes" >&6; }
     fi
     if test "X$LUA_CFLAGS$LUA_LIBS" != "X" && \
        test "x$MACOS_X" = "xyes" && test "x$vi_cv_with_luajit" != "xno" && \
-       test "`(uname -m) 2>/dev/null`" = "x86_64"; then
+       test "$vim_cv_uname_m_output" = "x86_64"; then
             LUA_LIBS="-pagezero_size 10000 -image_base 100000000 $LUA_LIBS"
     fi
   fi
   if test "$fail_if_missing" = "yes" -a "$lua_ok" != "yes"; then
     as_fn_error $? "could not configure lua" "$LINENO" 5
   fi
+
 
 
 
@@ -5806,6 +5874,9 @@ $as_echo "not found" >&6; }
 	  MZSCHEME_CFLAGS="-DMZ_PRECISE_GC"
 	elif test -f "${path}/libracket3m.a"; then
 	  MZSCHEME_LIBS="${path}/libracket3m.a"
+	  if test -f "${path}/librktio.a"; then
+	    MZSCHEME_LIBS="${MZSCHEME_LIBS} ${path}/librktio.a"
+	  fi
 	  MZSCHEME_CFLAGS="-DMZ_PRECISE_GC"
 	elif test -f "${path}/libracket.a"; then
 	  MZSCHEME_LIBS="${path}/libracket.a ${path}/libmzgc.a"
@@ -5828,8 +5899,8 @@ $as_echo "not found" >&6; }
 	  fi
 	  if test "$GCC" = yes; then
 	    	    	    MZSCHEME_LIBS="${MZSCHEME_LIBS} -Wl,-rpath -Wl,${path}"
-	  elif test "`(uname) 2>/dev/null`" = SunOS &&
-				   uname -r | grep '^5' >/dev/null; then
+	  elif test "$vim_cv_uname_output" = SunOS &&
+			   echo $vim_cv_uname_r_output | grep '^5' >/dev/null; then
 	    MZSCHEME_LIBS="${MZSCHEME_LIBS} -R ${path}"
 	  fi
 	fi
@@ -6026,7 +6097,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_perlinterp" >&5
 $as_echo "$enable_perlinterp" >&6; }
 if test "$enable_perlinterp" = "yes" -o "$enable_perlinterp" = "dynamic"; then
-  if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+  if test "$has_eval" = "no"; then
     as_fn_error $? "cannot use Perl with tiny or small features" "$LINENO" 5
   fi
 
@@ -6218,6 +6289,7 @@ fi
 
 
 
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking --enable-pythoninterp argument" >&5
 $as_echo_n "checking --enable-pythoninterp argument... " >&6; }
 # Check whether --enable-pythoninterp was given.
@@ -6230,7 +6302,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_pythoninterp" >&5
 $as_echo "$enable_pythoninterp" >&6; }
 if test "$enable_pythoninterp" = "yes" -o "$enable_pythoninterp" = "dynamic"; then
-  if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+  if test "$has_eval" = "no"; then
     as_fn_error $? "cannot use Python with tiny or small features" "$LINENO" 5
   fi
 
@@ -6470,13 +6542,13 @@ $as_echo "$vi_cv_dll_name_python" >&6; }
 $as_echo_n "checking if -pthread should be used... " >&6; }
 	threadsafe_flag=
 	thread_lib=
-	        if test "`(uname) 2>/dev/null`" != Darwin; then
+	        if test "$vim_cv_uname_output" != Darwin; then
 	  test "$GCC" = yes && threadsafe_flag="-pthread"
-	  if test "`(uname) 2>/dev/null`" = FreeBSD; then
+	  if test "$vim_cv_uname_output" = FreeBSD; then
 	    threadsafe_flag="-D_THREAD_SAFE"
 	    thread_lib="-pthread"
 	  fi
-	  if test "`(uname) 2>/dev/null`" = SunOS; then
+	  if test "$vim_cv_uname_output" = SunOS; then
 	    threadsafe_flag="-pthreads"
 	  fi
 	fi
@@ -6568,6 +6640,7 @@ fi
 
 
 
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking --enable-python3interp argument" >&5
 $as_echo_n "checking --enable-python3interp argument... " >&6; }
 # Check whether --enable-python3interp was given.
@@ -6580,7 +6653,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_python3interp" >&5
 $as_echo "$enable_python3interp" >&6; }
 if test "$enable_python3interp" = "yes" -o "$enable_python3interp" = "dynamic"; then
-  if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+  if test "$has_eval" = "no"; then
     as_fn_error $? "cannot use Python with tiny or small features" "$LINENO" 5
   fi
 
@@ -6653,7 +6726,7 @@ if ${vi_cv_var_python3_version+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   vi_cv_var_python3_version=`
-          ${vi_cv_path_python3} -c 'import sys; print(sys.version[:3])'`
+          ${vi_cv_path_python3} -c 'import sys; print("{}.{}".format(sys.version_info.major, sys.version_info.minor))'`
 
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $vi_cv_var_python3_version" >&5
@@ -6735,7 +6808,10 @@ else
 
        vi_cv_path_python3_conf=
        config_dir="config-${vi_cv_var_python3_version}${vi_cv_var_python3_abiflags}"
-       d=`${vi_cv_path_python3} -c "import distutils.sysconfig; print(distutils.sysconfig.get_config_var('LIBPL'))"`
+       d=`${vi_cv_path_python3} -c "import sysconfig; print(sysconfig.get_config_var('LIBPL'))" 2> /dev/null`
+       if test "x$d" = "x"; then
+         d=`${vi_cv_path_python3} -c "import distutils.sysconfig; print(distutils.sysconfig.get_config_var('LIBPL'))"`
+       fi
        if test -d "$d" && test -f "$d/config.c"; then
          vi_cv_path_python3_conf="$d"
        else
@@ -6815,13 +6891,13 @@ $as_echo "$vi_cv_dll_name_python3" >&6; }
 $as_echo_n "checking if -pthread should be used... " >&6; }
         threadsafe_flag=
         thread_lib=
-                if test "`(uname) 2>/dev/null`" != Darwin; then
+                if test "$vim_cv_uname_output" != Darwin; then
           test "$GCC" = yes && threadsafe_flag="-pthread"
-          if test "`(uname) 2>/dev/null`" = FreeBSD; then
+          if test "$vim_cv_uname_output" = FreeBSD; then
             threadsafe_flag="-D_THREAD_SAFE"
             thread_lib="-pthread"
           fi
-          if test "`(uname) 2>/dev/null`" = SunOS; then
+          if test "$vim_cv_uname_output" = SunOS; then
             threadsafe_flag="-pthreads"
           fi
         fi
@@ -6911,6 +6987,7 @@ fi
 
 
 
+
 if test "$python_ok" = yes && test "$python3_ok" = yes; then
   $as_echo "#define DYNAMIC_PYTHON 1" >>confdefs.h
 
@@ -6938,7 +7015,7 @@ else
      * Only the first python version used will be switched on.
      */
 
-    int no_rtl_global_needed_for(char *python_instsoname, char *prefix)
+    static int no_rtl_global_needed_for(char *python_instsoname, char *prefix)
     {
       int needed = 0;
       void* pylib = dlopen(python_instsoname, RTLD_LAZY|RTLD_LOCAL);
@@ -6957,7 +7034,7 @@ else
       return !needed;
     }
 
-    int main(int argc, char** argv)
+    int main()
     {
       int not_needed = 0;
       if (no_rtl_global_needed_for("${vi_cv_dll_name_python}", "${vi_cv_path_python_pfx}"))
@@ -7004,7 +7081,7 @@ else
      * Only the first python version used will be switched on.
      */
 
-    int no_rtl_global_needed_for(char *python_instsoname, wchar_t *prefix)
+    static int no_rtl_global_needed_for(char *python_instsoname, wchar_t *prefix)
     {
       int needed = 0;
       void* pylib = dlopen(python_instsoname, RTLD_LAZY|RTLD_LOCAL);
@@ -7023,7 +7100,7 @@ else
       return !needed;
     }
 
-    int main(int argc, char** argv)
+    int main()
     {
       int not_needed = 0;
       if (no_rtl_global_needed_for("${vi_cv_dll_name_python3}", L"${vi_cv_path_python3_pfx}"))
@@ -7390,7 +7467,7 @@ $as_echo_n "checking for location of Tcl include... " >&6; }
       if test "x$MACOS_X" != "xyes"; then
 	tclinc="$tclloc/include $tclloc/include/tcl $tclloc/include/tcl$tclver /usr/local/include /usr/local/include/tcl$tclver /usr/include /usr/include/tcl$tclver"
       else
-		tclinc="/System/Library/Frameworks/Tcl.framework/Headers"
+				tclinc="$tclloc/include $tclloc/include/tcl $tclloc/include/tcl$tclver /System/Library/Frameworks/Tcl.framework/Headers `xcrun --show-sdk-path`/System/Library/Frameworks/Tcl.framework/Versions/Current/Headers"
       fi
       TCL_INC=
       for try in $tclinc; do
@@ -7413,7 +7490,8 @@ $as_echo_n "checking for location of tclConfig.sh script... " >&6; }
 	  tclcnf=`echo $tclinc | sed s/include/lib/g`
 	  tclcnf="$tclcnf `echo $tclinc | sed s/include/lib64/g`"
 	else
-	  	  tclcnf="/System/Library/Frameworks/Tcl.framework"
+	  	  	  	  tclcnf=`echo $tclinc | sed s/include/lib/g`
+	  tclcnf="$tclcnf /System/Library/Frameworks/Tcl.framework `xcrun --show-sdk-path`/System/Library/Frameworks/Tcl.framework"
 	fi
 	for try in $tclcnf; do
 	  if test -f "$try/tclConfig.sh"; then
@@ -7444,8 +7522,8 @@ $as_echo_n "checking for Tcl library by myself... " >&6; }
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $try/lib$trylib" >&5
 $as_echo "$try/lib$trylib" >&6; }
 		  TCL_LIBS="-L\"$try\" -ltcl$ver -ldl -lm"
-		  if test "`(uname) 2>/dev/null`" = SunOS &&
-					 uname -r | grep '^5' >/dev/null; then
+		  if test "$vim_cv_uname_output" = SunOS &&
+					 echo $vim_cv_uname_r_output | grep '^5' >/dev/null; then
 		    TCL_LIBS="$TCL_LIBS -R $try"
 		  fi
 		  break 3
@@ -7490,6 +7568,7 @@ fi
 
 
 
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking --enable-rubyinterp argument" >&5
 $as_echo_n "checking --enable-rubyinterp argument... " >&6; }
 # Check whether --enable-rubyinterp was given.
@@ -7502,7 +7581,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_rubyinterp" >&5
 $as_echo "$enable_rubyinterp" >&6; }
 if test "$enable_rubyinterp" = "yes" -o "$enable_rubyinterp" = "dynamic"; then
-  if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+  if test "$has_eval" = "no"; then
     as_fn_error $? "cannot use Ruby with tiny or small features" "$LINENO" 5
   fi
 
@@ -7596,8 +7675,7 @@ $as_echo "$rubyhdrdir" >&6; }
 	librubyarg=`$vi_cv_path_ruby -r rbconfig -e "print $ruby_rbconfig.expand($ruby_rbconfig::CONFIG['LIBRUBYARG'])"`
 	librubya=`$vi_cv_path_ruby -r rbconfig -e "print $ruby_rbconfig.expand($ruby_rbconfig::CONFIG['LIBRUBY_A'])"`
 	rubylibdir=`$vi_cv_path_ruby -r rbconfig -e "print $ruby_rbconfig.expand($ruby_rbconfig::CONFIG['libdir'])"`
-	if test -f "$rubylibdir/$librubya"; then
-	  librubyarg="$librubyarg"
+	if test -f "$rubylibdir/$librubya" || expr "$librubyarg" : "-lruby"; then
 	  RUBY_LIBS="$RUBY_LIBS -L$rubylibdir"
 	elif test "$librubyarg" = "libruby.a"; then
 	  	  librubyarg="-lruby"
@@ -7628,8 +7706,11 @@ $as_echo "$rubyhdrdir" >&6; }
 	  fi
 	  $as_echo "#define DYNAMIC_RUBY 1" >>confdefs.h
 
-	  RUBY_CFLAGS="-DDYNAMIC_RUBY_DLL=\\\"$libruby_soname\\\" -DDYNAMIC_RUBY_VER=$rubyversion $RUBY_CFLAGS"
+	  RUBY_CFLAGS="-DDYNAMIC_RUBY_DLL=\\\"$libruby_soname\\\" $RUBY_CFLAGS"
 	  RUBY_LIBS=
+	fi
+	if test "X$CLANG_VERSION" != "X" -a "$rubyversion" -ge 30; then
+	  RUBY_CFLAGS="$RUBY_CFLAGS -fdeclspec"
 	fi
       else
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: not found; disabling Ruby" >&5
@@ -7645,6 +7726,7 @@ $as_echo "too old; need Ruby version 1.6.0 or later" >&6; }
     as_fn_error $? "could not configure Ruby" "$LINENO" 5
   fi
 fi
+
 
 
 
@@ -7677,7 +7759,7 @@ else
 fi
 
 if test "$enable_netbeans" = "yes"; then
-  if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+  if test "$has_eval" = "no"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: cannot use NetBeans with tiny or small features" >&5
 $as_echo "cannot use NetBeans with tiny or small features" >&6; }
     enable_netbeans="no"
@@ -7700,7 +7782,7 @@ else
 fi
 
 if test "$enable_channel" = "yes"; then
-  if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+  if test "$has_eval" = "no"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: cannot use channels with tiny or small features" >&5
 $as_echo "cannot use channels with tiny or small features" >&6; }
     enable_channel="no"
@@ -7720,7 +7802,54 @@ $as_echo "yes" >&6; }
 fi
 
 if test "$enable_channel" = "yes"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for socket in -lsocket" >&5
+    if test "x$HAIKU" = "xyes"; then
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for socket in -lnetwork" >&5
+$as_echo_n "checking for socket in -lnetwork... " >&6; }
+if ${ac_cv_lib_network_socket+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lnetwork  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char socket ();
+int
+main ()
+{
+return socket ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_network_socket=yes
+else
+  ac_cv_lib_network_socket=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_network_socket" >&5
+$as_echo "$ac_cv_lib_network_socket" >&6; }
+if test "x$ac_cv_lib_network_socket" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBNETWORK 1
+_ACEOF
+
+  LIBS="-lnetwork $LIBS"
+
+fi
+
+  else
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for socket in -lsocket" >&5
 $as_echo_n "checking for socket in -lsocket... " >&6; }
 if ${ac_cv_lib_socket_socket+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -7765,7 +7894,76 @@ _ACEOF
 
 fi
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gethostbyname in -lnsl" >&5
+  fi
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether compiling with IPv6 networking is possible" >&5
+$as_echo_n "checking whether compiling with IPv6 networking is possible... " >&6; }
+if ${vim_cv_ipv6_networking+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <fcntl.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+	/* Check bitfields */
+	struct nbbuf {
+	unsigned int  initDone:1;
+	unsigned short signmaplen;
+	};
+
+int
+main ()
+{
+
+		/* Check creating a socket. */
+		struct sockaddr_in server;
+		struct addrinfo *res;
+		(void)socket(AF_INET, SOCK_STREAM, 0);
+		(void)htons(100);
+		(void)getaddrinfo("microsoft.com", NULL, NULL, &res);
+		if (errno == ECONNREFUSED)
+		  (void)connect(1, (struct sockaddr *)&server, sizeof(server));
+		(void)freeaddrinfo(res);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  vim_cv_ipv6_networking="yes"
+else
+  vim_cv_ipv6_networking="no"
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $vim_cv_ipv6_networking" >&5
+$as_echo "$vim_cv_ipv6_networking" >&6; }
+
+  if test "x$vim_cv_ipv6_networking" = "xyes"; then
+    $as_echo "#define FEAT_IPV6 1" >>confdefs.h
+
+    for ac_func in inet_ntop
+do :
+  ac_fn_c_check_func "$LINENO" "inet_ntop" "ac_cv_func_inet_ntop"
+if test "x$ac_cv_func_inet_ntop" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_INET_NTOP 1
+_ACEOF
+
+fi
+done
+
+  else
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gethostbyname in -lnsl" >&5
 $as_echo_n "checking for gethostbyname in -lnsl... " >&6; }
 if ${ac_cv_lib_nsl_gethostbyname+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -7810,8 +8008,11 @@ _ACEOF
 
 fi
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether compiling with process communication is possible" >&5
-$as_echo_n "checking whether compiling with process communication is possible... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether compiling with IPv4 networking is possible" >&5
+$as_echo_n "checking whether compiling with IPv4 networking is possible... " >&6; }
+if ${vim_cv_ipv4_networking+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -7847,14 +8048,16 @@ main ()
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
+  vim_cv_ipv4_networking="yes"
 else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }; enable_netbeans="no"; enable_channel="no"
+  vim_cv_ipv4_networking="no"; enable_netbeans="no"; enable_channel="no"
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $vim_cv_ipv4_networking" >&5
+$as_echo "$vim_cv_ipv4_networking" >&6; }
+  fi
 fi
 if test "$enable_netbeans" = "yes"; then
   $as_echo "#define FEAT_NETBEANS_INTG 1" >>confdefs.h
@@ -7867,9 +8070,9 @@ fi
 if test "$enable_channel" = "yes"; then
   $as_echo "#define FEAT_JOB_CHANNEL 1" >>confdefs.h
 
-  CHANNEL_SRC="channel.c"
+  CHANNEL_SRC="job.c channel.c"
 
-  CHANNEL_OBJ="objects/channel.o"
+  CHANNEL_OBJ="objects/job.o objects/channel.o"
 
 fi
 
@@ -7883,7 +8086,7 @@ else
 fi
 
 if test "$enable_terminal" = "yes" || test "$enable_terminal" = "auto" -a "x$features" = "xhuge" ; then
-  if test "x$features" = "xtiny" -o "x$features" = "xsmall"; then
+  if test "$has_eval" = "no"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: cannot use terminal emulator with tiny or small features" >&5
 $as_echo "cannot use terminal emulator with tiny or small features" >&6; }
     enable_terminal="no"
@@ -7993,18 +8196,6 @@ if test "${enable_farsi+set}" = set; then :
   enableval=$enable_farsi;
 fi
 
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking --enable-hangulinput argument" >&5
-$as_echo_n "checking --enable-hangulinput argument... " >&6; }
-# Check whether --enable-hangulinput was given.
-if test "${enable_hangulinput+set}" = set; then :
-  enableval=$enable_hangulinput;
-else
-  enable_hangulinput="no"
-fi
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_hangulinput" >&5
-$as_echo "$enable_hangulinput" >&6; }
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking --enable-xim argument" >&5
 $as_echo_n "checking --enable-xim argument... " >&6; }
@@ -8774,8 +8965,8 @@ fi
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: Corrected X libraries to $x_libraries" >&5
 $as_echo "Corrected X libraries to $x_libraries" >&6; }
     X_LIBS="$X_LIBS -L$x_libraries"
-    if test "`(uname) 2>/dev/null`" = SunOS &&
-					 uname -r | grep '^5' >/dev/null; then
+    if test "$vim_cv_uname_output" = SunOS &&
+					 echo $vim_cv_uname_r_output | grep '^5' >/dev/null; then
       X_LIBS="$X_LIBS -R $x_libraries"
     fi
   fi
@@ -9020,7 +9211,7 @@ else
 # include <stdlib.h>
 # include <stddef.h>
 #endif
-		main()
+		int main()
 		{
 		  if (sizeof(wchar_t) <= 2)
 		    exit(1);
@@ -9052,7 +9243,7 @@ if test "x$with_x" = xno -a "x$with_x_arg" = xyes; then
     as_fn_error $? "could not configure X" "$LINENO" 5
 fi
 
-test "x$with_x" = xno -a "x$MACOS_X" != "xyes" -a "x$QNX" != "xyes" && enable_gui=no
+test "x$with_x" = xno -a "x$HAIKU" != "xyes" -a "x$MACOS_X" != "xyes" -a "x$QNX" != "xyes" && enable_gui=no
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking --enable-gui argument" >&5
 $as_echo_n "checking --enable-gui argument... " >&6; }
@@ -9071,13 +9262,27 @@ SKIP_GTK2=YES
 SKIP_GTK3=YES
 SKIP_GNOME=YES
 SKIP_MOTIF=YES
-SKIP_ATHENA=YES
-SKIP_NEXTAW=YES
 SKIP_PHOTON=YES
-SKIP_CARBON=YES
+SKIP_HAIKU=YES
 GUITYPE=NONE
 
-if test "x$QNX" = "xyes" -a "x$with_x" = "xno" ; then
+if test "x$HAIKU" = "xyes"; then
+  SKIP_HAIKU=
+  case "$enable_gui_canon" in
+    no)     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no GUI support" >&5
+$as_echo "no GUI support" >&6; }
+            SKIP_HAIKU=YES ;;
+    yes|"") { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes - automatic GUI support" >&5
+$as_echo "yes - automatic GUI support" >&6; } ;;
+    auto)   { $as_echo "$as_me:${as_lineno-$LINENO}: result: auto - automatic GUI support" >&5
+$as_echo "auto - automatic GUI support" >&6; } ;;
+    haiku)  { $as_echo "$as_me:${as_lineno-$LINENO}: result: Haiku GUI support" >&5
+$as_echo "Haiku GUI support" >&6; } ;;
+    *)      { $as_echo "$as_me:${as_lineno-$LINENO}: result: Sorry, $enable_gui GUI is not supported" >&5
+$as_echo "Sorry, $enable_gui GUI is not supported" >&6; }
+            SKIP_HAIKU=YES ;;
+    esac
+elif test "x$QNX" = "xyes" -a "x$with_x" = "xno" ; then
   SKIP_PHOTON=
   case "$enable_gui_canon" in
     no)		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no GUI support" >&5
@@ -9094,24 +9299,17 @@ $as_echo "Sorry, $enable_gui GUI is not supported" >&6; }
   esac
 
 elif test "x$MACOS_X" = "xyes" -a "x$with_x" = "xno" ; then
-  SKIP_CARBON=
   case "$enable_gui_canon" in
     no)		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no GUI support" >&5
-$as_echo "no GUI support" >&6; }
-		SKIP_CARBON=YES ;;
+$as_echo "no GUI support" >&6; } ;;
     yes|"")	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes - automatic GUI support" >&5
 $as_echo "yes - automatic GUI support" >&6; }
     		gui_auto=yes ;;
-    auto)	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: auto - Carbon GUI is outdated - disable GUI support" >&5
-$as_echo "auto - Carbon GUI is outdated - disable GUI support" >&6; }
-		SKIP_CARBON=YES ;;
-    carbon)	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Carbon GUI support" >&5
-$as_echo "Carbon GUI support" >&6; } ;;
+    auto)	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: auto - disable GUI support for Mac OS" >&5
+$as_echo "auto - disable GUI support for Mac OS" >&6; } ;;
     *)		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Sorry, $enable_gui GUI is not supported" >&5
-$as_echo "Sorry, $enable_gui GUI is not supported" >&6; }
-		SKIP_CARBON=YES ;;
+$as_echo "Sorry, $enable_gui GUI is not supported" >&6; } ;;
   esac
-
 else
 
   case "$enable_gui_canon" in
@@ -9121,11 +9319,9 @@ $as_echo "no GUI support" >&6; } ;;
 $as_echo "yes/auto - automatic GUI support" >&6; }
 		gui_auto=yes
 		SKIP_GTK2=
+		SKIP_GTK3=
 		SKIP_GNOME=
-		SKIP_MOTIF=
-		SKIP_ATHENA=
-		SKIP_NEXTAW=
-		SKIP_CARBON=;;
+		SKIP_MOTIF=;;
     gtk2)	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: GTK+ 2.x GUI support" >&5
 $as_echo "GTK+ 2.x GUI support" >&6; }
 		SKIP_GTK2=;;
@@ -9139,12 +9335,6 @@ $as_echo "GTK+ 3.x GUI support" >&6; }
     motif)	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Motif GUI support" >&5
 $as_echo "Motif GUI support" >&6; }
 		SKIP_MOTIF=;;
-    athena)	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Athena GUI support" >&5
-$as_echo "Athena GUI support" >&6; }
-		SKIP_ATHENA=;;
-    nextaw)	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: neXtaw GUI support" >&5
-$as_echo "neXtaw GUI support" >&6; }
-		SKIP_NEXTAW=;;
     *)		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Sorry, $enable_gui GUI is not supported" >&5
 $as_echo "Sorry, $enable_gui GUI is not supported" >&6; } ;;
   esac
@@ -9219,89 +9409,6 @@ $as_echo "$enable_motif_check" >&6; }
   if test "x$enable_motif_check" = "xno"; then
     SKIP_MOTIF=YES
   fi
-fi
-
-if test "x$SKIP_ATHENA" != "xYES" -a "$enable_gui_canon" != "athena"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether or not to look for Athena" >&5
-$as_echo_n "checking whether or not to look for Athena... " >&6; }
-  # Check whether --enable-athena-check was given.
-if test "${enable_athena_check+set}" = set; then :
-  enableval=$enable_athena_check;
-else
-  enable_athena_check="yes"
-fi
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_athena_check" >&5
-$as_echo "$enable_athena_check" >&6; }
-  if test "x$enable_athena_check" = "xno"; then
-    SKIP_ATHENA=YES
-  fi
-fi
-
-if test "x$SKIP_NEXTAW" != "xYES" -a "$enable_gui_canon" != "nextaw"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether or not to look for neXtaw" >&5
-$as_echo_n "checking whether or not to look for neXtaw... " >&6; }
-  # Check whether --enable-nextaw-check was given.
-if test "${enable_nextaw_check+set}" = set; then :
-  enableval=$enable_nextaw_check;
-else
-  enable_nextaw_check="yes"
-fi
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_nextaw_check" >&5
-$as_echo "$enable_nextaw_check" >&6; };
-  if test "x$enable_nextaw_check" = "xno"; then
-    SKIP_NEXTAW=YES
-  fi
-fi
-
-if test "x$SKIP_CARBON" != "xYES" -a "$enable_gui_canon" != "carbon"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether or not to look for Carbon" >&5
-$as_echo_n "checking whether or not to look for Carbon... " >&6; }
-  # Check whether --enable-carbon-check was given.
-if test "${enable_carbon_check+set}" = set; then :
-  enableval=$enable_carbon_check;
-else
-  enable_carbon_check="yes"
-fi
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_carbon_check" >&5
-$as_echo "$enable_carbon_check" >&6; };
-  if test "x$enable_carbon_check" = "xno"; then
-    SKIP_CARBON=YES
-  fi
-fi
-
-
-if test "x$MACOS_X" = "xyes" -a -z "$SKIP_CARBON" -a "x$CARBON" = "xyes"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Carbon GUI" >&5
-$as_echo_n "checking for Carbon GUI... " >&6; }
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; };
-  GUITYPE=CARBONGUI
-  if test "$VIMNAME" = "vim"; then
-    VIMNAME=Vim
-  fi
-
-  if test "x$MACARCH" = "xboth"; then
-    CPPFLAGS="$CPPFLAGS -I$DEVELOPER_DIR/SDKs/MacOSX10.4u.sdk/Developer/Headers/FlatCarbon"
-  else
-    CPPFLAGS="$CPPFLAGS -I$DEVELOPER_DIR/Headers/FlatCarbon"
-  fi
-
-    if test x$prefix = xNONE; then
-    prefix=/Applications
-  fi
-
-    datadir='${prefix}/Vim.app/Contents/Resources'
-
-    SKIP_GTK2=YES;
-  SKIP_GNOME=YES;
-  SKIP_MOTIF=YES;
-  SKIP_ATHENA=YES;
-  SKIP_NEXTAW=YES;
-  SKIP_PHOTON=YES;
-  SKIP_CARBON=YES
 fi
 
 
@@ -9432,6 +9539,8 @@ $as_echo "gtk test disabled" >&6; }
   fi
 
   if test "x$PKG_CONFIG" != "xno"; then
+                    save_skip_gtk3=$SKIP_GTK3
+    SKIP_GTK3=YES
 
   if test "X$GTK_CONFIG" != "Xno" -o "X$PKG_CONFIG" != "Xno"; then
   {
@@ -9470,6 +9579,8 @@ $as_echo_n "checking for GTK - version >= $min_gtk_version... " >&6; }
 	     sed 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)/\3/'`
     }
     else
+                  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for GTK -dev package" >&5
+$as_echo_n "checking for GTK -dev package... " >&6; }
       no_gtk=yes
     fi
 
@@ -9568,11 +9679,11 @@ $as_echo "no" >&6; }
 
     if test "x$GTK_CFLAGS" != "x"; then
       SKIP_GTK3=YES
-      SKIP_ATHENA=YES
-      SKIP_NEXTAW=YES
       SKIP_MOTIF=YES
       GUITYPE=GTK
 
+    else
+      SKIP_GTK3=$save_skip_gtk3
     fi
   fi
   if test "x$GUITYPE" = "xGTK"; then
@@ -9633,7 +9744,7 @@ $as_echo "yes" >&6; }
 
                   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for FreeBSD" >&5
 $as_echo_n "checking for FreeBSD... " >&6; }
-      if test "`(uname) 2>/dev/null`" = FreeBSD; then
+      if test "$vim_cv_uname_output" = FreeBSD; then
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 	GNOME_INCLUDEDIR="$GNOME_INCLUDEDIR -D_THREAD_SAFE"
@@ -9685,6 +9796,8 @@ $as_echo "gtk test disabled" >&6; }
   fi
 
   if test "x$PKG_CONFIG" != "xno"; then
+    save_skip_gtk2=$SKIP_GTK2
+    SKIP_GTK2=YES
 
   if test "X$GTK_CONFIG" != "Xno" -o "X$PKG_CONFIG" != "Xno"; then
   {
@@ -9723,6 +9836,8 @@ $as_echo_n "checking for GTK - version >= $min_gtk_version... " >&6; }
 	     sed 's/\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)/\3/'`
     }
     else
+                  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for GTK -dev package" >&5
+$as_echo_n "checking for GTK -dev package... " >&6; }
       no_gtk=yes
     fi
 
@@ -9822,13 +9937,13 @@ $as_echo "no" >&6; }
     if test "x$GTK_CFLAGS" != "x"; then
       SKIP_GTK2=YES
       SKIP_GNOME=YES
-      SKIP_ATHENA=YES
-      SKIP_NEXTAW=YES
       SKIP_MOTIF=YES
       GUITYPE=GTK
 
       $as_echo "#define USE_GTK3 1" >>confdefs.h
 
+    else
+      SKIP_GTK2=$save_skip_gtk2
     fi
   fi
 fi
@@ -10089,12 +10204,12 @@ $as_echo "no" >&6; }
 
         GUI_LIB_LOC="`echo $GUI_LIB_LOC|sed 's%-L%%g'`"
 
-            { $as_echo "$as_me:${as_lineno-$LINENO}: checking for location of Motif GUI libs" >&5
+                { $as_echo "$as_me:${as_lineno-$LINENO}: checking for location of Motif GUI libs" >&5
 $as_echo_n "checking for location of Motif GUI libs... " >&6; }
     gui_libs="`echo $x_libraries|sed 's%/^/^/*$%%'` `echo "$gui_XXX" | sed s/XXX/lib/g` /usr/lib/i386-linux-gnu /usr/lib/x86_64-linux-gnu `echo "$GUI_INC_LOC" | sed s/include/lib/` $GUI_LIB_LOC"
     GUI_LIB_LOC=
     for try in $gui_libs; do
-      for libtry in "$try"/libXm.a "$try"/libXm.so* "$try"/libXm.sl "$try"/libXm.dylib; do
+      for libtry in "$try"/libXm.a "$try"/libXm.dll.a "$try"/libXm.so* "$try"/libXm.sl "$try"/libXm.dylib; do
 	if test -f "$libtry"; then
 	  GUI_LIB_LOC=$try
 	fi
@@ -10111,8 +10226,8 @@ $as_echo "in default path" >&6; }
 	if test -n "$GUI_LIB_LOC"; then
 	  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GUI_LIB_LOC" >&5
 $as_echo "$GUI_LIB_LOC" >&6; }
-	  if test "`(uname) 2>/dev/null`" = SunOS &&
-					 uname -r | grep '^5' >/dev/null; then
+	  if test "$vim_cv_uname_output" = SunOS &&
+					 echo $vim_cv_uname_r_output | grep '^5' >/dev/null; then
 	    GUI_LIB_LOC="$GUI_LIB_LOC -R $GUI_LIB_LOC"
 	  fi
 	fi
@@ -10127,82 +10242,11 @@ $as_echo "<not found>" >&6; }
 fi
 
 if test -z "$SKIP_MOTIF"; then
-  SKIP_ATHENA=YES
-  SKIP_NEXTAW=YES
   GUITYPE=MOTIF
 
 fi
 
-
-GUI_X_LIBS=
-
-if test -z "$SKIP_ATHENA"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking if Athena header files can be found" >&5
-$as_echo_n "checking if Athena header files can be found... " >&6; }
-  cflags_save=$CFLAGS
-  CFLAGS="$CFLAGS $X_CFLAGS"
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#include <X11/Intrinsic.h>
-#include <X11/Xaw/Paned.h>
-int
-main ()
-{
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }; SKIP_ATHENA=YES
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  CFLAGS=$cflags_save
-fi
-
-if test -z "$SKIP_ATHENA"; then
-  GUITYPE=ATHENA
-fi
-
-if test -z "$SKIP_NEXTAW"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking if neXtaw header files can be found" >&5
-$as_echo_n "checking if neXtaw header files can be found... " >&6; }
-  cflags_save=$CFLAGS
-  CFLAGS="$CFLAGS $X_CFLAGS"
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#include <X11/Intrinsic.h>
-#include <X11/neXtaw/Paned.h>
-int
-main ()
-{
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }; SKIP_NEXTAW=YES
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  CFLAGS=$cflags_save
-fi
-
-if test -z "$SKIP_NEXTAW"; then
-  GUITYPE=NEXTAW
-fi
-
-if test -z "$SKIP_ATHENA" -o -z "$SKIP_NEXTAW" -o -z "$SKIP_MOTIF"; then
+if test -z "$SKIP_MOTIF"; then
       if test -n "$GUI_INC_LOC"; then
     GUI_INC_LOC=-I"`echo $GUI_INC_LOC|sed 's%-I%%'`"
   fi
@@ -10461,7 +10505,7 @@ done
 fi
 
 
-if test -z "$SKIP_ATHENA" -o -z "$SKIP_NEXTAW" -o -z "$SKIP_MOTIF" -o -z "$SKIP_GTK2" -o -z "$SKIP_GTK3"; then
+if test -z "$SKIP_MOTIF" -o -z "$SKIP_GTK2" -o -z "$SKIP_GTK3"; then
     cppflags_save=$CPPFLAGS
   CPPFLAGS="$CPPFLAGS $X_CFLAGS"
   for ac_header in X11/xpm.h X11/Sunkeysym.h
@@ -10498,15 +10542,14 @@ rm -f conftest*
   fi
   CPPFLAGS=$cppflags_save
 
-    if test "$enable_xim" = "auto" -a "$enable_hangulinput" != "yes" \
-		-a "x$GUITYPE" != "xNONE" ; then
+    if test "$enable_xim" = "auto" -a "x$GUITYPE" != "xNONE" ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: X GUI selected; xim has been enabled" >&5
 $as_echo "X GUI selected; xim has been enabled" >&6; }
     enable_xim="yes"
   fi
 fi
 
-if test -z "$SKIP_ATHENA" -o -z "$SKIP_NEXTAW" -o -z "$SKIP_MOTIF"; then
+if test -z "$SKIP_MOTIF"; then
   cppflags_save=$CPPFLAGS
   CPPFLAGS="$CPPFLAGS $X_CFLAGS"
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for X11/Xmu/Editres.h" >&5
@@ -10541,12 +10584,20 @@ if test -z "$SKIP_MOTIF"; then
   cppflags_save=$CPPFLAGS
   CPPFLAGS="$CPPFLAGS $X_CFLAGS"
   if test "$zOSUnix" = "yes"; then
-	xmheader="Xm/Xm.h"
+	for ac_header in Xm/Xm.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "Xm/Xm.h" "ac_cv_header_Xm_Xm_h" "$ac_includes_default"
+if test "x$ac_cv_header_Xm_Xm_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_XM_XM_H 1
+_ACEOF
+
+fi
+
+done
+
   else
-	xmheader="Xm/Xm.h Xm/XpmP.h Xm/JoinSideT.h Xm/TraitP.h Xm/Manager.h
-	   Xm/UnhighlightT.h Xm/Notebook.h"
-  fi
-  for ac_header in $xmheader
+	for ac_header in Xm/Xm.h Xm/XpmP.h Xm/JoinSideT.h Xm/TraitP.h Xm/Manager.h Xm/UnhighlightT.h Xm/Notebook.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
 ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
@@ -10559,6 +10610,7 @@ fi
 
 done
 
+  fi
 
   if test "x$ac_cv_header_Xm_XpmP_h" = "xyes"; then
         { $as_echo "$as_me:${as_lineno-$LINENO}: checking for XpmAttributes_21 in Xm/XpmP.h" >&5
@@ -10606,6 +10658,10 @@ if test "x$GUITYPE:$enable_fontset" = "xGTK:yes"; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: GTK+ 2 GUI selected; fontset has been disabled" >&5
 $as_echo "GTK+ 2 GUI selected; fontset has been disabled" >&6; }
   enable_fontset="no"
+fi
+
+if test -z "$SKIP_HAIKU"; then
+  GUITYPE=HAIKUGUI
 fi
 
 if test -z "$SKIP_PHOTON"; then
@@ -10656,7 +10712,7 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for CYGWIN or MSYS environment" >&5
 $as_echo_n "checking for CYGWIN or MSYS environment... " >&6; }
-case `uname` in
+case $vim_cv_uname_output in
     CYGWIN*|MSYS*)    CYGWIN=yes; { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
                 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for CYGWIN clipboard support" >&5
@@ -10675,21 +10731,6 @@ $as_echo "no - using X11" >&6; }
     *)          CYGWIN=no; { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; };;
 esac
-
-if test "$enable_hangulinput" = "yes"; then
-  if test "x$GUITYPE" = "xNONE"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no GUI selected; hangul input has been disabled" >&5
-$as_echo "no GUI selected; hangul input has been disabled" >&6; }
-    enable_hangulinput=no
-  else
-    $as_echo "#define FEAT_HANGULIN 1" >>confdefs.h
-
-    HANGULIN_SRC=hangulin.c
-
-    HANGULIN_OBJ=objects/hangulin.o
-
-  fi
-fi
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether toupper is broken" >&5
@@ -10712,7 +10753,7 @@ else
 # include <stdlib.h>
 # include <stddef.h>
 #endif
-main() { exit(toupper('A') == 'A' && tolower('z') == 'z'); }
+int main() { exit(toupper('A') == 'A' && tolower('z') == 'z'); }
 
 _ACEOF
 if ac_fn_c_try_run "$LINENO"; then :
@@ -11870,7 +11911,7 @@ rm -f core conftest.err conftest.$ac_objext \
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: empty: automatic terminal library selection" >&5
 $as_echo "empty: automatic terminal library selection" >&6; }
-                case "`uname -s 2>/dev/null`" in
+                case "$vim_cv_uname_output" in
 	OSF1|SCO_SV)	tlibs="tinfo ncurses curses termlib termcap";;
 	*)	tlibs="tinfo ncurses termlib termcap curses";;
   esac
@@ -11936,7 +11977,7 @@ else
 # include <stdlib.h>
 # include <stddef.h>
 #endif
-main() {char *s; s=(char *)tgoto("%p1%d", 0, 1); exit(0); }
+int main() {char *s; s=(char *)tgoto("%p1%d", 0, 1); exit(0); }
 _ACEOF
 if ac_fn_c_try_run "$LINENO"; then :
   res="OK"
@@ -11966,7 +12007,7 @@ if test "x$olibs" = "x$LIBS"; then
 $as_echo_n "checking for tgetent()... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-
+int tgetent(char *, const char *);
 int
 main ()
 {
@@ -12015,7 +12056,7 @@ else
 # include <stdlib.h>
 # include <stddef.h>
 #endif
-main()
+int main()
 {char *s; s=(char *)tgoto("%p1%d", 0, 1); exit(!strcmp(s==0 ? "" : s, "1")); }
 
 _ACEOF
@@ -12064,7 +12105,7 @@ else
 # include <stdlib.h>
 # include <stddef.h>
 #endif
-main()
+int main()
 {char s[10000]; int res = tgetent(s, "thisterminaldoesnotexist"); exit(res != 0); }
 
 _ACEOF
@@ -12232,6 +12273,35 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether del_curterm() can be used" >&5
+$as_echo_n "checking whether del_curterm() can be used... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#ifdef HAVE_TERMCAP_H
+# include <termcap.h>
+#endif
+#include <term.h>
+
+int
+main ()
+{
+if (cur_term) del_curterm(cur_term);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }; $as_echo "#define HAVE_DEL_CURTERM 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether sys/select.h and sys/time.h may both be included" >&5
 $as_echo_n "checking whether sys/select.h and sys/time.h may both be included... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -12278,10 +12348,18 @@ if test -c /dev/ptmx ; then
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+// These should be in stdlib.h, but it depends on _XOPEN_SOURCE.
+char *ptsname(int);
+int unlockpt(int);
+int grantpt(int);
+
 int
 main ()
 {
-ptsname(0);grantpt(0);unlockpt(0);
+
+		ptsname(0);
+		grantpt(0);
+		unlockpt(0);
   ;
   return 0;
 }
@@ -12341,145 +12419,6 @@ else
 $as_echo "don't know" >&6; }
 fi
 
-rm -f conftest_grp
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking default tty permissions/group" >&5
-$as_echo_n "checking default tty permissions/group... " >&6; }
-if ${vim_cv_tty_group+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-
-    if test "$cross_compiling" = yes; then :
-
-      as_fn_error $? "cross-compiling: please set 'vim_cv_tty_group' and 'vim_cv_tty_mode'" "$LINENO" 5
-
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-#include "confdefs.h"
-#include <sys/types.h>
-#if STDC_HEADERS
-# include <stdlib.h>
-# include <stddef.h>
-#endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#include <sys/stat.h>
-#include <stdio.h>
-main()
-{
-  struct stat sb;
-  char *x,*ttyname();
-  int om, m;
-  FILE *fp;
-
-  if (!(x = ttyname(0))) exit(1);
-  if (stat(x, &sb)) exit(1);
-  om = sb.st_mode;
-  if (om & 002) exit(0);
-  m = system("mesg y");
-  if (m == -1 || m == 127) exit(1);
-  if (stat(x, &sb)) exit(1);
-  m = sb.st_mode;
-  if (chmod(x, om)) exit(1);
-  if (m & 002) exit(0);
-  if (sb.st_gid == getgid()) exit(1);
-  if (!(fp=fopen("conftest_grp", "w")))
-    exit(1);
-  fprintf(fp, "%d\n", sb.st_gid);
-  fclose(fp);
-  exit(0);
-}
-
-_ACEOF
-if ac_fn_c_try_run "$LINENO"; then :
-
-      if test -f conftest_grp; then
-	vim_cv_tty_group=`cat conftest_grp`
-	if test "x$vim_cv_tty_mode" = "x" ; then
-	  vim_cv_tty_mode=0620
-	fi
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: pty mode: $vim_cv_tty_mode, group: $vim_cv_tty_group" >&5
-$as_echo "pty mode: $vim_cv_tty_mode, group: $vim_cv_tty_group" >&6; }
-      else
-	vim_cv_tty_group=world
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ptys are world accessible" >&5
-$as_echo "ptys are world accessible" >&6; }
-      fi
-
-else
-
-      vim_cv_tty_group=world
-      { $as_echo "$as_me:${as_lineno-$LINENO}: result: can't determine - assume ptys are world accessible" >&5
-$as_echo "can't determine - assume ptys are world accessible" >&6; }
-
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $vim_cv_tty_group" >&5
-$as_echo "$vim_cv_tty_group" >&6; }
-rm -f conftest_grp
-
-if test "x$vim_cv_tty_group" != "xworld" ; then
-  cat >>confdefs.h <<_ACEOF
-#define PTYGROUP $vim_cv_tty_group
-_ACEOF
-
-  if test "x$vim_cv_tty_mode" = "x" ; then
-    as_fn_error $? "It seems you're cross compiling and have 'vim_cv_tty_group' set, please also set the environment variable 'vim_cv_tty_mode' to the correct mode (probably 0620)" "$LINENO" 5
-  else
-    $as_echo "#define PTYMODE 0620" >>confdefs.h
-
-  fi
-fi
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking return type of signal handlers" >&5
-$as_echo_n "checking return type of signal handlers... " >&6; }
-if ${ac_cv_type_signal+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <sys/types.h>
-#include <signal.h>
-
-int
-main ()
-{
-return *(signal (0, 0)) (0) == 1;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  ac_cv_type_signal=int
-else
-  ac_cv_type_signal=void
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_type_signal" >&5
-$as_echo "$ac_cv_type_signal" >&6; }
-
-cat >>confdefs.h <<_ACEOF
-#define RETSIGTYPE $ac_cv_type_signal
-_ACEOF
-
-
-
-if test $ac_cv_type_signal = void; then
-  $as_echo "#define SIGRETURN return" >>confdefs.h
-
-else
-  $as_echo "#define SIGRETURN return 0" >>confdefs.h
-
-fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for struct sigcontext" >&5
 $as_echo_n "checking for struct sigcontext... " >&6; }
@@ -12531,7 +12470,7 @@ else
 #include <unistd.h>
 #endif
 char *dagger[] = { "IFS=pwd", 0 };
-main()
+int main()
 {
   char buffer[500];
   extern char **environ;
@@ -12578,9 +12517,9 @@ for ac_func in fchdir fchown fchmod fsync getcwd getpseudotty \
 	getpwent getpwnam getpwuid getrlimit gettimeofday localtime_r lstat \
 	memset mkdtemp nanosleep opendir putenv qsort readlink select setenv \
 	getpgid setpgid setsid sigaltstack sigstack sigset sigsetjmp sigaction \
-	sigprocmask sigvec strcasecmp strerror strftime stricmp strncasecmp \
-	strnicmp strpbrk strtol tgetent towlower towupper iswupper tzset \
-	usleep utime utimes mblen ftruncate unsetenv posix_openpt
+	sigprocmask sigvec strcasecmp strcoll strerror strftime stricmp strncasecmp \
+	strnicmp strpbrk strptime strtol tgetent towlower towupper iswupper \
+	tzset usleep utime utimes mblen ftruncate unsetenv posix_openpt
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
@@ -12761,7 +12700,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -12807,7 +12746,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -12831,7 +12770,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -12876,7 +12815,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -12900,7 +12839,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -12958,8 +12897,14 @@ $as_echo "Defaulting to no" >&6; }
     enable_canberra="no"
   fi
 else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_canberra" >&5
+  if test "$enable_canberra" = "yes" -a "$has_eval" = "no"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: cannot use sound with tiny or small features" >&5
+$as_echo "cannot use sound with tiny or small features" >&6; }
+    enable_canberra="no"
+  else
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_canberra" >&5
 $as_echo "$enable_canberra" >&6; }
+  fi
 fi
 if test "$enable_canberra" = "yes"; then
   if test "x$PKG_CONFIG" != "xno"; then
@@ -12974,7 +12919,9 @@ if test "$enable_canberra" = "yes"; then
 $as_echo_n "checking for libcanberra... " >&6; }
   ac_save_CFLAGS="$CFLAGS"
   ac_save_LIBS="$LIBS"
-  CFLAGS="$CFLAGS $canberra_cflags"
+  if `echo "$CFLAGS" | grep -v "$canberra_cflags" 2>/dev/null`; then
+    CFLAGS="$CFLAGS $canberra_cflags"
+  fi
   LIBS="$LIBS $canberra_lib"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -12996,13 +12943,77 @@ if ac_fn_c_try_link "$LINENO"; then :
 $as_echo "yes" >&6; }; $as_echo "#define HAVE_CANBERRA 1" >>confdefs.h
 
 else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }; CFLAGS="$ac_save_CFLAGS"; LIBS="$ac_save_LIBS"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no; try installing libcanberra-dev" >&5
+$as_echo "no; try installing libcanberra-dev" >&6; }; CFLAGS="$ac_save_CFLAGS"; LIBS="$ac_save_LIBS"
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 fi
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking --enable-libsodium argument" >&5
+$as_echo_n "checking --enable-libsodium argument... " >&6; }
+# Check whether --enable-libsodium was given.
+if test "${enable_libsodium+set}" = set; then :
+  enableval=$enable_libsodium;
+else
+  enable_libsodium="maybe"
+fi
+
+
+if test "$enable_libsodium" = "maybe"; then
+  if test "$features" = "big" -o "$features" = "huge"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: Defaulting to yes" >&5
+$as_echo "Defaulting to yes" >&6; }
+    enable_libsodium="yes"
+  else
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: Defaulting to no" >&5
+$as_echo "Defaulting to no" >&6; }
+    enable_libsodium="no"
+  fi
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_libsodium" >&5
+$as_echo "$enable_libsodium" >&6; }
+fi
+if test "$enable_libsodium" = "yes"; then
+  if test "x$PKG_CONFIG" != "xno"; then
+    libsodium_lib=`$PKG_CONFIG --libs libsodium 2>/dev/null`
+    libsodium_cflags=`$PKG_CONFIG --cflags libsodium 2>/dev/null`
+  fi
+  if test "x$libsodium_lib" = "x"; then
+    libsodium_lib=-lsodium
+    libsodium_cflags=
+  fi
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libsodium" >&5
+$as_echo_n "checking for libsodium... " >&6; }
+  ac_save_CFLAGS="$CFLAGS"
+  ac_save_LIBS="$LIBS"
+  CFLAGS="$CFLAGS $libsodium_cflags"
+  LIBS="$LIBS $libsodium_lib"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+  # include <sodium.h>
+
+int
+main ()
+{
+
+     printf("%d", sodium_init());
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }; $as_echo "#define HAVE_SODIUM 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no; try installing libsodium-dev" >&5
+$as_echo "no; try installing libsodium-dev" >&6; }; CFLAGS="$ac_save_CFLAGS"; LIBS="$ac_save_LIBS"
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for st_blksize" >&5
 $as_echo_n "checking for st_blksize... " >&6; }
@@ -13032,6 +13043,76 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for timer_create" >&5
+$as_echo_n "checking for timer_create... " >&6; }
+save_LIBS="$LIBS"
+LIBS="$LIBS -lrt"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include<signal.h>
+#include<time.h>
+static void set_flag(union sigval sv) {}
+
+int
+main ()
+{
+
+  struct timespec ts;
+  struct sigevent action = {0};
+  timer_t timer_id;
+
+  action.sigev_notify = SIGEV_THREAD;
+  action.sigev_notify_function = set_flag;
+  timer_create(CLOCK_REALTIME, &action, &timer_id);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes; with -lrt" >&5
+$as_echo "yes; with -lrt" >&6; }; $as_echo "#define HAVE_TIMER_CREATE 1" >>confdefs.h
+
+else
+  LIBS="$save_LIBS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include<signal.h>
+#include<time.h>
+static void set_flag(union sigval sv) {}
+
+int
+main ()
+{
+
+    struct timespec ts;
+    struct sigevent action = {0};
+    timer_t timer_id;
+
+    action.sigev_notify = SIGEV_THREAD;
+    action.sigev_notify_function = set_flag;
+    timer_create(CLOCK_REALTIME, &action, &timer_id);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }; $as_echo "#define HAVE_TIMER_CREATE 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether stat() ignores a trailing slash" >&5
 $as_echo_n "checking whether stat() ignores a trailing slash... " >&6; }
 if ${vim_cv_stat_ignores_slash+:} false; then :
@@ -13053,7 +13134,7 @@ else
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>
-main() {struct stat st;  exit(stat("configure/", &st) != 0); }
+int main() {struct stat st;  exit(stat("configure/", &st) != 0); }
 
 _ACEOF
 if ac_fn_c_try_run "$LINENO"; then :
@@ -13076,6 +13157,52 @@ $as_echo "$vim_cv_stat_ignores_slash" >&6; }
 
 if test "x$vim_cv_stat_ignores_slash" = "xyes" ; then
   $as_echo "#define STAT_IGNORES_SLASH 1" >>confdefs.h
+
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for nanoseconds field of struct stat" >&5
+$as_echo_n "checking for nanoseconds field of struct stat... " >&6; }
+if ${ac_cv_struct_st_mtim_nsec+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_save_CPPFLAGS="$CPPFLAGS"
+   ac_cv_struct_st_mtim_nsec=no
+   # st_mtim.tv_nsec -- the usual case
+   # st_mtim._tv_nsec -- Solaris 2.6, if
+   #	(defined _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED == 1
+   #	 && !defined __EXTENSIONS__)
+   # st_mtim.st__tim.tv_nsec -- UnixWare 2.1.2
+   # st_mtime_n -- AIX 5.2 and above
+   # st_mtimespec.tv_nsec -- Darwin (Mac OSX)
+   for ac_val in st_mtim.tv_nsec st_mtim._tv_nsec st_mtim.st__tim.tv_nsec st_mtime_n st_mtimespec.tv_nsec; do
+     CPPFLAGS="$ac_save_CPPFLAGS -DST_MTIM_NSEC=$ac_val"
+     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/types.h>
+#include <sys/stat.h>
+int
+main ()
+{
+struct stat s; s.ST_MTIM_NSEC;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ac_cv_struct_st_mtim_nsec=$ac_val; break
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+   done
+   CPPFLAGS="$ac_save_CPPFLAGS"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_struct_st_mtim_nsec" >&5
+$as_echo "$ac_cv_struct_st_mtim_nsec" >&6; }
+if test $ac_cv_struct_st_mtim_nsec != no; then
+
+cat >>confdefs.h <<_ACEOF
+#define ST_MTIM_NSEC $ac_cv_struct_st_mtim_nsec
+_ACEOF
 
 fi
 
@@ -13628,8 +13755,8 @@ rm -f core conftest.err conftest.$ac_objext \
   LIBS="$ac_save_LIBS"
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking --disable-gpm argument" >&5
-$as_echo_n "checking --disable-gpm argument... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking --enable-gpm argument" >&5
+$as_echo_n "checking --enable-gpm argument... " >&6; }
 # Check whether --enable-gpm was given.
 if test "${enable_gpm+set}" = set; then :
   enableval=$enable_gpm;
@@ -13638,9 +13765,9 @@ else
 fi
 
 
-if test "$enable_gpm" = "yes"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
+if test "$enable_gpm" = "yes" -o "$enable_gpm" = "dynamic"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_gpm" >&5
+$as_echo "$enable_gpm" >&6; }
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gpm" >&5
 $as_echo_n "checking for gpm... " >&6; }
 if ${vi_cv_have_gpm+:} false; then :
@@ -13672,13 +13799,18 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $vi_cv_have_gpm" >&5
 $as_echo "$vi_cv_have_gpm" >&6; }
   if test $vi_cv_have_gpm = yes; then
-    LIBS="$LIBS -lgpm"
+    if test "$enable_gpm" = "yes"; then
+      LIBS="$LIBS -lgpm"
+    else
+      $as_echo "#define DYNAMIC_GPM 1" >>confdefs.h
+
+    fi
     $as_echo "#define HAVE_GPM 1" >>confdefs.h
 
   fi
 else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking --disable-sysmouse argument" >&5
@@ -13785,6 +13917,55 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for dirfd" >&5
+$as_echo_n "checking for dirfd... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/types.h>
+#include <dirent.h>
+int
+main ()
+{
+DIR * dir=opendir("dirname"); dirfd(dir);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }; $as_echo "#define HAVE_DIRFD 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: not usable" >&5
+$as_echo "not usable" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for flock" >&5
+$as_echo_n "checking for flock... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/file.h>
+int
+main ()
+{
+flock(10, LOCK_SH);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }; $as_echo "#define HAVE_FLOCK 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: not usable" >&5
+$as_echo "not usable" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sysctl" >&5
 $as_echo_n "checking for sysctl... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -13835,7 +14016,7 @@ main ()
   return 0;
 }
 _ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
+if ac_fn_c_try_link "$LINENO"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }; $as_echo "#define HAVE_SYSINFO 1" >>confdefs.h
 
@@ -13843,7 +14024,8 @@ else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: not usable" >&5
 $as_echo "not usable" >&6; }
 fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sysinfo.mem_unit" >&5
 $as_echo_n "checking for sysinfo.mem_unit... " >&6; }
@@ -13871,6 +14053,35 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for sysinfo.uptime" >&5
+$as_echo_n "checking for sysinfo.uptime... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/types.h>
+#include <sys/sysinfo.h>
+int
+main ()
+{
+	struct sysinfo sinfo;
+        long ut;
+
+	(void)sysinfo(&sinfo);
+	ut = sinfo.uptime;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }; $as_echo "#define HAVE_SYSINFO_UPTIME 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sysconf" >&5
 $as_echo_n "checking for sysconf... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -13889,6 +14100,30 @@ _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }; $as_echo "#define HAVE_SYSCONF 1" >>confdefs.h
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: not usable" >&5
+$as_echo "not usable" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for _SC_SIGSTKSZ via sysconf()" >&5
+$as_echo_n "checking for _SC_SIGSTKSZ via sysconf()... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <unistd.h>
+int
+main ()
+{
+	(void)sysconf(_SC_SIGSTKSZ);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }; $as_echo "#define HAVE_SYSCONF_SIGSTKSZ 1" >>confdefs.h
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: not usable" >&5
@@ -14053,11 +14288,11 @@ else
 #ifdef HAVE_INTTYPES_H
 # include <inttypes.h>
 #endif
-main() {
+int main() {
   uint32_t nr1 = (uint32_t)-1;
   uint32_t nr2 = (uint32_t)0xffffffffUL;
-  if (sizeof(uint32_t) != 4 || nr1 != 0xffffffffUL || nr2 + 1 != 0) exit(1);
-  exit(0);
+  if (sizeof(uint32_t) != 4 || nr1 != 0xffffffffUL || nr2 + 1 != 0) return 1;
+  return 0;
 }
 _ACEOF
 if ac_fn_c_try_run "$LINENO"; then :
@@ -14081,7 +14316,7 @@ bcopy_test_prog='
 # include <stdlib.h>
 # include <stddef.h>
 #endif
-main() {
+int main() {
   char buf[10];
   strcpy(buf, "abcdefghi");
   mch_memmove(buf, buf + 2, 3);
@@ -14345,11 +14580,11 @@ fi
 $as_echo_n "checking how to create tags... " >&6; }
 test -f tags && mv tags tags.save
 if (eval ctags --version /dev/null | grep Exuberant) < /dev/null 1>&5 2>&1; then
-  TAGPRG="ctags -I INIT+ --fields=+S"
+  TAGPRG="ctags -I INIT+,INIT2+,INIT3+,INIT4+,INIT5+ --fields=+S"
 elif (eval exctags --version /dev/null | grep Exuberant) < /dev/null 1>&5 2>&1; then
-  TAGPRG="exctags -I INIT+ --fields=+S"
+  TAGPRG="exctags -I INIT+,INIT2+,INIT3+,INIT4+,INIT5+ --fields=+S"
 elif (eval exuberant-ctags --version /dev/null | grep Exuberant) < /dev/null 1>&5 2>&1; then
-  TAGPRG="exuberant-ctags -I INIT+ --fields=+S"
+  TAGPRG="exuberant-ctags -I INIT+,INIT2+,INIT3+,INIT4+,INIT5+ --fields=+S"
 else
   TAGPRG="ctags"
   (eval etags	   /dev/null) < /dev/null 1>&5 2>&1 && TAGPRG="etags"
@@ -14772,11 +15007,7 @@ fi
 if test "$MACOS_X" = "yes"; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether we need macOS frameworks" >&5
 $as_echo_n "checking whether we need macOS frameworks... " >&6; }
-  if test "$GUITYPE" = "CARBONGUI"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes, we need Carbon" >&5
-$as_echo "yes, we need Carbon" >&6; }
-    LIBS="$LIBS -framework Carbon"
-  elif test "$MACOS_X_DARWIN" = "yes"; then
+  if test "$MACOS_X_DARWIN" = "yes"; then
     if test "$features" = "tiny"; then
             OS_EXTRA_SRC=`echo "$OS_EXTRA_SRC" | sed -e 's+os_macosx.m++'`
       OS_EXTRA_OBJ=`echo "$OS_EXTRA_OBJ" | sed -e 's+objects/os_macosx.o++'`
@@ -14795,15 +15026,16 @@ $as_echo "yes, we need AppKit/UIKit" >&6; }
 $as_echo "no" >&6; }
   fi
 fi
-if test "x$MACARCH" = "xboth" && test "x$GUITYPE" = "xCARBONGUI"; then
-  LDFLAGS="$LDFLAGS -isysroot $DEVELOPER_DIR/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc"
+
+if `echo "$CFLAGS" | grep -v D_REENTRANT >/dev/null`; then
+  CFLAGS="$CFLAGS -D_REENTRANT"
 fi
 
 DEPEND_CFLAGS_FILTER=
 if test "$GCC" = yes; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for GCC 3 or later" >&5
 $as_echo_n "checking for GCC 3 or later... " >&6; }
-  gccmajor=`echo "$gccversion" | sed -e 's/^\([1-9]\)\..*$/\1/g'`
+  gccmajor=`echo "$gccversion" | sed -e 's/^\([1-9][0-9]*\)\..*$/\1/g'`
   if test "$gccmajor" -gt "2"; then
     DEPEND_CFLAGS_FILTER="| sed 's+-I */+-isystem /+g'"
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
@@ -14815,7 +15047,8 @@ $as_echo "no" >&6; }
           { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether we need -D_FORTIFY_SOURCE=1" >&5
 $as_echo_n "checking whether we need -D_FORTIFY_SOURCE=1... " >&6; }
   if test "$gccmajor" -gt "3"; then
-    CFLAGS=`echo "$CFLAGS" | sed -e 's/ *-Wp,-D_FORTIFY_SOURCE=.//g' -e 's/ *-D_FORTIFY_SOURCE=.//g' -e 's/ *-U_FORTIFY_SOURCE//g' -e 's/$/ -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1/'`
+    CFLAGS=`echo "$CFLAGS" | sed -e 's/-D_FORTIFY_SOURCE=.,//g' -e 's/ *-Wp,-D_FORTIFY_SOURCE=. / /g' -e 's/,-D_FORTIFY_SOURCE=. //g' -e 's/ *-D_FORTIFY_SOURCE=.//g' -e 's/ *-U_FORTIFY_SOURCE//g' -e 's/$/ -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1/'`
+    CPPFLAGS=`echo "$CPPFLAGS" | sed -e 's/-D_FORTIFY_SOURCE=.,//g' -e 's/ *-Wp,-D_FORTIFY_SOURCE=. / /g' -e 's/,-D_FORTIFY_SOURCE=. //g' -e 's/ *-D_FORTIFY_SOURCE=.//g' -e 's/ *-U_FORTIFY_SOURCE//g'`
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
   else
@@ -14837,12 +15070,16 @@ else
 $as_echo "no" >&6; }
 fi
 
+LDFLAGS=`echo "$LDFLAGS" | sed -e 's/-L /-L/g'`
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking linker --as-needed support" >&5
 $as_echo_n "checking linker --as-needed support... " >&6; }
 LINK_AS_NEEDED=
 # Check if linker supports --as-needed and --no-as-needed options
 if $CC -Wl,--help 2>/dev/null | grep as-needed > /dev/null; then
-  LDFLAGS=`echo "$LDFLAGS" | sed -e 's/ *-Wl,--as-needed//g' | sed -e 's/$/ -Wl,--as-needed/'`
+  if ! echo "$LDFLAGS" | grep -q -- '-Wl,[^[:space:]]*--as-needed'; then
+    LDFLAGS="$LDFLAGS -Wl,--as-needed"
+  fi
   LINK_AS_NEEDED=yes
 fi
 if test "$LINK_AS_NEEDED" = yes; then

@@ -37,11 +37,13 @@ get_histentry(int hist_type)
     return history[hist_type];
 }
 
+#if defined(FEAT_VIMINFO) || defined(PROTO)
     void
 set_histentry(int hist_type, histentry_T *entry)
 {
     history[hist_type] = entry;
 }
+#endif
 
     int *
 get_hisidx(int hist_type)
@@ -49,11 +51,13 @@ get_hisidx(int hist_type)
     return &hisidx[hist_type];
 }
 
+#if defined(FEAT_VIMINFO) || defined(PROTO)
     int *
 get_hisnum(int hist_type)
 {
     return &hisnum[hist_type];
 }
+#endif
 
 /*
  * Translate a history character to the associated type number.
@@ -103,7 +107,7 @@ get_history_arg(expand_T *xp UNUSED, int idx)
 #endif
     char *short_names = ":=@>?/";
     int short_names_count = (int)STRLEN(short_names);
-    int history_name_count = sizeof(history_names) / sizeof(char *) - 1;
+    int history_name_count = ARRAY_LENGTH(history_names) - 1;
 
     if (idx < short_names_count)
     {
@@ -309,7 +313,7 @@ add_to_history(
     if (hislen == 0)		// no history
 	return;
 
-    if (cmdmod.keeppatterns && histype == HIST_SEARCH)
+    if ((cmdmod.cmod_flags & CMOD_KEEPPATTERNS) && histype == HIST_SEARCH)
 	return;
 
     // Searches inside the same mapping overwrite each other, so that only
@@ -394,7 +398,7 @@ calc_hist_idx(int histype, int num)
 		i += hislen;
 		wrapped = TRUE;
 	    }
-	if (hist[i].hisnum == num && hist[i].hisstr != NULL)
+	if (i >= 0 && hist[i].hisnum == num && hist[i].hisstr != NULL)
 	    return i;
     }
     else if (-num <= hislen)
@@ -550,6 +554,12 @@ f_histadd(typval_T *argvars UNUSED, typval_T *rettv)
     rettv->vval.v_number = FALSE;
     if (check_secure())
 	return;
+
+    if (in_vim9script()
+	    && (check_for_string_arg(argvars, 0) == FAIL
+		|| check_for_string_arg(argvars, 1) == FAIL))
+	return;
+
     str = tv_get_string_chk(&argvars[0]);	// NULL on type error
     histype = str != NULL ? get_histtype(str) : -1;
     if (histype >= 0)
@@ -574,6 +584,11 @@ f_histdel(typval_T *argvars UNUSED, typval_T *rettv UNUSED)
     int		n;
     char_u	buf[NUMBUFLEN];
     char_u	*str;
+
+    if (in_vim9script()
+	    && (check_for_string_arg(argvars, 0) == FAIL
+		|| check_for_opt_string_or_number_arg(argvars, 1) == FAIL))
+	return;
 
     str = tv_get_string_chk(&argvars[0]);	// NULL on type error
     if (str == NULL)
@@ -602,6 +617,11 @@ f_histget(typval_T *argvars UNUSED, typval_T *rettv)
     int		idx;
     char_u	*str;
 
+    if (in_vim9script()
+	    && (check_for_string_arg(argvars, 0) == FAIL
+		|| check_for_opt_number_arg(argvars, 1) == FAIL))
+	return;
+
     str = tv_get_string_chk(&argvars[0]);	// NULL on type error
     if (str == NULL)
 	rettv->vval.v_string = NULL;
@@ -625,9 +645,12 @@ f_histget(typval_T *argvars UNUSED, typval_T *rettv)
 f_histnr(typval_T *argvars UNUSED, typval_T *rettv)
 {
     int		i;
+    char_u	*histname;
 
-    char_u	*histname = tv_get_string_chk(&argvars[0]);
+    if (in_vim9script() && check_for_string_arg(argvars, 0) == FAIL)
+	return;
 
+    histname = tv_get_string_chk(&argvars[0]);
     i = histname == NULL ? HIST_CMD - 1 : get_histtype(histname);
     if (i >= HIST_CMD && i < HIST_COUNT)
 	i = get_history_idx(i);
@@ -710,7 +733,7 @@ ex_history(exarg_T *eap)
 	    else
 	    {
 		*end = i;
-		emsg(_(e_trailing));
+		semsg(_(e_trailing_characters_str), arg);
 		return;
 	    }
 	}
@@ -722,7 +745,7 @@ ex_history(exarg_T *eap)
 	end = arg;
     if (!get_list_range(&end, &hisidx1, &hisidx2) || *end != NUL)
     {
-	emsg(_(e_trailing));
+	semsg(_(e_trailing_characters_str), end);
 	return;
     }
 

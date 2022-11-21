@@ -1,4 +1,5 @@
 " Test for displaying stuff
+
 if !has('gui_running') && has('unix')
   set term=ansi
 endif
@@ -174,10 +175,228 @@ func Test_scroll_CursorLineNr_update()
   call writefile(lines, filename)
   let buf = RunVimInTerminal('-S '.filename, #{rows: 5, cols: 50})
   call term_sendkeys(buf, "k")
-  call term_wait(buf)
   call VerifyScreenDump(buf, 'Test_winline_rnu', {})
 
   " clean up
   call StopVimInTerminal(buf)
   call delete(filename)
 endfunc
+
+" check a long file name does not result in the hit-enter prompt
+func Test_edit_long_file_name()
+  CheckScreendump
+
+  let longName = 'x'->repeat(min([&columns, 255]))
+  call writefile([], longName)
+  let buf = RunVimInTerminal('-N -u NONE ' .. longName, #{rows: 8})
+
+  call VerifyScreenDump(buf, 'Test_long_file_name_1', {})
+
+  " clean up
+  call StopVimInTerminal(buf)
+  call delete(longName)
+endfunc
+
+func Test_unprintable_fileformats()
+  CheckScreendump
+
+  call writefile(["unix\r", "two"], 'Xunix.txt')
+  call writefile(["mac\r", "two"], 'Xmac.txt')
+  let lines =<< trim END
+    edit Xunix.txt
+    split Xmac.txt
+    edit ++ff=mac
+  END
+  let filename = 'Xunprintable'
+  call writefile(lines, filename)
+  let buf = RunVimInTerminal('-S '.filename, #{rows: 9, cols: 50})
+  call VerifyScreenDump(buf, 'Test_display_unprintable_01', {})
+  call term_sendkeys(buf, "\<C-W>\<C-W>\<C-L>")
+  call VerifyScreenDump(buf, 'Test_display_unprintable_02', {})
+
+  " clean up
+  call StopVimInTerminal(buf)
+  call delete('Xunix.txt')
+  call delete('Xmac.txt')
+  call delete(filename)
+endfunc
+
+" Test for scrolling that modifies buffer during visual block
+func Test_visual_block_scroll()
+  CheckScreendump
+
+  let lines =<< trim END
+    source $VIMRUNTIME/plugin/matchparen.vim
+    set scrolloff=1
+    call setline(1, ['a', 'b', 'c', 'd', 'e', '', '{', '}', '{', 'f', 'g', '}'])
+    call cursor(5, 1)
+  END
+
+  let filename = 'Xvisualblockmodifiedscroll'
+  call writefile(lines, filename)
+
+  let buf = RunVimInTerminal('-S '.filename, #{rows: 7})
+  call term_sendkeys(buf, "V\<C-D>\<C-D>")
+
+  call VerifyScreenDump(buf, 'Test_display_visual_block_scroll', {})
+
+  call StopVimInTerminal(buf)
+  call delete(filename)
+endfunc
+
+func Test_display_scroll_at_topline()
+  CheckScreendump
+
+  let buf = RunVimInTerminal('', #{cols: 20})
+  call term_sendkeys(buf, ":call setline(1, repeat('a', 21))\<CR>")
+  call TermWait(buf)
+  call term_sendkeys(buf, "O\<Esc>")
+  call VerifyScreenDump(buf, 'Test_display_scroll_at_topline', #{rows: 4})
+
+  call StopVimInTerminal(buf)
+endfunc
+
+func Test_display_scroll_update_visual()
+  CheckScreendump
+
+  let lines =<< trim END
+      set scrolloff=0
+      call setline(1, repeat(['foo'], 10))
+      call sign_define('foo', { 'text': '>' })
+      call sign_place(1, 'bar', 'foo', bufnr(), { 'lnum': 2 })
+      call sign_place(2, 'bar', 'foo', bufnr(), { 'lnum': 1 })
+      autocmd CursorMoved * if getcurpos()[1] == 2 | call sign_unplace('bar', { 'id': 1 }) | endif
+  END
+  call writefile(lines, 'XupdateVisual.vim')
+
+  let buf = RunVimInTerminal('-S XupdateVisual.vim', #{rows: 8, cols: 60})
+  call term_sendkeys(buf, "VG7kk")
+  call VerifyScreenDump(buf, 'Test_display_scroll_update_visual', {})
+
+  call StopVimInTerminal(buf)
+  call delete('XupdateVisual.vim')
+endfunc
+
+" Test for 'eob' (EndOfBuffer) item in 'fillchars'
+func Test_eob_fillchars()
+  " default value
+  call assert_match('eob:\~', &fillchars)
+  " invalid values
+  call assert_fails(':set fillchars=eob:', 'E474:')
+  call assert_fails(':set fillchars=eob:xy', 'E474:')
+  call assert_fails(':set fillchars=eob:\255', 'E474:')
+  call assert_fails(':set fillchars=eob:<ff>', 'E474:')
+  call assert_fails(":set fillchars=eob:\x01", 'E474:')
+  call assert_fails(':set fillchars=eob:\\x01', 'E474:')
+  " default is ~
+  new
+  redraw
+  call assert_equal('~', Screenline(2))
+  set fillchars=eob:+
+  redraw
+  call assert_equal('+', Screenline(2))
+  set fillchars=eob:\ 
+  redraw
+  call assert_equal(' ', nr2char(screenchar(2, 1)))
+  set fillchars&
+  close
+endfunc
+
+" Test for 'foldopen', 'foldclose' and 'foldsep' in 'fillchars'
+func Test_fold_fillchars()
+  new
+  set fdc=2 foldenable foldmethod=manual
+  call setline(1, ['one', 'two', 'three', 'four', 'five'])
+  2,4fold
+  " First check for the default setting for a closed fold
+  let lines = ScreenLines([1, 3], 8)
+  let expected = [
+        \ '  one   ',
+        \ '+ +--  3',
+        \ '  five  '
+        \ ]
+  call assert_equal(expected, lines)
+  normal 2Gzo
+  " check the characters for an open fold
+  let lines = ScreenLines([1, 5], 8)
+  let expected = [
+        \ '  one   ',
+        \ '- two   ',
+        \ '| three ',
+        \ '| four  ',
+        \ '  five  '
+        \ ]
+  call assert_equal(expected, lines)
+
+  " change the setting
+  set fillchars=vert:\|,fold:-,eob:~,foldopen:[,foldclose:],foldsep:-
+
+  " check the characters for an open fold
+  let lines = ScreenLines([1, 5], 8)
+  let expected = [
+        \ '  one   ',
+        \ '[ two   ',
+        \ '- three ',
+        \ '- four  ',
+        \ '  five  '
+        \ ]
+  call assert_equal(expected, lines)
+
+  " check the characters for a closed fold
+  normal 2Gzc
+  let lines = ScreenLines([1, 3], 8)
+  let expected = [
+        \ '  one   ',
+        \ '] +--  3',
+        \ '  five  '
+        \ ]
+  call assert_equal(expected, lines)
+
+  %bw!
+  set fillchars& fdc& foldmethod& foldenable&
+endfunc
+
+func Test_display_linebreak_breakat()
+  new
+  vert resize 25
+  let _breakat = &breakat
+  setl signcolumn=yes linebreak breakat=) showbreak=+\ 
+  call setline(1, repeat('x', winwidth(0) - 2) .. ')abc')
+  let lines = ScreenLines([1, 2], 25)
+  let expected = [
+          \ '  xxxxxxxxxxxxxxxxxxxxxxx',
+          \ '  + )abc                 '
+          \ ]
+  call assert_equal(expected, lines)
+  %bw!
+  let &breakat=_breakat
+endfunc
+
+func Test_display_lastline()
+  CheckScreendump
+
+  let lines =<< trim END
+      call setline(1, ['aaa', 'b'->repeat(100)])
+      set display=truncate
+      vsplit
+      100wincmd <
+  END
+  call writefile(lines, 'XdispLastline')
+  let buf = RunVimInTerminal('-S XdispLastline', #{rows: 10})
+  call VerifyScreenDump(buf, 'Test_display_lastline_1', {})
+
+  call term_sendkeys(buf, ":set display=lastline\<CR>")
+  call VerifyScreenDump(buf, 'Test_display_lastline_2', {})
+
+  call term_sendkeys(buf, ":100wincmd >\<CR>")
+  call VerifyScreenDump(buf, 'Test_display_lastline_3', {})
+
+  call term_sendkeys(buf, ":set display=truncate\<CR>")
+  call VerifyScreenDump(buf, 'Test_display_lastline_4', {})
+
+  call StopVimInTerminal(buf)
+  call delete('XdispLastline')
+endfunc
+
+
+" vim: shiftwidth=2 sts=2 expandtab

@@ -562,3 +562,34 @@ func Test_shape_combination_isolated()
   set arabicshape&
   bwipe!
 endfunc
+
+" Test for entering arabic character in a search command
+func Test_arabic_chars_in_search_cmd()
+  new
+  set arabic
+  call feedkeys("i\nsghl!\<C-^>vim\<C-^>", 'tx')
+  call cursor(1, 1)
+  call feedkeys("/^sghl!\<C-^>vim$\<C-^>\<CR>", 'tx')
+  call assert_equal([2, 1], [line('.'), col('.')])
+
+  " Try searching in left-to-right mode
+  set rightleftcmd=
+  call cursor(1, 1)
+  call feedkeys("/^sghl!\<C-^>vim$\<CR>", 'tx')
+  call assert_equal([2, 1], [line('.'), col('.')])
+
+  set rightleftcmd&
+  set rightleft&
+  set arabic&
+  bwipe!
+endfunc
+
+func Test_W17_arabic_requires_utf8()
+  let save_enc = &encoding
+  set encoding=latin1 arabic
+  call assert_match('^W17:', GetMessages()[-1])
+  set arabic&
+  let &encoding = save_enc
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

@@ -20,7 +20,9 @@
  *
  */
 
-/* defines HAVE_ATTRIBUTE_UNUSED */
+// The following includes come from Vim:
+
+// defines HAVE_ATTRIBUTE_UNUSED
 #ifdef HAVE_CONFIG_H
 # ifdef VMS
 #  include "[.auto]config.h"
@@ -29,9 +31,9 @@
 # endif
 #endif
 
-/* Mark unused function arguments with UNUSED, so that gcc -Wunused-parameter
- * can be used to check for mistakes. */
-#ifdef HAVE_ATTRIBUTE_UNUSED
+// Mark unused function arguments with UNUSED, so that gcc -Wunused-parameter
+// can be used to check for mistakes.
+#if defined(HAVE_ATTRIBUTE_UNUSED) || defined(__MINGW32__)
 # define UNUSED __attribute__((unused))
 #else
 # define UNUSED
@@ -44,6 +46,7 @@
 #if !defined(XINCLUDE_H)
 #define XINCLUDE_H
 
+// This effectively re-verts b46054b3746271d23feab0 from git
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +55,10 @@
 #endif
 #include <string.h>
 #include <limits.h>
-
+// This include comes from git, so uncomment it
+#if 0
+#include "git-compat-util.h"
+#endif
 #include "xmacros.h"
 #include "xdiff.h"
 #include "xtypes.h"

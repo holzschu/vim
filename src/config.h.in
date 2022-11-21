@@ -27,8 +27,14 @@
 /* Define when termcap.h defines outfuntype */
 #undef HAVE_OUTFUNTYPE
 
+/* Define when del_curterm() is available */
+#undef HAVE_DEL_CURTERM
+
 /* Define when __DATE__ " " __TIME__ can be used */
 #undef HAVE_DATE_TIME
+
+/* Defined from $SOURCE_DATE_EPOCH, used as the build date */
+#undef BUILD_DATE
 
 /* Define when __attribute__((unused)) can be used */
 #undef HAVE_ATTRIBUTE_UNUSED
@@ -126,18 +132,6 @@
 #undef PTYRANGE0
 #undef PTYRANGE1
 
-/* Define mode for pty */
-#undef PTYMODE
-
-/* Define group for pty */
-#undef PTYGROUP
-
-/* Define as the return type of signal handlers (int or void).  */
-#undef RETSIGTYPE
-
-/* Define as the command at the end of signal handlers ("" or "return 0;").  */
-#undef SIGRETURN
-
 /* Define if struct sigcontext is present */
 #undef HAVE_SIGCONTEXT
 
@@ -146,6 +140,9 @@
 
 /* Define if stat() ignores a trailing slash */
 #undef STAT_IGNORES_SLASH
+
+/* Define to nanoseconds field of struct stat */
+#undef ST_MTIM_NSEC
 
 /* Define if tgetstr() has a second argument that is (char *) */
 #undef TGETSTR_CHAR_P
@@ -174,6 +171,7 @@
 #undef HAVE_GETTIMEOFDAY
 #undef HAVE_GETWD
 #undef HAVE_ICONV
+#undef HAVE_INET_NTOP
 #undef HAVE_LOCALTIME_R
 #undef HAVE_LSTAT
 #undef HAVE_MEMSET
@@ -200,19 +198,23 @@
 #undef HAVE_SIGVEC
 #undef HAVE_SMACK
 #undef HAVE_STRCASECMP
+#undef HAVE_STRCOLL
 #undef HAVE_STRERROR
 #undef HAVE_STRFTIME
 #undef HAVE_STRICMP
 #undef HAVE_STRNCASECMP
 #undef HAVE_STRNICMP
 #undef HAVE_STRPBRK
+#undef HAVE_STRPTIME
 #undef HAVE_STRTOL
 #undef HAVE_CANBERRA
+#undef HAVE_SODIUM
 #undef HAVE_ST_BLKSIZE
 #undef HAVE_SYSCONF
 #undef HAVE_SYSCTL
 #undef HAVE_SYSINFO
 #undef HAVE_SYSINFO_MEM_UNIT
+#undef HAVE_SYSINFO_UPTIME
 #undef HAVE_TGETENT
 #undef HAVE_TOWLOWER
 #undef HAVE_TOWUPPER
@@ -223,6 +225,7 @@
 #undef HAVE_UTIME
 #undef HAVE_BIND_TEXTDOMAIN_CODESET
 #undef HAVE_MBLEN
+#undef HAVE_TIMER_CREATE
 
 /* Define, if needed, for accessing large files. */
 #undef _LARGE_FILES
@@ -407,9 +410,6 @@
 /* Define if you want to include XIM support. */
 #undef FEAT_XIM
 
-/* Define if you want to include Hangul input support. */
-#undef FEAT_HANGULIN
-
 /* Define if you use GTK and want GNOME support. */
 #undef FEAT_GUI_GNOME
 
@@ -439,6 +439,9 @@
 
 /* Define if we have shl_load() */
 #undef HAVE_SHL_LOAD
+
+/* Define if we can use IPv6 networking. */
+#undef FEAT_IPV6
 
 /* Define if you want to include NetBeans integration. */
 #undef FEAT_NETBEANS_INTG
@@ -488,5 +491,17 @@
 /* Define if we have isnan() */
 #undef HAVE_ISNAN
 
+/* Define if we have dirfd() */
+#undef HAVE_DIRFD
+
+/* Define if we have flock() */
+#undef HAVE_FLOCK
+
 /* Define to inline symbol or empty */
 #undef inline
+
+/* Define if _SC_SIGSTKSZ is available via sysconf() */
+#undef HAVE_SYSCONF_SIGSTKSZ
+
+/* Define if you want to load libgpm dynamically */
+#undef DYNAMIC_GPM

@@ -5,6 +5,7 @@ CheckFeature reltime
 CheckFeature float
 
 func Test_reltime()
+  let g:test_is_flaky = 1
   let now = reltime()
   sleep 10m
   let later = reltime()
@@ -23,4 +24,9 @@ func Test_reltime()
   call assert_true(reltimestr(differs) != '0.0')
   call assert_true(reltimefloat(differs) < 0.1)
   call assert_true(reltimefloat(differs) > 0.0)
+
+  call assert_equal([], reltime({}))
+  call assert_equal([], reltime({}, {}))
 endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

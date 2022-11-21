@@ -1,4 +1,5 @@
 " Test for the xxd command
+
 if empty($XXD) && executable('..\xxd\xxd.exe')
   let s:xxd_cmd = '..\xxd\xxd.exe'
 elseif empty($XXD) || !executable($XXD)
@@ -165,16 +166,107 @@ func Test_xxd()
   call delete('Xinput')
   call delete('XXDfile')
 
-  " TODO:
-  " -o -offset
+  " Test 13: simple, decimal offset
+  call PrepareBuffer(range(1,30))
+  set ff=unix
+  w! XXDfile
+  let s:test += 1
+  exe '%!' . s:xxd_cmd . ' -d %'
+  let expected = [
+        \ '00000000: 310a 320a 330a 340a 350a 360a 370a 380a  1.2.3.4.5.6.7.8.',
+        \ '00000016: 390a 3130 0a31 310a 3132 0a31 330a 3134  9.10.11.12.13.14',
+        \ '00000032: 0a31 350a 3136 0a31 370a 3138 0a31 390a  .15.16.17.18.19.',
+        \ '00000048: 3230 0a32 310a 3232 0a32 330a 3234 0a32  20.21.22.23.24.2',
+        \ '00000064: 350a 3236 0a32 370a 3238 0a32 390a 3330  5.26.27.28.29.30',
+        \ '00000080: 0a                                       .']
+  call assert_equal(expected, getline(1,'$'), s:Mess(s:test))
+
+  " Test 14: grouping with -d
+  let s:test += 1
+  let expected = [
+        \ '00000000: 310a320a 330a340a 350a360a 370a380a  1.2.3.4.5.6.7.8.',
+        \ '00000016: 390a3130 0a31310a 31320a31 330a3134  9.10.11.12.13.14',
+        \ '00000032: 0a31350a 31360a31 370a3138 0a31390a  .15.16.17.18.19.',
+        \ '00000048: 32300a32 310a3232 0a32330a 32340a32  20.21.22.23.24.2',
+        \ '00000064: 350a3236 0a32370a 32380a32 390a3330  5.26.27.28.29.30',
+        \ '00000080: 0a                                   .']
+  for arg in ['-g 4', '-group 4', '-g4']
+    exe '%!' . s:xxd_cmd . ' ' . arg . ' -d %'
+    call assert_equal(expected, getline(1,'$'), s:Mess(s:test))
+  endfor
+
+  " Test 15: cols with decimal offset: -c 21 -d
+  let s:test += 1
+  let expected = [
+        \ '00000000: 310a 320a 330a 340a 350a 360a 370a 380a 390a 3130 0a  1.2.3.4.5.6.7.8.9.10.',
+        \ '00000021: 3131 0a31 320a 3133 0a31 340a 3135 0a31 360a 3137 0a  11.12.13.14.15.16.17.',
+        \ '00000042: 3138 0a31 390a 3230 0a32 310a 3232 0a32 330a 3234 0a  18.19.20.21.22.23.24.',
+        \ '00000063: 3235 0a32 360a 3237 0a32 380a 3239 0a33 300a          25.26.27.28.29.30.']
+  exe '%!' . s:xxd_cmd . ' -c 21 -d %'
+  call assert_equal(expected, getline(1,'$'), s:Mess(s:test))
+
+  " Test 16: -o -offset
+  let s:test += 1
+  let expected = [
+        \ '0000000f: 310a 320a 330a 340a 350a 360a 370a 380a  1.2.3.4.5.6.7.8.',
+        \ '0000001f: 390a 3130 0a31 310a 3132 0a31 330a 3134  9.10.11.12.13.14',
+        \ '0000002f: 0a31 350a 3136 0a31 370a 3138 0a31 390a  .15.16.17.18.19.',
+        \ '0000003f: 3230 0a32 310a 3232 0a32 330a 3234 0a32  20.21.22.23.24.2',
+        \ '0000004f: 350a 3236 0a32 370a 3238 0a32 390a 3330  5.26.27.28.29.30',
+        \ '0000005f: 0a                                       .']
+  for arg in ['-o 15', '-offset 15', '-o15']
+    exe '%!' . s:xxd_cmd . ' ' . arg . ' %'
+    call assert_equal(expected, getline(1,'$'), s:Mess(s:test))
+  endfor
 
   %d
-  bw!
+  bwipe!
+  call delete('XXDfile')
+endfunc
+
+func Test_xxd_patch()
+  let cmd1 = 'silent !' .. s:xxd_cmd .. ' -r Xxxdin Xxxdfile'
+  let cmd2 = 'silent !' .. s:xxd_cmd .. ' -g1 Xxxdfile > Xxxdout'
+  call writefile(["2: 41 41", "8: 42 42"], 'Xxxdin')
+  call writefile(['::::::::'], 'Xxxdfile')
+  exe cmd1
+  exe cmd2
+  call assert_equal(['00000000: 3a 3a 41 41 3a 3a 3a 3a 42 42                    ::AA::::BB'], readfile('Xxxdout'))
+
+  call writefile(["2: 43 43 ", "8: 44 44"], 'Xxxdin')
+  exe cmd1
+  exe cmd2
+  call assert_equal(['00000000: 3a 3a 43 43 3a 3a 3a 3a 44 44                    ::CC::::DD'], readfile('Xxxdout'))
+
+  call writefile(["2: 45 45  ", "8: 46 46"], 'Xxxdin')
+  exe cmd1
+  exe cmd2
+  call assert_equal(['00000000: 3a 3a 45 45 3a 3a 3a 3a 46 46                    ::EE::::FF'], readfile('Xxxdout'))
+  
+  call writefile(["2: 41 41", "08: 42 42"], 'Xxxdin')
+  call writefile(['::::::::'], 'Xxxdfile')
+  exe cmd1
+  exe cmd2
+  call assert_equal(['00000000: 3a 3a 41 41 3a 3a 3a 3a 42 42                    ::AA::::BB'], readfile('Xxxdout'))
+
+  call writefile(["2: 43 43 ", "09: 44 44"], 'Xxxdin')
+  exe cmd1
+  exe cmd2
+  call assert_equal(['00000000: 3a 3a 43 43 3a 3a 3a 3a 42 44 44                 ::CC::::BDD'], readfile('Xxxdout'))
+
+  call writefile(["2: 45 45  ", "0a: 46 46"], 'Xxxdin')
+  exe cmd1
+  exe cmd2
+  call assert_equal(['00000000: 3a 3a 45 45 3a 3a 3a 3a 42 44 46 46              ::EE::::BDFF'], readfile('Xxxdout'))
+  
+  call delete('Xxxdin')
+  call delete('Xxxdfile')
+  call delete('Xxxdout')
 endfunc
 
 " Various ways with wrong arguments that trigger the usage output.
 func Test_xxd_usage()
-  for arg in ['-c', '-g', '-o', '-s', '-l', '-X', 'one two three']
+  for arg in ['-h', '-c', '-g', '-o', '-s', '-l', '-X', 'one two three']
     new
     exe 'r! ' . s:xxd_cmd . ' ' . arg
     call assert_match("Usage:", join(getline(1, 3)))
@@ -182,9 +274,88 @@ func Test_xxd_usage()
   endfor
 endfunc
 
+func Test_xxd_ignore_garbage()
+  new
+  exe 'r! printf "\n\r xxxx 0: 42 42" | ' . s:xxd_cmd . ' -r'
+  call assert_match('BB', join(getline(1, 3)))
+  bwipe!
+endfunc
+
+func Test_xxd_bit_dump()
+  new
+  exe 'r! printf "123456" | ' . s:xxd_cmd . ' -b1'
+  call assert_match('00000000: 00110001 00110010 00110011 00110100 00110101 00110110  123456', join(getline(1, 3)))
+  bwipe!
+endfunc
+
 func Test_xxd_version()
   new
   exe 'r! ' . s:xxd_cmd . ' -v'
-  call assert_match("xxd V1.10 .* by Juergen Weigert", join(getline(1, 3)))
+  call assert_match('xxd 20\d\d-\d\d-\d\d by Juergen Weigert et al\.', join(getline(1, 3)))
   bwipe!
 endfunc
+
+" number of columns must be non-negative
+func Test_xxd_min_cols()
+  for cols in ['-c-1', '-c -1', '-cols -1']
+    for fmt in ['', '-b', '-e', '-i', '-p', ]
+      new
+      exe 'r! printf "ignored" | ' . s:xxd_cmd . ' ' . cols . ' ' . fmt
+      call assert_match("invalid number of columns", join(getline(1, '$')))
+      bwipe!
+    endfor
+  endfor
+endfunc
+
+" some hex formats limit columns to 256 (a #define in xxd.c)
+func Test_xxd_max_cols()
+  for cols in ['-c257', '-c 257', '-cols 257']
+    for fmt in ['', '-b', '-e' ]
+      new
+      exe 'r! printf "ignored" | ' . s:xxd_cmd . ' ' . cols . ' ' . fmt
+      call assert_match("invalid number of columns", join(getline(1, '$')))
+      bwipe!
+    endfor
+  endfor
+endfunc
+
+" -c0 selects the format specific default column value, as if no -c was given
+" except for -ps, where it disables extra newlines
+func Test_xxd_c0_is_def_cols()
+  call writefile(["abcdefghijklmnopqrstuvwxyz0123456789"], 'Xxdin')
+  for cols in ['-c0', '-c 0', '-cols 0']
+    for fmt in ['', '-b', '-e', '-i']
+      exe 'r! ' . s:xxd_cmd . ' ' . fmt ' Xxdin > Xxdout1'
+      exe 'r! ' . s:xxd_cmd . ' ' . cols . ' ' . fmt ' Xxdin > Xxdout2'
+      call assert_equalfile('Xxdout1', 'Xxdout2')
+    endfor
+  endfor
+  call delete('Xxdin')
+  call delete('Xxdout1')
+  call delete('Xxdout2')
+endfunc
+
+" all output in a single line for -c0 -ps
+func Test_xxd_plain_one_line()
+  call writefile([
+        \ "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+        \ "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+        \ "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+        \ "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+        \ "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+        \ "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"],
+        \ 'Xxdin')
+  for cols in ['-c0', '-c 0', '-cols 0']
+    exe 'r! ' . s:xxd_cmd . ' -ps ' . cols ' Xxdin'
+    " output seems to start in line 2
+    let out = join(getline(2, '$'))
+    bwipe!
+    " newlines in xxd output result in spaces in the string variable out
+    call assert_notmatch(" ", out)
+    " xxd output must be non-empty and comprise only lower case hex digits
+    call assert_match("^[0-9a-f][0-9a-f]*$", out)
+  endfor
+  call delete('Xxdin')
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

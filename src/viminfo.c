@@ -26,6 +26,21 @@ typedef struct
     garray_T	vir_barlines;	// lines starting with |
 } vir_T;
 
+typedef enum {
+    BVAL_NR,
+    BVAL_STRING,
+    BVAL_EMPTY
+} btype_T;
+
+typedef struct {
+    btype_T	bv_type;
+    long	bv_nr;
+    char_u	*bv_string;
+    char_u	*bv_tofree;	// free later when not NULL
+    int		bv_len;		// length of bv_string
+    int		bv_allocated;	// bv_string was allocated
+} bval_T;
+
 #if defined(FEAT_VIMINFO) || defined(PROTO)
 
 static __thread int  viminfo_errcnt;
@@ -147,7 +162,7 @@ viminfo_writestring(FILE *fd, char_u *p)
     // the string (e.g., variable name).  Add something to the length for the
     // '<', NL and trailing NUL.
     if (len > LSIZE / 2)
-	fprintf(fd, IF_EB("\026%d\n<", CTRL_V_STR "%d\n<"), len + 3);
+	fprintf(fd, "\026%d\n<", len + 3);
 
     while ((c = *p++) != NUL)
     {
@@ -238,17 +253,18 @@ viminfo_readstring(
     int		off,		    // offset for virp->vir_line
     int		convert UNUSED)	    // convert the string
 {
-    char_u	*retval;
+    char_u	*retval = NULL;
     char_u	*s, *d;
     long	len;
 
     if (virp->vir_line[off] == Ctrl_V && vim_isdigit(virp->vir_line[off + 1]))
     {
 	len = atol((char *)virp->vir_line + off + 1);
-	retval = lalloc(len, TRUE);
+	if (len > 0 && len < 1000000)
+	    retval = lalloc(len, TRUE);
 	if (retval == NULL)
 	{
-	    // Line too long?  File messed up?  Skip next line.
+	    // Invalid length, line too long, out of memory?  Skip next line.
 	    (void)vim_fgets(virp->vir_line, 10, virp->vir_fd);
 	    return NULL;
 	}
@@ -1087,22 +1103,24 @@ barline_parse(vir_T *virp, char_u *text, garray_T *values)
 	    s[len] = NUL;
 
 	    converted = FALSE;
+	    value->bv_tofree = NULL;
 	    if (virp->vir_conv.vc_type != CONV_NONE && *s != NUL)
 	    {
 		sconv = string_convert(&virp->vir_conv, s, NULL);
 		if (sconv != NULL)
 		{
 		    if (s == buf)
-			vim_free(s);
+			// the converted string is stored in bv_string and
+			// freed later, also need to free "buf" later
+			value->bv_tofree = buf;
 		    s = sconv;
-		    buf = s;
 		    converted = TRUE;
 		}
 	    }
 
 	    // Need to copy in allocated memory if the string wasn't allocated
 	    // above and we did allocate before, thus vir_line may change.
-	    if (s != buf && allocated)
+	    if (s != buf && allocated && !converted)
 		s = vim_strsave(s);
 	    value->bv_string = s;
 	    value->bv_type = BVAL_STRING;
@@ -1156,7 +1174,7 @@ viminfo_error(char *errnum, char *message, char_u *line)
     emsg((char *)IObuff);
     if (++viminfo_errcnt >= 10)
     {
-	emsg(_("E136: viminfo: Too many errors, skipping rest of file"));
+	emsg(_(e_viminfo_too_many_errors_skipping_rest_of_file));
 	return TRUE;
     }
     return FALSE;
@@ -1230,10 +1248,15 @@ read_viminfo_varlist(vir_T *virp, int writing)
 				       (int)(tab - virp->vir_line + 1), TRUE);
 #ifdef FEAT_FLOAT
 		else if (type == VAR_FLOAT)
-		    (void)string2float(tab + 1, &tv.vval.v_float);
+		    (void)string2float(tab + 1, &tv.vval.v_float, FALSE);
 #endif
 		else
+		{
 		    tv.vval.v_number = atol((char *)tab + 1);
+		    if (type == VAR_SPECIAL && (tv.vval.v_number == VVAL_FALSE
+					     || tv.vval.v_number == VVAL_TRUE))
+			tv.v_type = VAR_BOOL;
+		}
 		if (type == VAR_DICT || type == VAR_LIST)
 		{
 		    typval_T *etv = eval_expr(tv.vval.v_string, NULL);
@@ -1312,24 +1335,56 @@ write_viminfo_varlist(FILE *fp)
 	    {
 		switch (this_var->di_tv.v_type)
 		{
-		    case VAR_STRING: s = "STR"; break;
-		    case VAR_NUMBER: s = "NUM"; break;
-		    case VAR_FLOAT:  s = "FLO"; break;
-		    case VAR_DICT:   s = "DIC"; break;
-		    case VAR_LIST:   s = "LIS"; break;
-		    case VAR_BLOB:   s = "BLO"; break;
+		    case VAR_STRING:  s = "STR"; break;
+		    case VAR_NUMBER:  s = "NUM"; break;
+		    case VAR_FLOAT:   s = "FLO"; break;
+		    case VAR_DICT:
+			  {
+			      dict_T	*di = this_var->di_tv.vval.v_dict;
+			      int	copyID = get_copyID();
+
+			      s = "DIC";
+			      if (di != NULL && !set_ref_in_ht(
+						 &di->dv_hashtab, copyID, NULL)
+				      && di->dv_copyID == copyID)
+				  // has a circular reference, can't turn the
+				  // value into a string
+				  continue;
+			      break;
+			  }
+		    case VAR_LIST:
+			  {
+			      list_T	*l = this_var->di_tv.vval.v_list;
+			      int	copyID = get_copyID();
+
+			      s = "LIS";
+			      if (l != NULL && !set_ref_in_list_items(
+							       l, copyID, NULL)
+				      && l->lv_copyID == copyID)
+				  // has a circular reference, can't turn the
+				  // value into a string
+				  continue;
+			      break;
+			  }
+		    case VAR_BLOB:    s = "BLO"; break;
+		    case VAR_BOOL:    s = "XPL"; break;  // backwards compat.
 		    case VAR_SPECIAL: s = "XPL"; break;
 
 		    case VAR_UNKNOWN:
+		    case VAR_ANY:
+		    case VAR_VOID:
 		    case VAR_FUNC:
 		    case VAR_PARTIAL:
 		    case VAR_JOB:
 		    case VAR_CHANNEL:
+		    case VAR_INSTR:
 				     continue;
 		}
 		fprintf(fp, "!%s\t%s\t", this_var->di_key, s);
-		if (this_var->di_tv.v_type == VAR_SPECIAL)
+		if (this_var->di_tv.v_type == VAR_BOOL
+				      || this_var->di_tv.v_type == VAR_SPECIAL)
 		{
+		    // do not use "v:true" but "1"
 		    sprintf((char *)numbuf, "%ld",
 					  (long)this_var->di_tv.vval.v_number);
 		    p = numbuf;
@@ -1561,7 +1616,7 @@ read_viminfo_register(vir_T *virp, int force)
 
     if (!ASCII_ISALNUM(*str) && *str != '-')
     {
-	if (viminfo_error("E577: ", _("Illegal register name"), virp->vir_line))
+	if (viminfo_error("E577: ", _(e_illegal_register_name), virp->vir_line))
 	    return TRUE;	// too many errors, pretend end-of-file
 	do_it = FALSE;
     }
@@ -1841,7 +1896,7 @@ write_viminfo_registers(FILE *fp)
 		type = (char_u *)"BLOCK";
 		break;
 	    default:
-		semsg(_("E574: Unknown register type %d"), y_ptr->y_type);
+		semsg(_(e_unknown_register_type_nr), y_ptr->y_type);
 		type = (char_u *)"LINE";
 		break;
 	}
@@ -1897,10 +1952,8 @@ write_viminfo_registers(FILE *fp)
  */
 
 static __thread xfmark_T *vi_namedfm = NULL;
-#ifdef FEAT_JUMPLIST
 static __thread xfmark_T *vi_jumplist = NULL;
 static __thread int vi_jumplist_len = 0;
-#endif
 
     static void
 write_one_mark(FILE *fp_out, int c, pos_T *pos)
@@ -1928,7 +1981,6 @@ write_buffer_marks(buf_T *buf, FILE *fp_out)
     write_one_mark(fp_out, '"', &buf->b_last_cursor);
     write_one_mark(fp_out, '^', &buf->b_last_insert);
     write_one_mark(fp_out, '.', &buf->b_last_change);
-#ifdef FEAT_JUMPLIST
     // changelist positions are stored oldest first
     for (i = 0; i < buf->b_changelistlen; ++i)
     {
@@ -1937,7 +1989,6 @@ write_buffer_marks(buf_T *buf, FILE *fp_out)
 							 buf->b_changelist[i]))
 	    write_one_mark(fp_out, '+', &buf->b_changelist[i]);
     }
-#endif
     for (i = 0; i < NMARKS; i++)
 	write_one_mark(fp_out, 'a' + i, &buf->b_namedm[i]);
 }
@@ -2060,8 +2111,7 @@ write_viminfo_filemarks(FILE *fp)
     for (i = 0; i < NMARKS; i++)
     {
 	if (vi_namedfm != NULL
-			&& (vi_namedfm[i].time_set > namedfm_p[i].time_set
-			    || namedfm_p[i].fmark.mark.lnum == 0))
+			&& (vi_namedfm[i].time_set > namedfm_p[i].time_set))
 	    fm = &vi_namedfm[i];
 	else
 	    fm = &namedfm_p[i];
@@ -2124,7 +2174,6 @@ write_viminfo_filemarks(FILE *fp)
 	write_one_filemark(fp, fm, '\'', i - NMARKS + '0');
     }
 
-#ifdef FEAT_JUMPLIST
     // Write the jumplist with -'
     fputs(_("\n# Jumplist (newest first):\n"), fp);
     setpcmark();	// add current cursor position
@@ -2136,7 +2185,8 @@ write_viminfo_filemarks(FILE *fp)
 	xfmark_T	*vi_fm;
 
 	fm = idx >= 0 ? &curwin->w_jumplist[idx] : NULL;
-	vi_fm = vi_idx < vi_jumplist_len ? &vi_jumplist[vi_idx] : NULL;
+	vi_fm = (vi_jumplist != NULL && vi_idx < vi_jumplist_len)
+					? &vi_jumplist[vi_idx] : NULL;
 	if (fm == NULL && vi_fm == NULL)
 	    break;
 	if (fm == NULL || (vi_fm != NULL && fm->time_set < vi_fm->time_set))
@@ -2151,7 +2201,6 @@ write_viminfo_filemarks(FILE *fp)
 		    && !skip_for_viminfo(buf)))
 	    write_one_filemark(fp, fm, '-', '\'');
     }
-#endif
 }
 
 /*
@@ -2171,7 +2220,8 @@ buf_compare(const void *s1, const void *s2)
 /*
  * Handle marks in the viminfo file:
  * fp_out != NULL: copy marks, in time order with buffers in "buflist".
- * fp_out == NULL && (flags & VIF_WANT_MARKS): read marks for curbuf only
+ * fp_out == NULL && (flags & VIF_WANT_MARKS): read marks for curbuf
+ * fp_out == NULL && (flags & VIF_ONLY_CURBUF): bail out after curbuf marks
  * fp_out == NULL && (flags & VIF_GET_OLDFILES | VIF_FORCEIT): fill v:oldfiles
  */
     static void
@@ -2227,7 +2277,7 @@ copy_viminfo_marks(
 	{
 	    if (line[0] != '\n' && line[0] != '\r' && line[0] != '#')
 	    {
-		if (viminfo_error("E576: ", _("Missing '>'"), line))
+		if (viminfo_error("E576: ", _(e_nonr_missing_gt), line))
 		    break;	// too many errors, return now
 	    }
 	    eof = vim_fgets(line, LSIZE, virp->vir_fd);
@@ -2312,7 +2362,7 @@ copy_viminfo_marks(
 			else
 			{
 			    // No timestamp, must be written by an older Vim.
-			    // Assume all remaining buffers are older then
+			    // Assume all remaining buffers are older than
 			    // ours.
 			    while (count < num_marked_files
 					    && buflist_used < buflist->ga_len)
@@ -2361,7 +2411,6 @@ copy_viminfo_marks(
 			case '^': curbuf->b_last_insert = pos; break;
 			case '.': curbuf->b_last_change = pos; break;
 			case '+':
-#ifdef FEAT_JUMPLIST
 				  // changelist positions are stored oldest
 				  // first
 				  if (curbuf->b_changelistlen == JUMPLISTSIZE)
@@ -2373,7 +2422,6 @@ copy_viminfo_marks(
 				      ++curbuf->b_changelistlen;
 				  curbuf->b_changelist[
 					   curbuf->b_changelistlen - 1] = pos;
-#endif
 				  break;
 
 				  // Using the line number for the last-used
@@ -2391,7 +2439,6 @@ copy_viminfo_marks(
 
 	if (load_marks)
 	{
-#ifdef FEAT_JUMPLIST
 	    win_T	*wp;
 
 	    FOR_ALL_WINDOWS(wp)
@@ -2399,8 +2446,8 @@ copy_viminfo_marks(
 		if (wp->w_buffer == curbuf)
 		    wp->w_changelistidx = curbuf->b_changelistlen;
 	    }
-#endif
-	    break;
+	    if (flags & VIF_ONLY_CURBUF)
+		break;
 	}
     }
 
@@ -2425,7 +2472,7 @@ check_marks_read(void)
 {
     if (!curbuf->b_marks_read && get_viminfo_parameter('\'') > 0
 						  && curbuf->b_ffname != NULL)
-	read_viminfo(NULL, VIF_WANT_MARKS);
+	read_viminfo(NULL, VIF_WANT_MARKS | VIF_ONLY_CURBUF);
 
     // Always set b_marks_read; needed when 'viminfo' is changed to include
     // the ' parameter after opening a buffer.
@@ -2443,16 +2490,13 @@ read_viminfo_filemark(vir_T *virp, int force)
     // We only get here if line[0] == '\'' or '-'.
     // Illegal mark names are ignored (for future expansion).
     str = virp->vir_line + 1;
-    if (
-#ifndef EBCDIC
-	    *str <= 127 &&
-#endif
-	    ((*virp->vir_line == '\'' && (VIM_ISDIGIT(*str) || isupper(*str)))
+    if (*str <= 127
+	    && ((*virp->vir_line == '\''
+				       && (VIM_ISDIGIT(*str) || isupper(*str)))
 	     || (*virp->vir_line == '-' && *str == '\'')))
     {
 	if (*str == '\'')
 	{
-#ifdef FEAT_JUMPLIST
 	    // If the jumplist isn't full insert fmark as oldest entry
 	    if (curwin->w_jumplistlen == JUMPLISTSIZE)
 		fm = NULL;
@@ -2466,9 +2510,6 @@ read_viminfo_filemark(vir_T *virp, int force)
 		fm->fmark.mark.lnum = 0;
 		fm->fname = NULL;
 	    }
-#else
-	    fm = NULL;
-#endif
 	}
 	else if (VIM_ISDIGIT(*str))
 	    fm = &namedfm_p[*str - '0' + NMARKS];
@@ -2499,10 +2540,8 @@ read_viminfo_filemark(vir_T *virp, int force)
 prepare_viminfo_marks(void)
 {
     vi_namedfm = ALLOC_CLEAR_MULT(xfmark_T, NMARKS + EXTRA_MARKS);
-#ifdef FEAT_JUMPLIST
     vi_jumplist = ALLOC_CLEAR_MULT(xfmark_T, JUMPLISTSIZE);
     vi_jumplist_len = 0;
-#endif
 }
 
     static void
@@ -2516,14 +2555,12 @@ finish_viminfo_marks(void)
 	    vim_free(vi_namedfm[i].fname);
 	VIM_CLEAR(vi_namedfm);
     }
-#ifdef FEAT_JUMPLIST
     if (vi_jumplist != NULL)
     {
 	for (i = 0; i < vi_jumplist_len; ++i)
 	    vim_free(vi_jumplist[i].fname);
 	VIM_CLEAR(vi_jumplist);
     }
-#endif
 }
 
 /*
@@ -2560,7 +2597,6 @@ handle_viminfo_mark(garray_T *values, int force)
 
     if (name == '\'')
     {
-#ifdef FEAT_JUMPLIST
 	if (vi_jumplist != NULL)
 	{
 	    if (vi_jumplist_len < JUMPLISTSIZE)
@@ -2615,7 +2651,6 @@ handle_viminfo_mark(garray_T *values, int force)
 		fm->time_set = 0;
 	    }
 	}
-#endif
     }
     else
     {
@@ -2698,7 +2733,7 @@ read_viminfo_barline(vir_T *virp, int got_encoding, int force, int writing)
     {
 	// Continuation line of an unrecognized item.
 	if (writing)
-	    ga_add_string(&virp->vir_barlines, virp->vir_line);
+	    ga_copy_string(&virp->vir_barlines, virp->vir_line);
     }
     else
     {
@@ -2737,13 +2772,14 @@ read_viminfo_barline(vir_T *virp, int got_encoding, int force, int writing)
 	    default:
 		// copy unrecognized line (for future use)
 		if (writing)
-		    ga_add_string(&virp->vir_barlines, virp->vir_line);
+		    ga_copy_string(&virp->vir_barlines, virp->vir_line);
 	}
 	for (i = 0; i < values.ga_len; ++i)
 	{
 	    vp = (bval_T *)values.ga_data + i;
 	    if (vp->bv_type == BVAL_STRING && vp->bv_allocated)
 		vim_free(vp->bv_string);
+	    vim_free(vp->bv_tofree);
 	}
 	ga_clear(&values);
     }
@@ -2843,7 +2879,7 @@ read_viminfo_up_to_marks(
 		    eof = viminfo_readline(virp);
 		break;
 	    default:
-		if (viminfo_error("E575: ", _("Illegal starting char"),
+		if (viminfo_error("E575: ", _(e_illegal_starting_char),
 			    virp->vir_line))
 		    eof = TRUE;
 		else
@@ -2879,7 +2915,7 @@ do_viminfo(FILE *fp_in, FILE *fp_out, int flags)
 	return;
     vir.vir_fd = fp_in;
     vir.vir_conv.vc_type = CONV_NONE;
-    ga_init2(&vir.vir_barlines, (int)sizeof(char_u *), 100);
+    ga_init2(&vir.vir_barlines, sizeof(char_u *), 100);
     vir.vir_version = -1;
 
     if (fp_in != NULL)
@@ -2904,8 +2940,8 @@ do_viminfo(FILE *fp_in, FILE *fp_out, int flags)
 		    && vir.vir_line[0] != '>')
 		;
 
-	do_copy_marks = (flags &
-			   (VIF_WANT_MARKS | VIF_GET_OLDFILES | VIF_FORCEIT));
+	do_copy_marks = (flags & (VIF_WANT_MARKS | VIF_ONLY_CURBUF
+					    | VIF_GET_OLDFILES | VIF_FORCEIT));
     }
 
     if (fp_out != NULL)
@@ -2959,6 +2995,7 @@ read_viminfo(
 {
     FILE	*fp;
     char_u	*fname;
+    stat_T	st;		// mch_stat() of existing viminfo file
 
     if (no_viminfo())
 	return FAIL;
@@ -2971,7 +3008,7 @@ read_viminfo(
     if (p_verbose > 0)
     {
 	verbose_enter();
-	smsg(_("Reading viminfo file \"%s\"%s%s%s"),
+	smsg(_("Reading viminfo file \"%s\"%s%s%s%s"),
 		fname,
 		(flags & VIF_WANT_INFO) ? _(" info") : "",
 		(flags & VIF_WANT_MARKS) ? _(" marks") : "",
@@ -2983,6 +3020,11 @@ read_viminfo(
     vim_free(fname);
     if (fp == NULL)
 	return FAIL;
+    if (mch_fstat(fileno(fp), &st) < 0 || S_ISDIR(st.st_mode))
+    {
+	fclose(fp);
+	return FAIL;
+    }
 
     viminfo_errcnt = 0;
     do_viminfo(fp, NULL, flags);
@@ -3006,12 +3048,12 @@ write_viminfo(char_u *file, int forceit)
     FILE	*fp_out = NULL;	// output viminfo file
     char_u	*tempname = NULL;	// name of temp viminfo file
     stat_T	st_new;		// mch_stat() of potential new file
+    stat_T	st_old;		// mch_stat() of existing viminfo file
 #if defined(UNIX) || defined(VMS)
     mode_t	umask_save;
 #endif
 #ifdef UNIX
     int		shortname = FALSE;	// use 8.3 file name
-    stat_T	st_old;		// mch_stat() of existing viminfo file
 #endif
 #ifdef MSWIN
     int		hidden = FALSE;
@@ -3049,30 +3091,29 @@ write_viminfo(char_u *file, int forceit)
 	// write the new viminfo into, in the same directory as the
 	// existing viminfo file, which will be renamed once all writing is
 	// successful.
+	if (mch_fstat(fileno(fp_in), &st_old) < 0
+		|| S_ISDIR(st_old.st_mode)
 #ifdef UNIX
-	// For Unix we check the owner of the file.  It's not very nice to
-	// overwrite a user's viminfo file after a "su root", with a
-	// viminfo file that the user can't read.
-	st_old.st_dev = (dev_t)0;
-	st_old.st_ino = 0;
-	st_old.st_mode = 0600;
-	if (mch_stat((char *)fname, &st_old) == 0
-		&& getuid() != ROOT_UID
-		&& !(st_old.st_uid == getuid()
-			? (st_old.st_mode & 0200)
-			: (st_old.st_gid == getgid()
-				? (st_old.st_mode & 0020)
-				: (st_old.st_mode & 0002))))
+		// For Unix we check the owner of the file.  It's not very nice
+		// to overwrite a user's viminfo file after a "su root", with a
+		// viminfo file that the user can't read.
+		|| (getuid() != ROOT_UID
+		    && !(st_old.st_uid == getuid()
+			    ? (st_old.st_mode & 0200)
+			    : (st_old.st_gid == getgid()
+				    ? (st_old.st_mode & 0020)
+				    : (st_old.st_mode & 0002))))
+#endif
+		)
 	{
 	    int	tt = msg_didany;
 
 	    // avoid a wait_return for this message, it's annoying
-	    semsg(_("E137: Viminfo file is not writable: %s"), fname);
+	    semsg(_(e_viminfo_file_is_not_writable_str), fname);
 	    msg_didany = tt;
 	    fclose(fp_in);
 	    goto end;
 	}
-#endif
 #ifdef MSWIN
 	// Get the file attributes of the existing viminfo file.
 	hidden = mch_ishidden(fname);
@@ -3182,8 +3223,7 @@ write_viminfo(char_u *file, int forceit)
 		{
 		    // They all exist?  Must be something wrong! Don't write
 		    // the viminfo file then.
-		    semsg(_("E929: Too many viminfo temp files, like %s!"),
-								     tempname);
+		    semsg(_(e_too_many_viminfo_temp_files_like_str), tempname);
 		    break;
 		}
 		*wp = next_char;
@@ -3206,7 +3246,7 @@ write_viminfo(char_u *file, int forceit)
 	    {
 		if (st_old.st_uid != tmp_st.st_uid)
 		    // Changing the owner might fail, in which case the
-		    // file will now owned by the current user, oh well.
+		    // file will now be owned by the current user, oh well.
 		    vim_ignored = fchown(fileno(fp_out), st_old.st_uid, -1);
 		if (st_old.st_gid != tmp_st.st_gid
 			&& fchown(fileno(fp_out), -1, st_old.st_gid) == -1)
@@ -3224,7 +3264,7 @@ write_viminfo(char_u *file, int forceit)
     // Check if the new viminfo file can be written to.
     if (fp_out == NULL)
     {
-	semsg(_("E138: Can't write viminfo file %s!"),
+	semsg(_(e_cant_write_viminfo_file_str),
 		       (fp_in == NULL || tempname == NULL) ? fname : tempname);
 	if (fp_in != NULL)
 	    fclose(fp_in);
@@ -3255,7 +3295,7 @@ write_viminfo(char_u *file, int forceit)
 	    if (vim_rename(tempname, fname) == -1)
 	    {
 		++viminfo_errcnt;
-		semsg(_("E886: Can't rename viminfo file to %s!"), fname);
+		semsg(_(e_cant_rename_viminfo_file_to_str), fname);
 	    }
 # ifdef MSWIN
 	    // If the viminfo file was hidden then also hide the new file.
@@ -3288,7 +3328,7 @@ ex_viminfo(
     {
 	if (read_viminfo(eap->arg, VIF_WANT_INFO | VIF_WANT_MARKS
 				  | (eap->forceit ? VIF_FORCEIT : 0)) == FAIL)
-	    emsg(_("E195: Cannot open viminfo file for reading"));
+	    emsg(_(e_cannot_open_viminfo_file_for_reading));
     }
     else
 	write_viminfo(eap->arg, eap->forceit);

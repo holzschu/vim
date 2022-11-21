@@ -10,7 +10,7 @@
 
 #include "vim.h"
 
-#if defined(FEAT_BEVAL) || defined(FEAT_TEXT_PROP) || defined(PROTO)
+#if defined(FEAT_BEVAL) || defined(FEAT_PROP_POPUP) || defined(PROTO)
 /*
  * Find text under the mouse position "row" / "col".
  * If "getword" is TRUE the returned text in "*textp" is not the whole line but
@@ -110,6 +110,8 @@ find_word_under_cursor(
 			lbuf = vim_strnsave(lbuf, len);
 		    }
 		}
+		else
+		    scol = col;
 
 		if (winp != NULL)
 		    *winp = wp;
@@ -148,18 +150,18 @@ get_beval_info(
     int		row = mouse_row;
     int		col = mouse_col;
 
-# ifdef FEAT_GUI
+# ifdef FEAT_BEVAL_GUI
     if (gui.in_use)
     {
 	row = Y_2_ROW(beval->y);
 	col = X_2_COL(beval->x);
     }
-#endif
+# endif
     if (find_word_under_cursor(row, col, getword,
 		FIND_IDENT + FIND_STRING + FIND_EVAL,
 		winp, lnump, textp, colp, NULL) == OK)
     {
-#ifdef FEAT_VARTABS
+# ifdef FEAT_VARTABS
 	vim_free(beval->vts);
 	beval->vts = tabstop_copy((*winp)->w_buffer->b_p_vts_array);
 	if ((*winp)->w_buffer->b_p_vts_array != NULL && beval->vts == NULL)
@@ -168,7 +170,7 @@ get_beval_info(
 		vim_free(*textp);
 	    return FAIL;
 	}
-#endif
+# endif
 	beval->ts = (*winp)->w_buffer->b_p_ts;
 	return OK;
     }
@@ -239,13 +241,13 @@ general_beval_cb(BalloonEval *beval, int state UNUSED)
 #endif
     static int	recursive = FALSE;
 
-    /* Don't do anything when 'ballooneval' is off, messages scrolled the
-     * windows up or we have no beval area. */
+    // Don't do anything when 'ballooneval' is off, messages scrolled the
+    // windows up or we have no beval area.
     if (!can_use_beval() || beval == NULL)
 	return;
 
-    /* Don't do this recursively.  Happens when the expression evaluation
-     * takes a long time and invokes something that checks for CTRL-C typed. */
+    // Don't do this recursively.  Happens when the expression evaluation
+    // takes a long time and invokes something that checks for CTRL-C typed.
     if (recursive)
 	return;
     recursive = TRUE;
@@ -257,7 +259,9 @@ general_beval_cb(BalloonEval *beval, int state UNUSED)
 						    : wp->w_buffer->b_p_bexpr;
 	if (*bexpr != NUL)
 	{
-	    /* Convert window pointer to number. */
+	    sctx_T	save_sctx = current_sctx;
+
+	    // Convert window pointer to number.
 	    for (cw = firstwin; cw != wp; cw = cw->w_next)
 		++winnr;
 
@@ -282,12 +286,22 @@ general_beval_cb(BalloonEval *beval, int state UNUSED)
 		++sandbox;
 	    ++textlock;
 
-	    vim_free(result);
-	    result = eval_to_string(bexpr, NULL, TRUE);
+	    if (bexpr == p_bexpr)
+	    {
+		sctx_T *sp = get_option_sctx("balloonexpr");
 
-	    /* Remove one trailing newline, it is added when the result was a
-	     * list and it's hardly ever useful.  If the user really wants a
-	     * trailing newline he can add two and one remains. */
+		if (sp != NULL)
+		    current_sctx = *sp;
+	    }
+	    else
+		current_sctx = curbuf->b_p_script_ctx[BV_BEXPR];
+
+	    vim_free(result);
+	    result = eval_to_string(bexpr, TRUE);
+
+	    // Remove one trailing newline, it is added when the result was a
+	    // list and it's hardly ever useful.  If the user really wants a
+	    // trailing newline he can add two and one remains.
 	    if (result != NULL)
 	    {
 		len = STRLEN(result);
@@ -298,6 +312,7 @@ general_beval_cb(BalloonEval *beval, int state UNUSED)
 	    if (use_sandbox)
 		--sandbox;
 	    --textlock;
+	    current_sctx = save_sctx;
 
 	    set_vim_var_string(VV_BEVAL_TEXT, NULL, -1);
 	    if (result != NULL && result[0] != NUL)
@@ -306,7 +321,7 @@ general_beval_cb(BalloonEval *beval, int state UNUSED)
 	    // The 'balloonexpr' evaluation may show something on the screen
 	    // that requires a screen update.
 	    if (must_redraw)
-		redraw_after_callback(FALSE);
+		redraw_after_callback(FALSE, FALSE);
 
 	    recursive = FALSE;
 	    return;
@@ -322,4 +337,3 @@ general_beval_cb(BalloonEval *beval, int state UNUSED)
 }
 
 #endif
-

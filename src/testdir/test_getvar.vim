@@ -83,6 +83,7 @@ func Test_var()
 
   unlet def_dict
 
+  call assert_equal("", gettabwinvar(9, 2020, ''))
   call assert_equal('', gettabwinvar(2, 3, '&nux'))
   call assert_equal(1, gettabwinvar(2, 3, '&nux', 1))
   tabonly
@@ -133,14 +134,30 @@ func Test_get_lambda()
   call assert_equal([], get(l:L, 'args'))
 endfunc
 
+func s:FooBar()
+endfunc
+
 " get({func}, {what} [, {default}])
 func Test_get_func()
   let l:F = function('tr')
   call assert_equal('tr', get(l:F, 'name'))
   call assert_equal(l:F, get(l:F, 'func'))
+
+  let Fb_func = function('s:FooBar')
+  call assert_match('<SNR>\d\+_FooBar', get(Fb_func, 'name'))
+  let Fb_ref = funcref('s:FooBar')
+  call assert_match('<SNR>\d\+_FooBar', get(Fb_ref, 'name'))
+
   call assert_equal({'func has': 'no dict'}, get(l:F, 'dict', {'func has': 'no dict'}))
   call assert_equal(0, get(l:F, 'dict'))
   call assert_equal([], get(l:F, 'args'))
+  let NF = test_null_function()
+  call assert_equal('', get(NF, 'name'))
+  call assert_equal(NF, get(NF, 'func'))
+  call assert_equal(0, get(NF, 'dict'))
+  call assert_equal([], get(NF, 'args'))
 endfunc
 
 " get({partial}, {what} [, {default}]) - in test_partial.vim
+
+" vim: shiftwidth=2 sts=2 expandtab

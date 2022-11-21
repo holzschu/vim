@@ -120,7 +120,7 @@ func Test_gn_command()
   sil! %d_
 
   " search using the \zs atom
-  call setline(1, [' nnoremap', '' , 'nnoremap'])
+  call setline(1, [' nnoremap', '', 'nnoremap'])
   set wrapscan&vim
   let @/ = '\_s\zsnnoremap'
   $
@@ -135,8 +135,9 @@ func Test_gn_command()
   call assert_equal(['ABCDEFGHi'], getline(1,'$'))
   call setline('.', ['abcdefghi'])
   let @/ = 'b'
+  " this gn wraps around the end of the file
   exe "norm! 0fhvhhgngU"
-  call assert_equal(['abcdefghi'], getline(1,'$'))
+  call assert_equal(['aBCDEFGHi'], getline(1,'$'))
   sil! %d _
   call setline('.', ['abcdefghi'])
   let @/ = 'f'
@@ -153,9 +154,50 @@ func Test_gn_command()
   norm! gg0f2vf7gNd
   call assert_equal(['1678'], getline(1,'$'))
   sil! %d _
-
   set wrapscan&vim
-endfu
+
+  " Without 'wrapscan', in visual mode, running gn without a match should fail
+  " but the visual mode should be kept.
+  set nowrapscan
+  call setline('.', 'one two')
+  let @/ = 'one'
+  call assert_beeps('normal 0wvlgn')
+  exe "normal y"
+  call assert_equal('tw', @")
+
+  " with exclusive selection, run gn and gN
+  set selection=exclusive
+  normal 0gny
+  call assert_equal('one', @")
+  normal 0wgNy
+  call assert_equal('one', @")
+  set selection&
+endfunc
+
+func Test_gN_repeat()
+  new
+  call setline(1, 'this list is a list with a list of a list.')
+  /list
+  normal $gNgNgNx
+  call assert_equal('list with a list of a list', @")
+  bwipe!
+endfunc
+
+func Test_gN_then_gn()
+  new
+
+  call setline(1, 'this list is a list with a list of a last.')
+  /l.st
+  normal $gNgNgnx
+  call assert_equal('last', @")
+
+  call setline(1, 'this list is a list with a lust of a last.')
+  /l.st
+  normal $gNgNgNgnx
+  call assert_equal('lust of a last', @")
+
+  bwipe!
+endfunc
 
 func Test_gn_multi_line()
   new

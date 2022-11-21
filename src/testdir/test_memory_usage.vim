@@ -4,11 +4,9 @@ source check.vim
 CheckFeature terminal
 CheckNotGui
 
-if execute('version') =~# '-fsanitize=[a-z,]*\<address\>'
-  " Skip tests on Travis CI ASAN build because it's difficult to estimate
-  " memory usage.
-  throw 'Skipped: does not work with ASAN'
-endif
+" Skip tests on Travis CI ASAN build because it's difficult to estimate memory
+" usage.
+CheckNotAsan
 
 source shared.vim
 
@@ -67,6 +65,9 @@ func s:term_vim.start(...) abort
   let self.job = term_getjob(self.buf)
   call WaitFor({-> job_status(self.job) ==# 'run'})
   let self.pid = job_info(self.job).process
+
+  " running an external command may fail once in a while
+  let g:test_is_flaky = 1
 endfunc
 
 func s:term_vim.stop() abort
@@ -148,11 +149,19 @@ func Test_memory_func_capture_lvars()
 
   " The usage may be a bit less than the last value, use 80%.
   " Allow for 20% tolerance at the upper limit.  That's very permissive, but
-  " otherwise the test fails sometimes.
+  " otherwise the test fails sometimes.  On Cirrus CI with FreeBSD we need to
+  " be even much more permissive.
+  if has('bsd')
+    let multiplier = 19
+  else
+    let multiplier = 12
+  endif
   let lower = before * 8 / 10
-  let upper = (after.max + (after.last - before)) * 12 / 10
+  let upper = (after.max + (after.last - before)) * multiplier / 10
   call assert_inrange(lower, upper, last)
 
   call vim.stop()
   call delete(testfile)
 endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

@@ -22,6 +22,7 @@ func! GetMline()
 
   " remove '%', not used for formatting.
   let idline = substitute(idline, "'%'", '', 'g')
+  let idline = substitute(idline, "%%", '', 'g')
 
   " remove '%' used for plural forms.
   let idline = substitute(idline, '\\nPlural-Forms: .\+;\\n', '', '')
@@ -37,13 +38,24 @@ set nowrapscan
 " Start at the first "msgid" line.
 let wsv = winsaveview()
 1
-/^msgid\>
+keeppatterns /^msgid\>
 
 " When an error is detected this is set to the line number.
 " Note: this is used in the Makefile.
 let error = 0
 
 while 1
+  let lnum = line('.')
+  if getline(lnum) =~ 'msgid "Text;.*;"'
+    if getline(lnum + 1) !~ '^msgstr "\([^;]\+;\)\+"'
+      echomsg 'Mismatching ; in line ' . (lnum + 1)
+      echomsg 'Did you forget the trailing semicolon?'
+      if error == 0
+	let error = lnum + 1
+      endif
+    endif
+  endif
+
   if getline(line('.') - 1) !~ "no-c-format"
     " go over the "msgid" and "msgid_plural" lines
     let prevfromline = 'foobar'
@@ -89,7 +101,7 @@ while 1
 
   " Find next msgid.  Quit when there is no more.
   let lnum = line('.')
-  silent! /^msgid\>
+  silent! keeppatterns /^msgid\>
   if line('.') == lnum
     break
   endif
@@ -122,7 +134,7 @@ endfunc
 " Check that the \n at the end of the msgid line is also present in the msgstr
 " line.  Skip over the header.
 1
-/^"MIME-Version:
+keeppatterns /^"MIME-Version:
 while 1
   let lnum = search('^msgid\>')
   if lnum <= 0

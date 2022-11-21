@@ -31,10 +31,10 @@
  * In the NFA engine: how many states are allowed
  */
 #define NFA_MAX_STATES 100000
-#define NFA_TOO_EXPENSIVE -1
+#define NFA_TOO_EXPENSIVE (-1)
 
-/* Which regexp engine to use? Needed for vim_regcomp().
- * Must match with 'regexpengine'. */
+// Which regexp engine to use? Needed for vim_regcomp().
+// Must match with 'regexpengine'.
 #define	    AUTOMATIC_ENGINE	0
 #define	    BACKTRACKING_ENGINE	1
 #define	    NFA_ENGINE		2
@@ -62,7 +62,7 @@ typedef struct regprog
  */
 typedef struct
 {
-    /* These four members implement regprog_T */
+    // These four members implement regprog_T
     regengine_T		*engine;
     unsigned		regflags;
     unsigned		re_engine;
@@ -76,7 +76,7 @@ typedef struct
 #ifdef FEAT_SYN_HL
     char_u		reghasz;
 #endif
-    char_u		program[1];	/* actually longer.. */
+    char_u		program[1];	// actually longer..
 } bt_regprog_T;
 
 /*
@@ -90,7 +90,7 @@ struct nfa_state
     nfa_state_T		*out;
     nfa_state_T		*out1;
     int			id;
-    int			lastlist[2]; /* 0: normal, 1: recursive */
+    int			lastlist[2]; // 0: normal, 1: recursive
     int			val;
 };
 
@@ -99,28 +99,28 @@ struct nfa_state
  */
 typedef struct
 {
-    /* These three members implement regprog_T */
+    // These three members implement regprog_T
     regengine_T		*engine;
     unsigned		regflags;
     unsigned		re_engine;
     unsigned		re_flags;
     int			re_in_use;
 
-    nfa_state_T		*start;		/* points into state[] */
+    nfa_state_T		*start;		// points into state[]
 
-    int			reganch;	/* pattern starts with ^ */
-    int			regstart;	/* char at start of pattern */
-    char_u		*match_text;	/* plain text to match with */
+    int			reganch;	// pattern starts with ^
+    int			regstart;	// char at start of pattern
+    char_u		*match_text;	// plain text to match with
 
-    int			has_zend;	/* pattern contains \ze */
-    int			has_backref;	/* pattern contains \1 .. \9 */
+    int			has_zend;	// pattern contains \ze
+    int			has_backref;	// pattern contains \1 .. \9
 #ifdef FEAT_SYN_HL
     int			reghasz;
 #endif
     char_u		*pattern;
-    int			nsubexp;	/* number of () */
+    int			nsubexp;	// number of ()
     int			nstate;
-    nfa_state_T		state[1];	/* actually longer.. */
+    nfa_state_T		state[1];	// actually longer..
 } nfa_regprog_T;
 
 /*
@@ -150,7 +150,7 @@ typedef struct
     lpos_T		startpos[NSUBEXP];
     lpos_T		endpos[NSUBEXP];
     int			rmm_ic;
-    colnr_T		rmm_maxcol;	/* when not zero: maximum column */
+    colnr_T		rmm_maxcol;	// when not zero: maximum column
 } regmmatch_T;
 
 /*
@@ -166,11 +166,20 @@ typedef struct
 
 struct regengine
 {
+    // bt_regcomp or nfa_regcomp
     regprog_T	*(*regcomp)(char_u*, int);
+    // bt_regfree or nfa_regfree
     void	(*regfree)(regprog_T *);
+    // bt_regexec_nl or nfa_regexec_nl
     int		(*regexec_nl)(regmatch_T *, char_u *, colnr_T, int);
-    long	(*regexec_multi)(regmmatch_T *, win_T *, buf_T *, linenr_T, colnr_T, proftime_T *, int *);
-    char_u	*expr;
+    // bt_regexec_mult or nfa_regexec_mult
+    long	(*regexec_multi)(regmmatch_T *, win_T *, buf_T *, linenr_T, colnr_T, int *);
+    //char_u	*expr;
 };
 
-#endif	/* _REGEXP_H */
+// Flags used by vim_regsub() and vim_regsub_both()
+#define REGSUB_COPY	    1
+#define REGSUB_MAGIC	    2
+#define REGSUB_BACKSLASH    4
+
+#endif	// _REGEXP_H

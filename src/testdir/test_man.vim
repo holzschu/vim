@@ -1,3 +1,5 @@
+" Test specifically for the Man filetype plugin.
+
 runtime ftplugin/man.vim
 
 func Test_g_ft_man_open_mode()
@@ -111,3 +113,37 @@ func Test_local_options()
   %bw!
   set foldcolumn& number&
 endfunc
+
+" Check that the unnamed register is not overwritten.
+func Test_keep_unnamed_register()
+  %bw!
+
+  let @" = '---'
+
+  let wincnt = winnr('$')
+  Man vim
+  if wincnt == winnr('$')
+    " Vim manual page cannot be found.
+    return
+  endif
+
+  call assert_equal('---', @")
+
+  %bw!
+endfunc
+
+" Check that underlying shell command arguments are escaped.
+func Test_Man_uses_shellescape()
+  Man `touch\ Xbar` `touch\ Xfoo`
+
+  redir => msg
+  1messages
+  redir END
+  call assert_match('no manual entry for "`touch Xfoo`"', msg)
+
+  call assert_false(filereadable('Xbar'))
+  call assert_false(filereadable('Xfoo'))
+endfunc
+
+
+" vim: shiftwidth=2 sts=2 expandtab

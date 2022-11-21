@@ -50,6 +50,7 @@ extern "C" {
 
 /* xdemitconf_t.flags */
 #define XDL_EMIT_FUNCNAMES (1 << 0)
+#define XDL_EMIT_NO_HUNK_HDR (1 << 1)
 #define XDL_EMIT_FUNCCONTEXT (1 << 2)
 
 /* merge simplification levels */
@@ -79,6 +80,12 @@ typedef struct s_mmbuffer {
 typedef struct s_xpparam {
 	unsigned long flags;
 
+	/* -I<regex> */
+ #if 0  // unused by Vim
+	regex_t **ignore_regex;
+	size_t ignore_regex_nr;
+#endif
+
 	/* See Documentation/diff-options.txt. */
 	char **anchors;
 	size_t anchors_nr;
@@ -86,7 +93,11 @@ typedef struct s_xpparam {
 
 typedef struct s_xdemitcb {
 	void *priv;
-	int (*outf)(void *, mmbuffer_t *, int);
+	int (*out_hunk)(void *,
+			long old_begin, long old_nr,
+			long new_begin, long new_nr,
+			const char *func, long funclen);
+	int (*out_line)(void *, mmbuffer_t *, int);
 } xdemitcb_t;
 
 typedef long (*find_func_t)(const char *line, long line_len, char *buffer, long buffer_size, void *priv);

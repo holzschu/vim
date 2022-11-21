@@ -4,6 +4,7 @@ source check.vim
 CheckFeature menu
 
 source shared.vim
+source screendump.vim
 
 func Test_add_remove_menu()
   new
@@ -18,7 +19,7 @@ func Test_add_remove_menu()
   call assert_equal(12, g:did_cont)
 
   wincmd w
-  call assert_fails('emenu WinBar.Next', 'E334')
+  call assert_fails('emenu WinBar.Next', 'E334:')
   wincmd p
 
   aunmenu WinBar.Next
@@ -121,3 +122,71 @@ func Test_redraw_after_scroll()
   bwipe!
 endfunc
 
+func Test_winbar_not_visible()
+  CheckScreendump
+
+  let lines =<< trim END
+      split
+      nnoremenu WinBar.Test :test
+      set winminheight=0
+      wincmd j
+      wincmd _
+  END
+  call writefile(lines, 'XtestWinbarNotVisble')
+  let buf = RunVimInTerminal('-S XtestWinbarNotVisble', #{rows: 10})
+  call VerifyScreenDump(buf, 'Test_winbar_not_visible', {})
+
+  " clean up
+  call StopVimInTerminal(buf)
+  call delete('XtestWinbarNotVisble')
+endfunction
+
+func Test_winbar_not_visible_custom_statusline()
+  CheckScreendump
+
+  let lines =<< trim END
+      split
+      nnoremenu WinBar.Test :test
+      set winminheight=0
+      set statusline=abcde
+      wincmd j
+      wincmd _
+  END
+  call writefile(lines, 'XtestWinbarNotVisble')
+  let buf = RunVimInTerminal('-S XtestWinbarNotVisble', #{rows: 10})
+  call VerifyScreenDump(buf, 'Test_winbar_not_visible_custom_statusline', {})
+
+  " clean up
+  call StopVimInTerminal(buf)
+  call delete('XtestWinbarNotVisble')
+endfunction
+
+func Test_drag_statusline_with_winbar()
+  call SetupWinbar()
+  let save_mouse = &mouse
+  set mouse=a
+  set laststatus=2
+
+  call test_setmouse(&lines - 1, 1)
+  call feedkeys("\<LeftMouse>", 'xt')
+  call test_setmouse(&lines - 2, 1)
+  call feedkeys("\<LeftDrag>", 'xt')
+  call assert_equal(2, &cmdheight)
+
+  call test_setmouse(&lines - 2, 1)
+  call feedkeys("\<LeftMouse>", 'xt')
+  call test_setmouse(&lines - 3, 1)
+  call feedkeys("\<LeftDrag>", 'xt')
+  call assert_equal(3, &cmdheight)
+
+  call test_setmouse(&lines - 3, 1)
+  call feedkeys("\<LeftMouse>", 'xt')
+  call test_setmouse(&lines - 1, 1)
+  call feedkeys("\<LeftDrag>", 'xt')
+  call assert_equal(1, &cmdheight)
+
+  let &mouse = save_mouse
+  set laststatus&
+endfunc
+
+" vim: shiftwidth=2 sts=2 expandtab

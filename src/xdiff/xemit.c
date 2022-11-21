@@ -225,8 +225,23 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 			if (fs1 < 0)
 				fs1 = 0;
 			if (fs1 < s1) {
-				s2 -= s1 - fs1;
+				s2 = XDL_MAX(s2 - (s1 - fs1), 0);
 				s1 = fs1;
+
+				/*
+				 * Did we extend context upwards into an
+				 * ignored change?
+				 */
+				while (xchp != xch &&
+				       xchp->i1 + xchp->chg1 <= s1 &&
+				       xchp->i2 + xchp->chg2 <= s2)
+					xchp = xchp->next;
+
+				/* If so, show it after all. */
+				if (xchp != xch) {
+					xch = xchp;
+					goto pre_context_calculation;
+				}
 			}
 		}
 
@@ -249,7 +264,7 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 			if (fe1 < 0)
 				fe1 = xe->xdf1.nrec;
 			if (fe1 > e1) {
-				e2 += fe1 - e1;
+				e2 = XDL_MIN(e2 + (fe1 - e1), xe->xdf2.nrec);
 				e1 = fe1;
 			}
 
@@ -281,7 +296,8 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 			funclineprev = s1 - 1;
 		}
 #endif
-		if (xdl_emit_hunk_hdr(s1 + 1, e1 - s1, s2 + 1, e2 - s2,
+		if (!(xecfg->flags & XDL_EMIT_NO_HUNK_HDR) &&
+		    xdl_emit_hunk_hdr(s1 + 1, e1 - s1, s2 + 1, e2 - s2,
 				      func_line.buf, func_line.len, ecb) < 0)
 			return -1;
 
