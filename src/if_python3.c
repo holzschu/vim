@@ -366,6 +366,10 @@ static PyObject* (*py3_PyImport_AddModule)(const char *);
 static int (*py3_PyErr_BadArgument)(void);
 static PyObject* (*py3_PyErr_Occurred)(void);
 static PyObject* (*py3_PyModule_GetDict)(PyObject *);
+#if TARGET_OS_IPHONE
+static PyObject* (*py3_PyModule_GetState)(PyObject *);
+static int (*py3_PyObject_Print)(PyObject *, FILE*, int);
+#endif
 static int (*py3_PyList_SetItem)(PyObject *, Py_ssize_t, PyObject *);
 static PyObject* (*py3_PyDict_GetItemString)(PyObject *, const char *);
 static int (*py3_PyDict_Next)(PyObject *, Py_ssize_t *, PyObject **, PyObject **);
@@ -648,6 +652,10 @@ static __thread struct
     {"PyType_IsSubtype", (PYTHON_PROC*)&py3_PyType_IsSubtype},
     {"PyCapsule_New", (PYTHON_PROC*)&py3_PyCapsule_New},
     {"PyCapsule_GetPointer", (PYTHON_PROC*)&py3_PyCapsule_GetPointer},
+#if TARGET_OS_IPHONE
+    {"PyModule_GetState", (PYTHON_PROC*)&py3_PyModule_GetState},
+    {"PyObject_Print", (PYTHON_PROC*)&py3_PyObject_Print},
+#endif
     {"", NULL},
 };
 
@@ -797,10 +805,13 @@ py3_runtime_link_init(char *libname, int verbose)
     if (hinstPy3 != 0)
 	return OK;
 #if TARGET_OS_IPHONE
+    static int errorMessageShown = 0; 
     pythonLibraryName = ios_getPythonLibraryName();
     if (pythonLibraryName == NULL) {
-	if (verbose)
-	    emsg("Too many python programs are already running. Python is disabled in this Vim.");
+	if (verbose && !errorMessageShown) {
+	    emsg("Too many python programs are already running. Python is disabled in this session.");
+	    errorMessageShown = 1;
+	}
 	return FAIL;
     }
     char p_py3dllname[40]; 
@@ -1016,23 +1027,22 @@ python3_end(void)
     ++recurse;
 
 #ifdef DYNAMIC_PYTHON3
-    if (hinstPy3)
+    if (hinstPy3) {
 #endif
-    if (Py_IsInitialized())
-    {
-	// acquire lock before finalizing
-	PyGILState_Ensure();
+	if (Py_IsInitialized())
+	{
+	    // acquire lock before finalizing
+	    PyGILState_Ensure();
 
-	Py_Finalize();
-
-#ifdef TARGET_OS_IPHONE
+	    Py_Finalize();
+	}
+#if TARGET_OS_IPHONE
 	close_dll(hinstPy3);
 	hinstPy3 = 0;
 	ios_releasePythonLibraryName(pythonLibraryName);
 	pythonLibraryName = NULL;
 #endif
-    }
-    
+    }    
     --recurse;
 }
 
@@ -1158,7 +1168,7 @@ Python3_Init(void)
     // TODO: 
     // - check that python3 is closed, reopened
     // X add something to set orig_argv. Before Py_Initialize()?
-    // - add something to warn ios_system, get number of python interpreter
+    // X add something to warn ios_system, get number of python interpreter
     // X change name of library (p_py3dll)
     if (!py3initialised)
     {
@@ -1907,11 +1917,16 @@ python3_tabpage_free(tabpage_T *tab)
     }
 }
 
+#if TARGET_OS_IPHONE
+static __thread wchar_t *(argv[2]) = {L"/must>not&exist/foo", NULL};
+#endif
     static PyObject *
 Py3Init_vim(void)
 {
+#if !TARGET_OS_IPHONE
     // The special value is removed from sys.path in Python3_Init().
     static wchar_t *(argv[2]) = {L"/must>not&exist/foo", NULL};
+#endif
 
     if (init_types())
 	return NULL;
@@ -1928,6 +1943,8 @@ Py3Init_vim(void)
     if (init_sys_path())
 	return NULL;
 
+    void *state = py3_PyModule_GetState(vim_module);
+    void *dict = py3_PyModule_GetDict(vim_module);
     return vim_module;
 }
 

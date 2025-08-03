@@ -1473,7 +1473,6 @@ static  __thread int		should_advance = FALSE;
     char_u *
 get_menu_names(expand_T *xp UNUSED, int idx)
 {
-    char_u		*str;
 #if !TARGET_OS_IPHONE
     static vimmenu_T	*menu = NULL;
     static int		did_alt_menu = FALSE;

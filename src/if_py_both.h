@@ -308,7 +308,7 @@ ObjectDir(PyObject *self, char **attributes)
 // Function to write a line, points to either msg() or emsg().
 typedef int (*writefn)(char *);
 
-static PyTypeObject OutputType;
+static __thread PyTypeObject OutputType;
 
 typedef struct
 {
@@ -514,14 +514,22 @@ static __thread struct PyMethodDef OutputMethods[] = {
 
 static __thread OutputObject Output =
 {
+#if !TARGET_OS_IPHONE
     PyObject_HEAD_INIT(&OutputType)
+#else
+    PyObject_HEAD_INIT(NULL)
+#endif
     0,
     0
 };
 
 static __thread OutputObject Error =
 {
+#if !TARGET_OS_IPHONE
     PyObject_HEAD_INIT(&OutputType)
+#else
+    PyObject_HEAD_INIT(NULL)
+#endif
     0,
     1
 };
@@ -529,6 +537,10 @@ static __thread OutputObject Error =
     static int
 PythonIO_Init_io(void)
 {
+#if TARGET_OS_IPHONE
+    Output.ob_base.ob_type = &OutputType;
+    Error.ob_base.ob_type = &OutputType;
+#endif
     if (PySys_SetObject("stdout", (PyObject *)(void *)&Output))
 	return -1;
     if (PySys_SetObject("stderr", (PyObject *)(void *)&Error))
@@ -1218,7 +1230,12 @@ FinderFindSpec(PyObject *self, PyObject *args)
 
     Py_DECREF(paths);
 
+#if !TARGET_OS_IPHONE
+    // TODO: That wasn't it, so remove it in the end, but keep it for now as it removes some warnings.
     if (!spec)
+#else
+    if ((!spec) || (spec == Py_None))
+#endif
     {
 	if (PyErr_Occurred())
 	    return NULL;
@@ -1226,7 +1243,6 @@ FinderFindSpec(PyObject *self, PyObject *args)
 	Py_INCREF(Py_None);
 	return Py_None;
     }
-
     return spec;
 }
 
@@ -1558,7 +1574,7 @@ pyll_add(PyObject *self, pylinkedlist_T *ref, pylinkedlist_T **last)
     *last = ref;
 }
 
-static PyTypeObject DictionaryType;
+static __thread PyTypeObject DictionaryType;
 
 typedef struct
 {
@@ -2240,7 +2256,7 @@ static __thread struct PyMethodDef DictionaryMethods[] = {
     { NULL,	NULL,					0,		NULL}
 };
 
-static PyTypeObject ListType;
+static __thread PyTypeObject ListType;
 
 typedef struct
 {
@@ -2939,7 +2955,7 @@ typedef struct
     int		auto_rebind;
 } FunctionObject;
 
-static PyTypeObject FunctionType;
+static __thread PyTypeObject FunctionType;
 
 #define NEW_FUNCTION(name, argc, argv, self, pt_auto) \
     FunctionNew(&FunctionType, (name), (argc), (argv), (self), (pt_auto))
@@ -3313,7 +3329,7 @@ static __thread struct PyMethodDef FunctionMethods[] = {
  * Options object
  */
 
-static PyTypeObject OptionsType;
+static __thread PyTypeObject OptionsType;
 
 typedef int (*checkfun)(void *);
 
@@ -3694,7 +3710,7 @@ typedef struct
 
 static PyObject *WinListNew(TabPageObject *tabObject);
 
-static PyTypeObject TabPageType;
+static __thread PyTypeObject TabPageType;
 
     static int
 CheckTabPage(TabPageObject *self)
@@ -3812,7 +3828,7 @@ static __thread struct PyMethodDef TabPageMethods[] = {
  * Window list object
  */
 
-static PyTypeObject TabListType;
+static __thread PyTypeObject TabListType;
 static __thread PySequenceMethods TabListAsSeq;
 
 typedef struct
@@ -3859,7 +3875,7 @@ typedef struct
     TabPageObject	*tabObject;
 } WindowObject;
 
-static PyTypeObject WindowType;
+static __thread PyTypeObject WindowType;
 
     static int
 CheckWindow(WindowObject *self)
@@ -4148,7 +4164,7 @@ static __thread struct PyMethodDef WindowMethods[] = {
  * Window list object
  */
 
-static PyTypeObject WinListType;
+static __thread PyTypeObject WinListType;
 static __thread PySequenceMethods WinListAsSeq;
 
 typedef struct
@@ -5026,7 +5042,7 @@ RBAppend(
 
 // Range object
 
-static PyTypeObject RangeType;
+static __thread PyTypeObject RangeType;
 static __thread PySequenceMethods RangeAsSeq;
 static __thread PyMappingMethods RangeAsMapping;
 
@@ -5148,7 +5164,7 @@ static __thread struct PyMethodDef RangeMethods[] = {
     { NULL,	NULL,				0,		NULL}
 };
 
-static PyTypeObject BufferType;
+static __thread PyTypeObject BufferType;
 static __thread PySequenceMethods BufferAsSeq;
 static __thread PyMappingMethods BufferAsMapping;
 
@@ -5405,7 +5421,7 @@ static __thread struct PyMethodDef BufferMethods[] = {
  * Buffer list object - Implementation
  */
 
-static PyTypeObject BufMapType;
+static __thread PyTypeObject BufMapType;
 
 typedef struct
 {
@@ -6442,11 +6458,41 @@ ConvertToPyObject(typval_T *tv)
     return NULL;
 }
 
+#if TARGET_OS_IPHONE
+typedef struct {
+    PyObject_HEAD
+    PyObject *md_dict;
+    PyModuleDef *md_def;
+    void *md_state;
+    PyObject *md_weaklist;
+    // for logging purposes after md_dict is cleared
+    PyObject *md_name;
+} PyModuleObject;
+
+static int vimmodule_clear(PyObject *m) {
+    void *state = py3_PyModule_GetState(m);
+    void *dict = py3_PyModule_GetDict(m);
+    if (state != NULL) {
+	Py_CLEAR(state);
+	((PyModuleObject *)m)->md_state = NULL;
+    }
+    if (dict != NULL) {
+	Py_CLEAR(dict);
+	((PyModuleObject *)m) -> md_dict = NULL; 
+    }
+    return 0;
+}
+
+static void vimmodule_free(void *m) {
+    vimmodule_clear((PyObject *)m);
+}
+#endif
+
 typedef struct
 {
     PyObject_HEAD
 } CurrentObject;
-static PyTypeObject CurrentType;
+static __thread PyTypeObject CurrentType;
 
     static void
 init_structs(void)
@@ -6684,6 +6730,10 @@ init_structs(void)
     vimmodule.m_doc = "Vim Python interface\n";
     vimmodule.m_size = -1;
     vimmodule.m_methods = VimMethods;
+#if TARGET_OS_IPHONE
+    vimmodule.m_clear = vimmodule_clear;
+    vimmodule.m_free = vimmodule_free;
+#endif
 #endif
 }
 
@@ -6786,25 +6836,41 @@ init_sys_path(void)
     return 0;
 }
 
-static BufMapObject TheBufferMap =
+static __thread BufMapObject TheBufferMap =
 {
+#if !TARGET_OS_IPHONE
     PyObject_HEAD_INIT(&BufMapType)
+#else
+    PyObject_HEAD_INIT(NULL)
+#endif
 };
 
-static WinListObject TheWindowList =
+static __thread WinListObject TheWindowList =
 {
+#if !TARGET_OS_IPHONE
     PyObject_HEAD_INIT(&WinListType)
+#else
+    PyObject_HEAD_INIT(NULL)
+#endif
     NULL
 };
 
-static CurrentObject TheCurrent =
+static __thread CurrentObject TheCurrent =
 {
+#if !TARGET_OS_IPHONE
     PyObject_HEAD_INIT(&CurrentType)
+#else
+    PyObject_HEAD_INIT(NULL)
+#endif
 };
 
-static TabListObject TheTabPageList =
+static __thread TabListObject TheTabPageList =
 {
+#if !TARGET_OS_IPHONE
     PyObject_HEAD_INIT(&TabListType)
+#else
+    PyObject_HEAD_INIT(NULL)
+#endif
 };
 
 static __thread struct numeric_constant {
@@ -6821,6 +6887,7 @@ static __thread struct object_constant {
     char	*name;
     PyObject	*valObject;
 } object_constants[] = {
+#if !TARGET_OS_IPHONE
     {"buffers",  (PyObject *)(void *)&TheBufferMap},
     {"windows",  (PyObject *)(void *)&TheWindowList},
     {"tabpages", (PyObject *)(void *)&TheTabPageList},
@@ -6837,6 +6904,24 @@ static __thread struct object_constant {
 #if PY_VERSION_HEX < 0x030700f0
     {"_Loader",    (PyObject *)&LoaderType},
 #endif
+#else  // TARGET_OS_IPHONE
+    {"buffers",  NULL},
+    {"windows",  NULL},
+    {"tabpages", NULL},
+    {"current",  NULL},
+
+    {"Buffer",     NULL},
+    {"Range",      NULL},
+    {"Window",     NULL},
+    {"TabPage",    NULL},
+    {"Dictionary", NULL},
+    {"List",       NULL},
+    {"Function",   NULL},
+    {"Options",    NULL},
+#if PY_VERSION_HEX < 0x030700f0
+    {"_Loader",    NULL},
+#endif
+#endif // TARGET_OS_IPHONE
 };
 
 #define ADD_OBJECT(m, name, obj) \
@@ -6869,6 +6954,27 @@ populate_module(PyObject *m)
 	ADD_CHECKED_OBJECT(m, numeric_constants[i].name,
 		PyInt_FromLong(numeric_constants[i].val));
 
+#if TARGET_OS_IPHONE
+    TheBufferMap.ob_base.ob_type = &BufMapType;
+    TheWindowList.ob_base.ob_type = &WinListType;
+    TheCurrent.ob_base.ob_type = &CurrentType;
+    TheTabPageList.ob_base.ob_type = &TabListType;
+    object_constants[0].valObject = (PyObject *)(void *)&TheBufferMap;
+    object_constants[1].valObject = (PyObject *)(void *)&TheWindowList;
+    object_constants[2].valObject = (PyObject *)(void *)&TheTabPageList;
+    object_constants[3].valObject = (PyObject *)(void *)&TheCurrent;
+    object_constants[4].valObject = (PyObject *)&BufferType;
+    object_constants[5].valObject = (PyObject *)&RangeType;
+    object_constants[6].valObject = (PyObject *)&WindowType;
+    object_constants[7].valObject = (PyObject *)&TabPageType;
+    object_constants[8].valObject = (PyObject *)&DictionaryType;
+    object_constants[9].valObject = (PyObject *)&ListType;
+    object_constants[10].valObject = (PyObject *)&FunctionType;
+    object_constants[11].valObject = (PyObject *)&OptionsType;
+#if PY_VERSION_HEX < 0x030700f0
+    object_constants[12].valObject = (PyObject *)&LoaderType;
+#endif
+#endif // TARGET_OS_IPHONE
     for (i = 0; i < (int)(sizeof(object_constants)
 					    / sizeof(struct object_constant));
 	    ++i)

@@ -1537,7 +1537,7 @@ static __thread int	on_sep_line = 0;	// on separator right of window
 #ifdef FEAT_MENU
 static __thread int  in_winbar = FALSE;
 #endif
-#ifdef FEAT_TEXT_PROP
+#ifdef FEAT_PROP_POPUP
 static __thread int   in_popup_win = FALSE;
 static __thread win_T *click_in_popup_win = NULL;
 #endif

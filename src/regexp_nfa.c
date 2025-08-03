@@ -7620,9 +7620,7 @@ nfa_regexec_multi(
 nfa_free_regexp_stuff(void)
 {
     // Also reset variables from nfa_regexp.c:
-    nfa_time_limit = NULL;
     nfa_timed_out = 0;
-    nfa_time_count = 0;
     nfa_re_flags = 0; 
     post_start = NULL; 
     post_end = NULL;

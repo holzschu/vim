@@ -732,7 +732,7 @@ get_job_options(typval_T *tv, jobopt_T *opt, int supported, int supported2)
     return OK;
 }
 
-static job_T *first_job = NULL;
+static __thread job_T *first_job = NULL;
 
     static void
 job_free_contents(job_T *job)
@@ -801,7 +801,7 @@ job_free(job_T *job)
     }
 }
 
-static job_T *jobs_to_free = NULL;
+static __thread job_T *jobs_to_free = NULL;
 
 /*
  * Put "job" in a list to be freed later, when it's no longer referenced.
@@ -839,6 +839,11 @@ job_free_all(void)
 # ifdef FEAT_TERMINAL
     free_unused_terminals();
 # endif
+#if TARGET_OS_IPHONE
+    // probably not required
+    jobs_to_free = NULL; 
+    first_job = NULL;
+#endif
 }
 #endif
 

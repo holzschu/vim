@@ -18,7 +18,11 @@
  * where unset, up to 64 octets long including trailing null byte.
  */
 #if defined(HAVE_LOCALTIME_R) && defined(HAVE_TZSET)
+#if !TARGET_OS_IPHONE
 static char	tz_cache[64];
+#else
+static __thread char	tz_cache[64];
+#endif
 #endif
 
 #define FOR_ALL_TIMERS(t) \
@@ -79,10 +83,15 @@ vim_time(void)
  * When "add_newline" is TRUE add a newline like ctime() does.
  * Uses a static buffer.
  */
+#if TARGET_OS_IPHONE
+static __thread char buf[50];
+#endif
     char *
 get_ctime(time_t thetime, int add_newline)
 {
+#if !TARGET_OS_IPHONE
     static char buf[50];
+#endif
 #ifdef HAVE_STRFTIME
     struct tm	tmval;
     struct tm	*curtime;
@@ -383,8 +392,13 @@ f_strptime(typval_T *argvars, typval_T *rettv)
 # endif
 
 # if defined(FEAT_TIMERS) || defined(PROTO)
+#if !TARGET_OS_IPHONE
 static timer_T	*first_timer = NULL;
 static long	last_timer_id = 0;
+#else
+static __thread timer_T	*first_timer = NULL;
+static __thread long	last_timer_id = 0;
+#endif
 
 /*
  * Return time left until "due".  Negative if past "due".
@@ -920,7 +934,11 @@ f_timer_stopall(typval_T *argvars UNUSED, typval_T *rettv UNUSED)
 # endif // FEAT_TIMERS
 
 # if defined(STARTUPTIME) || defined(PROTO)
+#if !TARGET_OS_IPHONE
 static struct timeval	prev_timeval;
+#else
+static __thread struct timeval	prev_timeval;
+#endif
 
 #  ifdef MSWIN
 /*
@@ -988,13 +1006,18 @@ time_diff(struct timeval *then, struct timeval *now)
     fprintf(time_fd, "%03ld.%03ld", msec, usec >= 0 ? usec : usec + 1000L);
 }
 
+#if TARGET_OS_IPHONE
+static __thread struct timeval	start;
+#endif
     void
 time_msg(
     char	*mesg,
     void	*tv_start)  // only for do_source: start time; actually
 			    // (struct timeval *)
 {
+#if !TARGET_OS_IPHONE
     static struct timeval	start;
+#endif
     struct timeval		now;
 
     if (time_fd != NULL)

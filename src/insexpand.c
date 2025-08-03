@@ -191,7 +191,7 @@ static __thread int	  compl_cont_mode = 0;
 static __thread expand_T	  compl_xp;
 
 // List of flags for method of completion.
-static int	  compl_cont_status = 0;
+static __thread int	  compl_cont_status = 0;
 # define CONT_ADDING	1	// "normal" or "adding" expansion
 # define CONT_INTRPT	(2 + 4)	// a ^X interrupted the current expansion
 				// it's set only iff N_ADDS is set

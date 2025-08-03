@@ -883,10 +883,15 @@ check_for_opt_buffer_or_dict_arg(typval_T *args, int idx)
  * tv_get_string_chk() and tv_get_string_buf_chk() are similar, but return
  * NULL on error.
  */
+#if TARGET_OS_IPHONE
+static __thread char_u   mybuf[NUMBUFLEN];
+#endif
     char_u *
 tv_get_string(typval_T *varp)
 {
+#if !TARGET_OS_IPHONE
     static char_u   mybuf[NUMBUFLEN];
+#endif
 
     return tv_get_string_buf(varp, mybuf);
 }
@@ -894,13 +899,20 @@ tv_get_string(typval_T *varp)
 /*
  * Like tv_get_string() but don't allow number to string conversion for Vim9.
  */
+#if TARGET_OS_IPHONE
+static __thread char_u   mybuf_strict[NUMBUFLEN];
+#endif
     char_u *
 tv_get_string_strict(typval_T *varp)
 {
+#if !TARGET_OS_IPHONE
     static char_u   mybuf[NUMBUFLEN];
     char_u	    *res =  tv_get_string_buf_chk_strict(
 						 varp, mybuf, in_vim9script());
-
+#else
+    char_u	    *res =  tv_get_string_buf_chk_strict(
+						 varp, mybuf_strict, in_vim9script());
+#endif
     return res != NULL ? res : (char_u *)"";
 }
 
@@ -915,12 +927,19 @@ tv_get_string_buf(typval_T *varp, char_u *buf)
 /*
  * Careful: This uses a single, static buffer.  YOU CAN ONLY USE IT ONCE!
  */
+#if TARGET_OS_IPHONE
+static __thread char_u   mybuf_chk[NUMBUFLEN];
+#endif
     char_u *
 tv_get_string_chk(typval_T *varp)
 {
+#if !TARGET_OS_IPHONE
     static char_u   mybuf[NUMBUFLEN];
 
     return tv_get_string_buf_chk(varp, mybuf);
+#else
+    return tv_get_string_buf_chk(varp, mybuf_chk);
+#endif
 }
 
     char_u *
@@ -1744,6 +1763,10 @@ func_equal(
  * Compares the items just like "==" would compare them, but strings and
  * numbers are different.  Floats and numbers are also different.
  */
+#if TARGET_OS_IPHONE
+static __thread int  recursive_cnt = 0;	    // catch recursive loops
+static __thread int	tv_equal_recurse_limit;
+#endif
     int
 tv_equal(
     typval_T *tv1,
@@ -1753,9 +1776,13 @@ tv_equal(
 {
     char_u	buf1[NUMBUFLEN], buf2[NUMBUFLEN];
     char_u	*s1, *s2;
+#if !TARGET_OS_IPHONE
     static int  recursive_cnt = 0;	    // catch recursive loops
+#endif
     int		r;
+#if !TARGET_OS_IPHONE
     static int	tv_equal_recurse_limit;
+#endif
 
     // Catch lists and dicts that have an endless loop by limiting
     // recursiveness to a limit.  We guess they are equal then.

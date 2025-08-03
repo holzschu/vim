@@ -90,7 +90,7 @@ typedef void (*nv_func_T)(cmdarg_T *cap);
  * script to generate the nv_cmd_idx[] lookup table.
  * It is faster when all keys from zero to '~' are present.
  */
-static const struct nv_cmd
+static __thread const struct nv_cmd
 {
     int		cmd_char;	// (first) command character
     nv_func_T   cmd_func;	// function for this command

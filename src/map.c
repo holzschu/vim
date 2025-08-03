@@ -106,6 +106,7 @@ map_free(mapblock_T **mpp)
     mp->m_expr = 0;		// <expr> used, m_str is an expression
     mp->m_script_ctx = (sctx_T) {0, 0, 0, 0};	// SCTX where map was defined
 #endif
+#endif
     vim_free(mp);
 }
 

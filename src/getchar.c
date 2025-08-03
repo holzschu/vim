@@ -3961,4 +3961,3 @@ reset_last_used_map(mapblock_T *mp)
 	last_used_map = NULL;
 }
 #endif
->>>>>>> c19f1a3488c1bb6fe5707dc6338b13cb9f598670

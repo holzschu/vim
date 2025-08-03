@@ -231,6 +231,7 @@ int (*dll_luaL_loadbufferx) (lua_State *L, const char *buff, size_t sz, const ch
 int (*dll_luaL_argerror) (lua_State *L, int numarg, const char *extramsg);
 #endif
 #if LUA_VERSION_NUM >= 504
+BUG
 int (*dll_luaL_typeerror) (lua_State *L, int narg, const char *tname);
 #endif
 void (*dll_luaL_checkany) (lua_State *L, int narg);

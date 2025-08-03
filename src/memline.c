@@ -5505,7 +5505,7 @@ ml_crypt_prepare(memfile_T *mfp, off_T offset, int reading)
  * ML_CHNK_DELLINE: Subtract len from parent chunk, possibly deleting it
  * ML_CHNK_UPDLINE: Add len to parent chunk, as a signed entity.
  */
-#if !TARGET_OS_IPHONE
+#if TARGET_OS_IPHONE
 static __thread buf_T	*ml_upd_lastbuf = NULL;
 static __thread linenr_T	ml_upd_lastline;
 static __thread linenr_T	ml_upd_lastcurline;

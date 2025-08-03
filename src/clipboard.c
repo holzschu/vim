@@ -230,9 +230,9 @@ clip_copy_selection(Clipboard_T *clip)
  * prevents accessing the clipboard very often which might slow down Vim
  * considerably.
  */
-static int global_change_count = 0; // if set, inside a start_global_changes
-static int clipboard_needs_update = FALSE; // clipboard needs to be updated
-static int clip_did_set_selection = TRUE;
+static __thread int global_change_count = 0; // if set, inside a start_global_changes
+static __thread int clipboard_needs_update = FALSE; // clipboard needs to be updated
+static __thread int clip_did_set_selection = TRUE;
 
 /*
  * Save clip_unnamed and reset it.
@@ -1366,13 +1366,13 @@ open_app_context(void)
     }
 }
 
-static Atom	vim_atom;	// Vim's own special selection format
-static Atom	vimenc_atom;	// Vim's extended selection format
-static Atom	utf8_atom;
-static Atom	compound_text_atom;
-static Atom	text_atom;
-static Atom	targets_atom;
-static Atom	timestamp_atom;	// Used to get a timestamp
+static __thread Atom	vim_atom;	// Vim's own special selection format
+static __thread Atom	vimenc_atom;	// Vim's extended selection format
+static __thread Atom	utf8_atom;
+static __thread Atom	compound_text_atom;
+static __thread Atom	text_atom;
+static __thread Atom	targets_atom;
+static __thread Atom	timestamp_atom;	// Used to get a timestamp
 
     void
 x11_setup_atoms(Display *dpy)

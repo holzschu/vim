@@ -124,7 +124,7 @@ enum SpecialKey
  * - there should be code in term.c to obtain the value from the termcap
  */
 
-extern char_u *(term_strings[]);    // current terminal strings
+extern __thread char_u *(term_strings[]);    // current terminal strings
 
 /*
  * strings used for terminal

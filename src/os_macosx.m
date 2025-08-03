@@ -452,7 +452,8 @@ mch_open(const char *path, int oflag, mode_t mode)
     // open() has failed. We assume it is for permission issues, and try to get permission:
     // Get dictionary of all permission bookmarks
     // Do not use bookmarks if path is inside ~/Documents or $APPDIR (vim calls mch_open *a lot*)
-    NSString *pathString = @(path); 
+    NSString *pathString = [NSString stringWithUTF8String: path]; 
+    if (pathString == nil) return -1; // It *can* happen, with weird encodings + backup files.
     NSString* docsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject]; // @(getenv("HOME"));
     if ([pathString hasPrefix:docsPath]) return -1;
     NSString* appdir = [[NSBundle mainBundle] resourcePath]; // @(getenv("APPDIR"));
@@ -512,10 +513,11 @@ mch_fopen(const char *path, const char * mode)
     // fopen() has failed. We assume it is for permission issues, and try to get permission:
     // Get dictionary of all permission bookmarks
     // Do not use bookmarks if path is inside $HOME or $APPDIR 
-    NSString *pathString = @(path); 
-    NSString* home = @(getenv("HOME"));
+    NSString *pathString = [NSString stringWithUTF8String: path]; 
+    if (pathString == nil) return NULL; // It *can* happen, with weird encodings + backup files.
+    NSString* home = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject]; // @(getenv("HOME"));
     if ([pathString hasPrefix:home]) return NULL;
-    NSString* appdir = @(getenv("APPDIR"));
+    NSString* appdir = [[NSBundle mainBundle] resourcePath]; // @(getenv("APPDIR"));
     if ([pathString hasPrefix:appdir]) return NULL;
     // 
     NSDictionary *storedBookmarks = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"fileBookmarks"];

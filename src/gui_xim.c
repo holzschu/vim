@@ -70,8 +70,8 @@ xim_log(char *s, ...)
 #if (defined(FEAT_EVAL) && \
      (defined(FEAT_XIM) || defined(IME_WITHOUT_XIM) || defined(VIMDLL))) || \
     defined(PROTO)
-static callback_T imaf_cb;	    // 'imactivatefunc' callback function
-static callback_T imsf_cb;	    // 'imstatusfunc' callback function
+static __thread callback_T imaf_cb;	    // 'imactivatefunc' callback function
+static __thread callback_T imsf_cb;	    // 'imstatusfunc' callback function
 
     int
 set_imactivatefunc_option(void)
@@ -154,7 +154,7 @@ set_ref_in_im_funcs(int copyID UNUSED)
 #if defined(FEAT_XIM) || defined(PROTO)
 
 # if defined(FEAT_GUI_GTK) || defined(PROTO)
-static int xim_has_preediting INIT(= FALSE);  // IM current status
+static __thread int xim_has_preediting INIT(= FALSE);  // IM current status
 
 /*
  * Set preedit_start_col to the current cursor position.
@@ -170,17 +170,17 @@ init_preedit_start_col(void)
     xim_changed_while_preediting = curbuf->b_changed;
 }
 
-static int im_is_active	       = FALSE;	// IM is enabled for current mode
-static int preedit_is_active   = FALSE;
-static int im_preedit_cursor   = 0;	// cursor offset in characters
-static int im_preedit_trailing = 0;	// number of characters after cursor
+static __thread int im_is_active	       = FALSE;	// IM is enabled for current mode
+static __thread int preedit_is_active   = FALSE;
+static __thread int im_preedit_cursor   = 0;	// cursor offset in characters
+static __thread int im_preedit_trailing = 0;	// number of characters after cursor
 
-static unsigned long im_commit_handler_id  = 0;
-static unsigned int  im_activatekey_keyval = GDK_VoidSymbol;
-static unsigned int  im_activatekey_state  = 0;
+static __thread unsigned long im_commit_handler_id  = 0;
+static __thread unsigned int  im_activatekey_keyval = GDK_VoidSymbol;
+static __thread unsigned int  im_activatekey_state  = 0;
 
-static GtkWidget *preedit_window = NULL;
-static GtkWidget *preedit_label = NULL;
+static __thread GtkWidget *preedit_window = NULL;
+static __thread GtkWidget *preedit_label = NULL;
 
 static void im_preedit_window_set_position(void);
 
@@ -462,8 +462,8 @@ im_correct_cursor(int num_move_back)
 	add_to_input_buf(backkey, (int)sizeof(backkey));
 }
 
-static int xim_expected_char = NUL;
-static int xim_ignored_char = FALSE;
+static __thread int xim_expected_char = NUL;
+static __thread int xim_ignored_char = FALSE;
 
 /*
  * Update the mode and cursor while in an IM callback.
@@ -1198,12 +1198,12 @@ im_is_preediting(void)
 
 # else // !FEAT_GUI_GTK
 
-static int	xim_is_active = FALSE;  // XIM should be active in the current
+static __thread int	xim_is_active = FALSE;  // XIM should be active in the current
 					// mode
-static int	xim_has_focus = FALSE;	// XIM is really being used for Vim
+static __thread int	xim_has_focus = FALSE;	// XIM is really being used for Vim
 #  ifdef FEAT_GUI_X11
-static XIMStyle	input_style;
-static int	status_area_enabled = TRUE;
+static __thread XIMStyle	input_style;
+static __thread int	status_area_enabled = TRUE;
 #  endif
 
 /*
@@ -1775,7 +1775,7 @@ xim_get_status_area_height(void)
 #else // !defined(FEAT_XIM)
 
 # if defined(IME_WITHOUT_XIM) || defined(VIMDLL) || defined(PROTO)
-static int im_was_set_active = FALSE;
+static __thread int im_was_set_active = FALSE;
 
     int
 #  ifdef VIMDLL

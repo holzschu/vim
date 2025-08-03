@@ -240,7 +240,7 @@ struct AutoPatCmd_S
     AutoPatCmd_T *next;		// chain of active apc-s for auto-invalidation
 };
 
-static __thread AutoPatCmd *active_apc_list = NULL; /* stack of active autocommands */
+static __thread AutoPatCmd_T *active_apc_list = NULL; /* stack of active autocommands */
 
 // Macro to loop over all the patterns for an autocmd event
 #define FOR_ALL_AUTOCMD_PATTERNS(event, ap) \
@@ -1911,6 +1911,10 @@ has_modechanged(void)
  * Execute autocommands for "event" and file name "fname".
  * Return TRUE if some commands were executed.
  */
+#if TARGET_OS_IPHONE
+static __thread int	nesting = 0;
+static __thread int	filechangeshell_busy = FALSE;
+#endif
     static int
 apply_autocmds_group(
     event_T	event,
@@ -1933,7 +1937,9 @@ apply_autocmds_group(
     char_u	*save_autocmd_match;
     int		save_autocmd_busy;
     int		save_autocmd_nested;
+#if !TARGET_OS_IPHONE
     static int	nesting = 0;
+#endif
     AutoPatCmd_T patcmd;
     AutoPat	*ap;
     sctx_T	save_current_sctx;
@@ -1942,7 +1948,9 @@ apply_autocmds_group(
     char_u	*save_cmdarg;
     long	save_cmdbang;
 #endif
+#if !TARGET_OS_IPHONE
     static int	filechangeshell_busy = FALSE;
+#endif
 #ifdef FEAT_PROFILE
     proftime_T	wait_time;
 #endif

@@ -331,9 +331,6 @@ free_search_patterns(void)
     saved_spats_last_idx = 0;
     saved_spats_no_hlsearch = 0;
 # endif
-#ifdef FEAT_RIGHTLEFT
-    mr_pattern_alloced = FALSE; /* mr_pattern was allocated */
-#endif
     
 #endif // TARGET_OS_IPHONE
     VIM_CLEAR(mr_pattern);

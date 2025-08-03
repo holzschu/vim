@@ -395,9 +395,15 @@ ex_language(exarg_T *eap)
     }
 }
 
+#if !TARGET_OS_IPHONE
 static char_u	**locales = NULL;	// Array of all available locales
 
 static int	did_init_locales = FALSE;
+#else
+static char_u	**locales = NULL;	// Array of all available locales
+
+static int	did_init_locales = FALSE;
+#endif
 
 /*
  * Return an array of strings for all available locales + NULL for the

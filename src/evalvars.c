@@ -108,17 +108,29 @@ static __thread struct vimvar
     {VV_NAME("operator",	 VAR_STRING), NULL, VV_RO},
     {VV_NAME("searchforward",	 VAR_NUMBER), NULL, 0},
     {VV_NAME("hlsearch",	 VAR_NUMBER), NULL, 0},
+#if !TARGET_OS_IPHONE
     {VV_NAME("oldfiles",	 VAR_LIST), &t_list_string, 0},
+#else
+    {VV_NAME("oldfiles",	 VAR_LIST), NULL, 0},
+#endif
     {VV_NAME("windowid",	 VAR_NUMBER), NULL, VV_RO},
     {VV_NAME("progpath",	 VAR_STRING), NULL, VV_RO},
+#if !TARGET_OS_IPHONE
     {VV_NAME("completed_item",	 VAR_DICT), &t_dict_string, VV_RO},
+#else
+    {VV_NAME("completed_item",	 VAR_DICT), NULL, VV_RO},
+#endif
     {VV_NAME("option_new",	 VAR_STRING), NULL, VV_RO},
     {VV_NAME("option_old",	 VAR_STRING), NULL, VV_RO},
     {VV_NAME("option_oldlocal",	 VAR_STRING), NULL, VV_RO},
     {VV_NAME("option_oldglobal", VAR_STRING), NULL, VV_RO},
     {VV_NAME("option_command",	 VAR_STRING), NULL, VV_RO},
     {VV_NAME("option_type",	 VAR_STRING), NULL, VV_RO},
+#if !TARGET_OS_IPHONE
     {VV_NAME("errors",		 VAR_LIST), &t_list_string, 0},
+#else
+    {VV_NAME("errors",		 VAR_LIST), NULL, 0},
+#endif
     {VV_NAME("false",		 VAR_BOOL), NULL, VV_RO},
     {VV_NAME("true",		 VAR_BOOL), NULL, VV_RO},
     {VV_NAME("none",		 VAR_SPECIAL), NULL, VV_RO},
@@ -147,10 +159,18 @@ static __thread struct vimvar
     {VV_NAME("event",		 VAR_DICT), NULL, VV_RO},
     {VV_NAME("versionlong",	 VAR_NUMBER), NULL, VV_RO},
     {VV_NAME("echospace",	 VAR_NUMBER), NULL, VV_RO},
+#if !TARGET_OS_IPHONE
     {VV_NAME("argv",		 VAR_LIST), &t_list_string, VV_RO},
+#else
+    {VV_NAME("argv",		 VAR_LIST), NULL, VV_RO},
+#endif
     {VV_NAME("collate",		 VAR_STRING), NULL, VV_RO},
     {VV_NAME("exiting",		 VAR_SPECIAL), NULL, VV_RO},
+#if !TARGET_OS_IPHONE
     {VV_NAME("colornames",       VAR_DICT), &t_dict_string, VV_RO},
+#else
+    {VV_NAME("colornames",       VAR_DICT), NULL, VV_RO},
+#endif
     {VV_NAME("sizeofint",	 VAR_NUMBER), NULL, VV_RO},
     {VV_NAME("sizeoflong",	 VAR_NUMBER), NULL, VV_RO},
     {VV_NAME("sizeofpointer",	 VAR_NUMBER), NULL, VV_RO},
@@ -193,6 +213,15 @@ evalvars_init(void)
 {
     int		    i;
     struct vimvar   *p;
+
+// iOS: continue initialization:
+#if TARGET_OS_IPHONE
+    vimvars[VV_OLDFILES].vv_type = &t_list_string;
+    vimvars[VV_COMPLETED_ITEM].vv_type = &t_dict_string;
+    vimvars[VV_ERRORS].vv_type = &t_list_string;
+    vimvars[VV_ARGV].vv_type = &t_list_string;
+    vimvars[VV_COLORNAMES].vv_type = &t_dict_string;
+#endif
 
     init_var_dict(&globvardict, &globvars_var, VAR_DEF_SCOPE);
     init_var_dict(&vimvardict, &vimvars_var, VAR_SCOPE);

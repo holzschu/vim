@@ -4994,7 +4994,7 @@ mch_call_shell_fork(
 	    reset_signals();		// handle signals normally
 	    UNBLOCK_SIGNALS(&curset);
 #if TARGET_OS_IPHONE
-	    signal(SIGWINCH, (RETSIGTYPE (*)())sig_winch);
+	    signal(SIGWINCH, (void (*)())sig_winch);
 #endif
 	    
 
@@ -5173,7 +5173,7 @@ mch_call_shell_fork(
 	    catch_int_signal();
 	    UNBLOCK_SIGNALS(&curset);
 #if TARGET_OS_IPHONE
-	    signal(SIGWINCH, (RETSIGTYPE (*)())sig_winch);
+	    signal(SIGWINCH, (void (*)())sig_winch);
 	    // iOS: listen to tty, write to output
 	    keyboardParameters kp;
 	    kp.toshell_fd = fd_toshell[1];
@@ -5905,7 +5905,7 @@ mch_job_start(char **argv, job_T *job, jobopt_T *options, int is_terminal)
 	reset_signals();		// handle signals normally
 	UNBLOCK_SIGNALS(&curset);
 #if TARGET_OS_IPHONE
-	    signal(SIGWINCH, (RETSIGTYPE (*)())sig_winch);
+	    signal(SIGWINCH, (void (*)())sig_winch);
 #endif
 
 # ifdef FEAT_JOB_CHANNEL

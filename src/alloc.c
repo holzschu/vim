@@ -20,13 +20,13 @@
 #if defined(MEM_PROFILE) || defined(PROTO)
 
 # define MEM_SIZES  8200
-static long_u mem_allocs[MEM_SIZES];
-static long_u mem_frees[MEM_SIZES];
-static long_u mem_allocated;
-static long_u mem_freed;
-static long_u mem_peak;
-static long_u num_alloc;
-static long_u num_freed;
+static __thread long_u mem_allocs[MEM_SIZES];
+static __thread long_u mem_frees[MEM_SIZES];
+static __thread long_u mem_allocated;
+static __thread long_u mem_freed;
+static __thread long_u mem_peak;
+static __thread long_u num_alloc;
+static __thread long_u num_freed;
 
     static void
 mem_pre_alloc_s(size_t *sizep)

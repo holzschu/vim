@@ -333,7 +333,7 @@ static __thread char_u META_flags[] = {
     1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1
 };
 
-static __trhead int	curchr;		// currently parsed character
+static __thread int	curchr;		// currently parsed character
 // Previous character.  Note: prevchr is sometimes -1 when we are not at the
 // start, eg in /[ ^I]^ the pattern was never found even if it existed,
 // because ^ was taken to be magic -- webb
@@ -2813,12 +2813,11 @@ static int bt_regexec_nl(
 	int		line_lbr);
 static long bt_regexec_multi(
     regmmatch_T	*rmp,
-    win_T	*win,		/* window in which to search or NULL */
-    buf_T	*buf,		/* buffer in which to search */
-    linenr_T	lnum,		/* nr of line to start looking for match */
-    colnr_T	col,		/* column to start looking for match */
-    proftime_T	*tm,		/* timeout limit or NULL */
-    int		*timed_out);	/* flag set on timeout or NULL */
+    win_T	*win,		// window in which to search or NULL
+    buf_T	*buf,		// buffer in which to search
+    linenr_T	lnum,		// nr of line to start looking for match
+    colnr_T	col,		// column to start looking for match
+    int		*timed_out);	// flag set on timeout or NULL
 static regprog_T * nfa_regcomp(char_u *expr, int re_flags);
 static void nfa_regfree(regprog_T *prog);
 static int nfa_regexec_nl(
@@ -2828,12 +2827,11 @@ static int nfa_regexec_nl(
     int		line_lbr);
 static long nfa_regexec_multi(
     regmmatch_T	*rmp,
-    win_T	*win,		/* window in which to search or NULL */
-    buf_T	*buf,		/* buffer in which to search */
-    linenr_T	lnum,		/* nr of line to start looking for match */
-    colnr_T	col,		/* column to start looking for match */
-    proftime_T	*tm,		/* timeout limit or NULL */
-    int		*timed_out);	/* flag set on timeout or NULL */
+    win_T	*win,		// window in which to search or NULL
+    buf_T	*buf,		// buffer in which to search
+    linenr_T	lnum,		// nr of line to start looking for match
+    colnr_T	col,		// column to start looking for match
+    int		*timed_out);	// flag set on timeout or NULL
 #endif
 
     void
@@ -2867,8 +2865,8 @@ free_regexp_stuff(void)
     prevchr = 0;
     prevprevchr = 0;	/* previous-previous character */
     nextchr = 0;	/* used for ungetchr() */
-    bt_regengine = (regengine_T) { bt_regcomp, bt_regfree, bt_regexec_nl, bt_regexec_multi, (char_u *)"" };
-    nfa_regengine = (regengine_T) { nfa_regcomp, nfa_regfree, nfa_regexec_nl, nfa_regexec_multi, (char_u *)"" };
+    bt_regengine = (regengine_T) { bt_regcomp, bt_regfree, bt_regexec_nl, bt_regexec_multi };
+    nfa_regengine = (regengine_T) { nfa_regcomp, nfa_regfree, nfa_regexec_nl, nfa_regexec_multi };
     reg_cpo_lit = 0; /* 'cpoptions' contains 'l' flag */
     reg_cpo_bsl = 0; /* 'cpoptions' contains '\' flag */
     at_start = 0;	// True when on the first character
@@ -2877,7 +2875,7 @@ free_regexp_stuff(void)
     regstack = (garray_T) {0, 0, 0, 0, NULL};
     backpos = (garray_T) {0, 0, 0, 0, NULL};
     can_f_submatch = FALSE;
-    VIM_CLEAR(eval_result);
+    free_resub_eval_result();
     after_slash = FALSE; 
     // also reset regexp_nfa:
     nfa_free_regexp_stuff();

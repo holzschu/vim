@@ -315,6 +315,53 @@ help_compare(const void *s1, const void *s2)
  * The matches will be sorted with a "best" match algorithm.
  * When "keep_lang" is TRUE try keeping the language of the current buffer.
  */
+#if TARGET_OS_IPHONE
+    static __thread char *(except_tbl[][2]) = {
+	{"*",		"star"},
+	{"g*",		"gstar"},
+	{"[*",		"[star"},
+	{"]*",		"]star"},
+	{":*",		":star"},
+	{"/*",		"/star"},
+	{"/\\*",	"/\\\\star"},
+	{"\"*",		"quotestar"},
+	{"**",		"starstar"},
+	{"cpo-*",	"cpo-star"},
+	{"/\\(\\)",	"/\\\\(\\\\)"},
+	{"/\\%(\\)",	"/\\\\%(\\\\)"},
+	{"?",		"?"},
+	{"??",		"??"},
+	{":?",		":?"},
+	{"?<CR>",	"?<CR>"},
+	{"g?",		"g?"},
+	{"g?g?",	"g?g?"},
+	{"g??",		"g??"},
+	{"-?",		"-?"},
+	{"q?",		"q?"},
+	{"v_g?",	"v_g?"},
+	{"/\\?",	"/\\\\?"},
+	{"/\\z(\\)",	"/\\\\z(\\\\)"},
+	{"\\=",		"\\\\="},
+	{":s\\=",	":s\\\\="},
+	{"[count]",	"\\[count]"},
+	{"[quotex]",	"\\[quotex]"},
+	{"[range]",	"\\[range]"},
+	{":[range]",	":\\[range]"},
+	{"[pattern]",	"\\[pattern]"},
+	{"\\|",		"\\\\bar"},
+	{"\\%$",	"/\\\\%\\$"},
+	{"s/\\~",	"s/\\\\\\~"},
+	{"s/\\U",	"s/\\\\U"},
+	{"s/\\L",	"s/\\\\L"},
+	{"s/\\1",	"s/\\\\1"},
+	{"s/\\2",	"s/\\\\2"},
+	{"s/\\3",	"s/\\\\3"},
+	{"s/\\9",	"s/\\\\9"},
+	{NULL, NULL}
+    };
+    static __thread char *(expr_table[]) = {"!=?", "!~?", "<=?", "<?", "==?", "=~?",
+				   ">=?", ">?", "is?", "isnot?"};
+#endif
     int
 find_help_tags(
     char_u	*arg,
@@ -326,6 +373,7 @@ find_help_tags(
     int		i;
     // Specific tags that either have a specific replacement or won't go
     // through the generic rules.
+#if !TARGET_OS_IPHONE
     static char *(except_tbl[][2]) = {
 	{"*",		"star"},
 	{"g*",		"gstar"},
@@ -371,6 +419,7 @@ find_help_tags(
     };
     static char *(expr_table[]) = {"!=?", "!~?", "<=?", "<?", "==?", "=~?",
 				   ">=?", ">?", "is?", "isnot?"};
+#endif
     int flags;
 
     d = IObuff;		    // assume IObuff is long enough!
