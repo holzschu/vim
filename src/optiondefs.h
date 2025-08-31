@@ -11,7 +11,7 @@
  */
 
 #if TARGET_OS_IPHONE 
-#define DYNAMIC_PYTHON3_DLL "python3_ios.framework/python3_ios"
+#define DYNAMIC_PYTHON3_DLL "Python.framework/Python"
 #endif
 
 // The options that are local to a window or buffer have "indir" set to one of
