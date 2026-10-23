@@ -1,0 +1,102 @@
+name: CI
+on:
+  pull_request:
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: Hosted runner (Intel fallback for arm64 capacity shortages)
+        type: choice
+        default: macos-26
+        options:
+          - macos-26
+          - macos-26-intel
+  push:
+    tags:
+      - 'v*'
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    name: Building xcframeworks
+    runs-on: ${{ inputs.runner || 'macos-26' }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          df -h .
+      - name: Build frameworks
+        run: |
+          bash build_vim_xcframework.sh
+      - name: Slices and checksums
+        run: |
+          ls *.xcframework.zip >/dev/null
+          for zip in *.xcframework.zip; do
+            sum=$(swift package compute-checksum "$zip")
+            echo "$sum  $(basename "$zip")"
+          done | tee checksums.txt
+          cp checksums.txt release.md
+          {
+            echo '| xcframework | slice | archs |'
+            echo '| --- | --- | --- |'
+            for xcf in *.xcframework; do
+              plutil -convert json -o - "$xcf/Info.plist" | jq -e '
+                [.AvailableLibraries[] | {id: .LibraryIdentifier, archs: (.SupportedArchitectures | sort)}] | sort_by(.id) ==
+                [{id: "ios-arm64", archs: ["arm64"]}, {id: "ios-arm64_x86_64-simulator", archs: ["arm64", "x86_64"]}]' >/dev/null
+              plutil -convert json -o - "$xcf/Info.plist" | jq -r \
+                '.AvailableLibraries[] | [.LibraryIdentifier, .LibraryPath, (.SupportedArchitectures | sort | join(" "))] | @tsv' \
+                | while IFS=$'\t' read -r slice lib expected; do
+                    bin="$xcf/$slice/$lib/$(basename "${lib%.framework}")"
+                    archs=$(lipo -archs "$bin")
+                    actual=$(echo "$archs" | tr ' ' '\n' | sort | paste -sd ' ' -)
+                    [ "$actual" = "$expected" ] || exit 1
+                    echo "| $(basename "$xcf") | $slice | $archs |"
+                    otool -L "$bin" >&2
+                    if otool -L "$bin" | grep $'^\t' | grep -E '/opt/homebrew|/usr/local|/Users/runner'; then exit 1; fi
+                  done
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          du -sh .build Frameworks_iOS Frameworks_Simulator
+          df -h .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: xcframeworks
+          include-hidden-files: true
+          if-no-files-found: error
+          path: |
+            *.xcframework.zip
+            checksums.txt
+            release.md
+
+  release:
+    name: Publishing release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'holzschu/vim'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: xcframeworks
+          path: dist
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              dist/*.xcframework.zip dist/checksums.txt
+          else
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --title "Release $GITHUB_REF_NAME" --notes-file dist/release.md \
+              dist/*.xcframework.zip dist/checksums.txt
+          fi
