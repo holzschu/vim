@@ -193,7 +193,7 @@ void mbyte_im_set_active(int active_arg);
 # ifdef FEAT_TERMINAL
 #  include "terminal.pro"
 # endif
-# if defined(HAVE_TGETENT) && (defined(AMIGA) || defined(VMS) || defined(TARGET_OS_IPHONE))
+# if defined(HAVE_TGETENT) && (defined(AMIGA) || defined(VMS))
 #  include "termlib.pro"
 # endif
 # ifdef FEAT_PROP_POPUP

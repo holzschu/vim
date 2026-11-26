@@ -4203,14 +4203,12 @@ mch_get_shellsize(void)
 	    columns = atoi((char *)p);
     }
 
-#ifdef HAVE_TGETENT 
-#if !TARGET_OS_IPHONE
+#ifdef HAVE_TGETENT
     /*
      * 3. try reading "co" and "li" entries from termcap
      */
     if (columns == 0 || rows == 0)
 	getlinecol(&columns, &rows);
-#endif
 #endif
 
     /*
