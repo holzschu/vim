@@ -21,7 +21,9 @@
  * (char **). This define removes that prototype. We include our own prototype
  * below.
  */
-#define tgetstr tgetstr_defined_wrong
+#ifndef VIM_PRIVATE_TINFO
+# define tgetstr tgetstr_defined_wrong
+#endif
 
 #include "vim.h"
 
@@ -48,7 +50,9 @@
 # endif
 #endif
 
-#undef tgetstr
+#ifndef VIM_PRIVATE_TINFO
+# undef tgetstr
+#endif
 
 struct builtin_term
 {
@@ -79,7 +83,9 @@ static char *invoke_tgetent(char_u *, char_u *);
  * Here is our own prototype for tgetstr(), any prototypes from the include
  * files have been disabled by the define at the start of this file.
  */
+# ifndef VIM_PRIVATE_TINFO
 char		*tgetstr(char *, char **);
+# endif
 
 # ifdef FEAT_TERMRESPONSE
     // Change this to "if 1" to debug what happens with termresponse.
@@ -198,9 +204,9 @@ char *UP, *BC, PC;
 #  endif
 # endif
 
-# define TGETSTR(s, p)	vim_tgetstr((s), (p))
+# define TGETSTR(s, p)	vim_term_getstr((s), (p))
 # define TGETENT(b, t)	tgetent((char *)(b), (char *)(t))
-static char_u *vim_tgetstr(char *s, char_u **pp);
+static char_u *vim_term_getstr(char *s, char_u **pp);
 #endif // HAVE_TGETENT
 
 static __thread int  detected_8bit = FALSE;	// detected 8-bit terminal
@@ -1756,9 +1762,7 @@ get_term_entries(int *height, int *width)
 	if (TERM_STR(string_names[i].dest) == NULL
 			     || TERM_STR(string_names[i].dest) == empty_option)
 	{
-#if !TARGET_OS_IPHONE // iOS: tgetstring is forbidden on the AppStore
 	    TERM_STR(string_names[i].dest) = TGETSTR(string_names[i].name, &tp);
-#endif
 #ifdef FEAT_EVAL
 	    set_term_option_sctx_idx(string_names[i].name, -1);
 #endif
@@ -1768,7 +1772,6 @@ get_term_entries(int *height, int *width)
     // tgetflag() returns 1 if the flag is present, 0 if not and
     // possibly -1 if the flag doesn't exist.
 
-#if !TARGET_OS_IPHONE // iOS: tgetflag is forbidden on the AppStore
     // TODO: test if these should be set (_DB, _DA especially, related to scrolling).
     if ((T_MS == NULL || T_MS == empty_option) && tgetflag("ms") > 0)
 	T_MS = (char_u *)"y";
@@ -1786,7 +1789,6 @@ get_term_entries(int *height, int *width)
     /*
      * get key codes
      */
-    // iOS: tgestr is forbidden on the AppStore
     for (i = 0; key_names[i] != NULL; ++i) {
 	if (find_termcode((char_u *)key_names[i]) == NULL)
 	{
@@ -1799,38 +1801,28 @@ get_term_entries(int *height, int *width)
 		add_termcode((char_u *)key_names[i], p, FALSE);
 	}
     }
-#endif
-#if !TARGET_OS_IPHONE // iOS: tgetnum is forbidden on the AppStore
+
     if (*height == 0)
 	*height = tgetnum("li");
     if (*width == 0)
 	*width = tgetnum("co");
-#endif
-    
     /*
      * Get number of colors (if not done already).
      */
     if (TERM_STR(KS_CCO) == NULL || TERM_STR(KS_CCO) == empty_option)
     {
-#if !TARGET_OS_IPHONE // iOS: tgetnum is forbidden on the AppStore
 	set_color_count(tgetnum("Co"));
-#endif
 #ifdef FEAT_EVAL
 	set_term_option_sctx_idx("Co", -1);
 #endif
     }
 
 # ifndef hpux
-#if !TARGET_OS_IPHONE // iOS: tgetstr is forbidden on the AppStore
     BC = (char *)TGETSTR("bc", &tp);
     UP = (char *)TGETSTR("up", &tp);
     p = TGETSTR("pc", &tp);
     if (p)
 	PC = *p;
-#else 
-    PC = NUL;
-    UP = "\x1b\x5b\x41";
-#endif // IPHONE
 # endif
 }
 #endif
@@ -2247,7 +2239,11 @@ set_termname(char_u *term)
 #if defined(EXITFREE) || defined(PROTO)
 
 # ifdef HAVE_DEL_CURTERM
-#  include <term.h>	    // declares cur_term
+#  ifdef VIM_PRIVATE_TINFO
+#   include <ncurses/term.h>   // Vim's own term.h is unrelated
+#  else
+#   include <term.h>	    // declares cur_term
+#  endif
 # endif
 
 /*
@@ -2273,7 +2269,6 @@ free_cur_term()
     static char *
 invoke_tgetent(char_u *tbuf, char_u *term)
 {
-#if !TARGET_OS_IPHONE
     int	    i;
 
     // Note: Valgrind may report a leak here, because the library keeps one
@@ -2301,7 +2296,6 @@ invoke_tgetent(char_u *tbuf, char_u *term)
 	    return _(e_terminal_entry_not_found_in_termcap);
 #endif
     }
-#endif
     return NULL;
 }
 
@@ -2309,9 +2303,8 @@ invoke_tgetent(char_u *tbuf, char_u *term)
  * Some versions of tgetstr() have been reported to return -1 instead of NULL.
  * Fix that here.
  */
-#if !TARGET_OS_IPHONE
     static char_u *
-vim_tgetstr(char *s, char_u **pp)
+vim_term_getstr(char *s, char_u **pp)
 {
     char	*p;
 
@@ -2320,11 +2313,9 @@ vim_tgetstr(char *s, char_u **pp)
 	p = NULL;
     return (char_u *)p;
 }
-#endif
 #endif // HAVE_TGETENT
 
 #if defined(HAVE_TGETENT) && (defined(UNIX) || defined(VMS) || defined(MACOS_X))
-#if !TARGET_OS_IPHONE
 /*
  * Get Columns and Rows from the termcap. Used after a window signal if the
  * ioctl() fails. It doesn't make sense to call tgetent each time if the "co"
@@ -2346,7 +2337,6 @@ getlinecol(
 	    *rp = tgetnum("li");
     }
 }
-#endif
 #endif // defined(HAVE_TGETENT) && defined(UNIX)
 
 /*
@@ -2441,9 +2431,7 @@ add_termcap_entry(char_u *name, int force)
 	    error_msg = invoke_tgetent(tbuf, term);
 	    if (error_msg == NULL)
 	    {
-#if !TARGET_OS_IPHONE
 		string = TGETSTR((char *)name, &tp);
-#endif
 		if (string != NULL && *string != NUL)
 		{
 		    add_termcode(name, string, FALSE);
@@ -2512,7 +2500,7 @@ term_is_gui(char_u *name)
 }
 #endif
 
-#if !defined(HAVE_TGETENT) || defined(AMIGA) || defined(PROTO) || TARGET_OS_IPHONE
+#if !defined(HAVE_TGETENT) || defined(AMIGA) || defined(PROTO)
 
     char_u *
 tltoa(unsigned long i)
@@ -2533,10 +2521,10 @@ tltoa(unsigned long i)
 }
 #endif
 
-#if !defined(HAVE_TGETENT) || TARGET_OS_IPHONE
+#ifndef HAVE_TGETENT
 
 #if TARGET_OS_IPHONE
-// tgoto is forbidden on the AppStore
+// Keep the builtin-only builds clear of the system termcap symbol.
 #define tgoto ios_tgoto
 #endif
 /*
@@ -2810,7 +2798,7 @@ out_str_cf(char_u *s)
 #endif
 	if (out_pos > OUT_SIZE - MAX_ESC_SEQ_LEN)
 	    out_flush();
-#if defined(HAVE_TGETENT) && !TARGET_OS_IPHONE
+#ifdef HAVE_TGETENT
 	for (p = s; *s; ++s)
 	{
 	    // flush just before delay command
@@ -2845,10 +2833,10 @@ out_str_cf(char_u *s)
 	    }
 	}
 	tputs((char *)p, 1, TPUTSFUNCAST out_char_nf);
-#else // HAVE_TGETENT && !TARGET_OS_IPHONE
+#else
 	while (*s)
 	    out_char_nf(*s++);
-#endif // HAVE_TGETENT && !TARGET_OS_IPHONE
+#endif // HAVE_TGETENT
 
 	// For testing we write one string at a time.
 	if (p_wd)
@@ -2878,7 +2866,7 @@ out_str(char_u *s)
 	// avoid terminal strings being split up
 	if (out_pos > OUT_SIZE - MAX_ESC_SEQ_LEN)
 	    out_flush();
-#if defined(HAVE_TGETENT) && !TARGET_OS_IPHONE
+#ifdef HAVE_TGETENT
 	tputs((char *)s, 1, TPUTSFUNCAST out_char_nf);
 #else
 	while (*s)
